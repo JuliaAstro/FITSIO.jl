@@ -1,4 +1,4 @@
-module Fitsio
+module FITSIO
 
 export FITSFile,
        fits_clobber_file,

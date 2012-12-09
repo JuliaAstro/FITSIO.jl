@@ -1,7 +1,7 @@
-fitsio.jl --- FITS File I/O
-===========================
+FITSIO --- FITS File I/O
+========================
 
-.. .. module:: fitsio.jl
+.. module:: FITSIO
    :synopsis: Read and write FITS files.
 
 A wrapper for the CFITSIO_ library. 

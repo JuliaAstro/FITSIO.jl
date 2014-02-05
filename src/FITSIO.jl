@@ -20,6 +20,9 @@ export FITSFile,
        fits_read_pix,
        fits_read_record,
        fits_write_key,
+       fits_movabs_hdu,
+       fits_movrel_hdu,
+       fits_get_num_hdus,
        fits_write_pix,
        fits_write_record
 
@@ -109,7 +112,7 @@ fits_delete_file(f::FITSFile) = generic_close(:ffdelt, f)
 close(f::FITSFile) = fits_close_file(f)
 
 function fits_file_name(f::FITSFile)
-    value = Array(Uint8, 71)
+    value = Array(Uint8, 1025)
     status::Int32 = 0
     ccall(dlsym(_jl_libcfitsio,:ffflnm), Int32,
         (Ptr{Void},Ptr{Uint8},Ptr{Int32}),
@@ -190,6 +193,45 @@ function fits_delete_key(f::FITSFile, keyname::String)
         (Ptr{Void},Ptr{Uint8},Ptr{Int32}),
         f.ptr, bytestring(keyname), &f.status)
     fits_assert_ok(f)
+end
+
+# HDU functions
+
+function hdu_int_to_type(hdu_type_int)
+    if hdu_type_int == 0
+        return :image_hdu
+    elseif hdu_type_int == 1
+        return :ascii_table
+    elseif hdu_type_int == 2
+        return :binary_table
+    end
+    
+    :unknown
+end
+
+function generic_hdu_move(fn, f::FITSFile, hduNum::Integer)
+    local hdu_type = Int32[0]
+    
+    ccall(dlsym(_jl_libcfitsio, fn), Int32,
+          (Ptr{Void}, Int32, Ptr{Int32}, Ptr{Int32}),
+          f.ptr, convert(Int32, hduNum), hdu_type, &f.status)
+    fits_assert_ok(f)
+
+    hdu_int_to_type(hdu_type[1])
+end
+
+fits_movabs_hdu(f::FITSFile, hduNum::Integer) = generic_hdu_move(:ffmahd, f, hduNum)
+fits_movrel_hdu(f::FITSFile, hduNum::Integer) = generic_hdu_move(:ffmrhd, f, hduNum)
+
+function fits_get_num_hdus(f::FITSFile)
+    local num = Int32[0]
+    
+    ccall(dlsym(_jl_libcfitsio, :ffthdu), Int32,
+          (Ptr{Void}, Ptr{Int32}, Ptr{Int32}),
+          f.ptr, num, &f.status)
+    fits_assert_ok(f)
+
+    num[1]
 end
 
 # primary array or IMAGE extension

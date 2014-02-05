@@ -3,6 +3,7 @@ module FITSIO
 export FITSFile,
        fits_clobber_file,
        fits_close_file,
+       fits_delete_file,
        fits_create_file,
        fits_create_img,
        fits_delete_key,
@@ -10,6 +11,10 @@ export FITSFile,
        fits_get_hdrspace,
        fits_get_img_size,
        fits_open_file,
+       fits_open_table,
+       fits_open_image,
+       fits_open_data,
+       fits_file_name,
        fits_read_keyn,
        fits_read_keyword,
        fits_read_pix,
@@ -75,24 +80,43 @@ end
 
 fits_clobber_file(filename::String) = fits_create_file("!"*filename)
 
-function fits_open_file(filename::String)
+function generic_open(fn, filename::String)
     ptr = Array(Ptr{Void}, 1)
     mode = int32(0) # readonly
     status = Int32[0]
-    ccall(dlsym(_jl_libcfitsio,:ffopen),
+    ccall(dlsym(_jl_libcfitsio,fn),
         Int32, (Ptr{Ptr{Void}},Ptr{Uint8},Int32,Ptr{Int32}),
         ptr, bytestring(filename), mode, status)
     fits_assert_ok(status[1])
     FITSFile(ptr[1], status[1])
 end
 
-function fits_close_file(f::FITSFile)
-    ccall(dlsym(_jl_libcfitsio,:ffclos), Int32,
+fits_open_file(filename::String) = generic_open(:ffopen, filename)
+fits_open_table(filename::String) = generic_open(:fftopn, filename)
+fits_open_image(filename::String) = generic_open(:ffiopn, filename)
+fits_open_data(filename::String) = generic_open(:ffdopn, filename)
+
+function generic_close(fn, f::FITSFile)
+    ccall(dlsym(_jl_libcfitsio,fn), Int32,
         (Ptr{Void},Ptr{Int32}),
         f.ptr, &f.status)
     fits_assert_ok(f)
 end
+
+fits_close_file(f::FITSFile) = generic_close(:ffclos, f)
+fits_delete_file(f::FITSFile) = generic_close(:ffdelt, f)
+
 close(f::FITSFile) = fits_close_file(f)
+
+function fits_file_name(f::FITSFile)
+    value = Array(Uint8, 71)
+    status::Int32 = 0
+    ccall(dlsym(_jl_libcfitsio,:ffflnm), Int32,
+        (Ptr{Void},Ptr{Uint8},Ptr{Int32}),
+        f.ptr, bytestring(value), &f.status)
+    fits_assert_ok(f)
+    bytestring(convert(Ptr{Uint8}, value))
+end
 
 # header keywords
 

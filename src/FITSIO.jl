@@ -3,6 +3,7 @@ module FITSIO
 export FITSFile,
        fits_clobber_file,
        fits_close_file,
+       fits_delete_file,
        fits_create_file,
        fits_create_img,
        fits_delete_key,
@@ -10,13 +11,24 @@ export FITSFile,
        fits_get_hdrspace,
        fits_get_img_size,
        fits_open_file,
+       fits_open_table,
+       fits_open_image,
+       fits_open_data,
+       fits_file_name,
        fits_read_keyn,
        fits_read_keyword,
        fits_read_pix,
        fits_read_record,
        fits_write_key,
+       fits_movabs_hdu,
+       fits_movrel_hdu,
+       fits_get_num_hdus,
        fits_write_pix,
-       fits_write_record
+       fits_write_record,
+       fits_get_num_rows,
+       fits_get_num_rowsll,
+       fits_get_num_cols,
+       fits_read_col
 
 export fitsread
 
@@ -61,6 +73,18 @@ _cfitsio_datatype(::Type{Float64})    = int32(82)
 _cfitsio_datatype(::Type{Complex64})  = int32(83)
 _cfitsio_datatype(::Type{Complex128}) = int32(163)
 
+# General-purpose functions
+
+function _generic_getter{T}(fn, f::FITSFile, ::Type{T})
+    result = T[0]
+
+    ccall(dlsym(_jl_libcfitsio, fn), Int32,
+          (Ptr{Void}, Ptr{T}, Ptr{Int32}),
+          f.ptr, result, &f.status)
+
+    result[1]
+end
+
 # file access
 
 function fits_create_file(filename::String)
@@ -75,24 +99,43 @@ end
 
 fits_clobber_file(filename::String) = fits_create_file("!"*filename)
 
-function fits_open_file(filename::String)
+function generic_open(fn, filename::String)
     ptr = Array(Ptr{Void}, 1)
     mode = int32(0) # readonly
     status = Int32[0]
-    ccall(dlsym(_jl_libcfitsio,:ffopen),
+    ccall(dlsym(_jl_libcfitsio,fn),
         Int32, (Ptr{Ptr{Void}},Ptr{Uint8},Int32,Ptr{Int32}),
         ptr, bytestring(filename), mode, status)
     fits_assert_ok(status[1])
     FITSFile(ptr[1], status[1])
 end
 
-function fits_close_file(f::FITSFile)
-    ccall(dlsym(_jl_libcfitsio,:ffclos), Int32,
+fits_open_file(filename::String) = generic_open(:ffopen, filename)
+fits_open_table(filename::String) = generic_open(:fftopn, filename)
+fits_open_image(filename::String) = generic_open(:ffiopn, filename)
+fits_open_data(filename::String) = generic_open(:ffdopn, filename)
+
+function generic_close(fn, f::FITSFile)
+    ccall(dlsym(_jl_libcfitsio,fn), Int32,
         (Ptr{Void},Ptr{Int32}),
         f.ptr, &f.status)
     fits_assert_ok(f)
 end
+
+fits_close_file(f::FITSFile) = generic_close(:ffclos, f)
+fits_delete_file(f::FITSFile) = generic_close(:ffdelt, f)
+
 close(f::FITSFile) = fits_close_file(f)
+
+function fits_file_name(f::FITSFile)
+    value = Array(Uint8, 1025)
+    status::Int32 = 0
+    ccall(dlsym(_jl_libcfitsio,:ffflnm), Int32,
+        (Ptr{Void},Ptr{Uint8},Ptr{Int32}),
+        f.ptr, bytestring(value), &f.status)
+    fits_assert_ok(f)
+    bytestring(convert(Ptr{Uint8}, value))
+end
 
 # header keywords
 
@@ -168,6 +211,36 @@ function fits_delete_key(f::FITSFile, keyname::String)
     fits_assert_ok(f)
 end
 
+# HDU functions
+
+function hdu_int_to_type(hdu_type_int)
+    if hdu_type_int == 0
+        return :image_hdu
+    elseif hdu_type_int == 1
+        return :ascii_table
+    elseif hdu_type_int == 2
+        return :binary_table
+    end
+
+    :unknown
+end
+
+function generic_hdu_move(fn, f::FITSFile, hduNum::Integer)
+    local hdu_type = Int32[0]
+
+    ccall(dlsym(_jl_libcfitsio, fn), Int32,
+          (Ptr{Void}, Int32, Ptr{Int32}, Ptr{Int32}),
+          f.ptr, convert(Int32, hduNum), hdu_type, &f.status)
+    fits_assert_ok(f)
+
+    hdu_int_to_type(hdu_type[1])
+end
+
+fits_movabs_hdu(f::FITSFile, hduNum::Integer) = generic_hdu_move(:ffmahd, f, hduNum)
+fits_movrel_hdu(f::FITSFile, hduNum::Integer) = generic_hdu_move(:ffmrhd, f, hduNum)
+
+fits_get_num_hdus(f::FITSFile) = _generic_getter(:ffthdu, f, Int32)
+
 # primary array or IMAGE extension
 
 function fits_get_img_size(f::FITSFile)
@@ -224,6 +297,34 @@ function fitsread(filename::String)
     fits_read_pix(f, a)
     fits_close_file(f)
     a'
+end
+
+# ASCII/binary tables
+
+fits_get_num_rows(f::FITSFile) = _generic_getter(:ffgnrw, f, Int)
+fits_get_num_rowsll(f::FITSFile) = _generic_getter(:ffgnrwll, f, Int64)
+fits_get_num_cols(f::FITSFile) = _generic_getter(:ffgncl, f, Int32)
+
+function fits_read_col{T}(f::FITSFile,
+                          ::Type{T},
+                          colnum::Int,
+                          firstrow::Int64,
+                          firstelem::Int64,
+                          nelements::Int64)
+
+    result = zeros(T, nelements)
+    anynull = Int32[0]
+    nullvalue = T[0]
+
+    ccall(dlsym(_jl_libcfitsio,:ffgcv), Int32,
+          (Ptr{Void}, Int32, Int32, Int64, Int64, Int64,
+           Ptr{T}, Ptr{T}, Ptr{Int32}, Ptr{Int32}),
+          f.ptr, _cfitsio_datatype(T), convert(Int32, colnum),
+          firstrow, firstelem, nelements,
+          nullvalue, result, anynull, &f.status)
+
+    return result
+
 end
 
 end # module

@@ -15,6 +15,7 @@ export FITSFile,
        fits_open_image,
        fits_open_data,
        fits_file_name,
+       fits_file_mode,
        fits_read_keyn,
        fits_read_keyword,
        fits_read_pix,
@@ -23,6 +24,7 @@ export FITSFile,
        fits_movabs_hdu,
        fits_movrel_hdu,
        fits_get_num_hdus,
+       fits_get_hdu_num,
        fits_write_pix,
        fits_write_record,
        fits_get_num_rows,
@@ -33,6 +35,7 @@ export FITSFile,
 export fitsread
 
 import Base.close
+import Base.show
 
 const _jl_libcfitsio = dlopen("libcfitsio")
 
@@ -129,13 +132,15 @@ close(f::FITSFile) = fits_close_file(f)
 
 function fits_file_name(f::FITSFile)
     value = Array(Uint8, 1025)
-    status::Int32 = 0
     ccall(dlsym(_jl_libcfitsio,:ffflnm), Int32,
-        (Ptr{Void},Ptr{Uint8},Ptr{Int32}),
-        f.ptr, bytestring(value), &f.status)
+          (Ptr{Void},Ptr{Uint8},Ptr{Int32}),
+          f.ptr, value, &f.status)
     fits_assert_ok(f)
     bytestring(convert(Ptr{Uint8}, value))
 end
+
+fits_file_mode(f::FITSFile) = _generic_getter(:ffflmd, f, Int32)
+
 
 # header keywords
 
@@ -241,6 +246,14 @@ fits_movrel_hdu(f::FITSFile, hduNum::Integer) = generic_hdu_move(:ffmrhd, f, hdu
 
 fits_get_num_hdus(f::FITSFile) = _generic_getter(:ffthdu, f, Int32)
 
+function fits_get_hdu_num(f::FITSFile)
+    hdunum = Int32[0]
+    ccall(dlsym(_jl_libcfitsio,:ffghdn), Int32,
+          (Ptr{Void},Ptr{Int32}),
+          f.ptr, hdunum)
+    hdunum[1]
+end
+
 # primary array or IMAGE extension
 
 function fits_get_img_size(f::FITSFile)
@@ -325,6 +338,23 @@ function fits_read_col{T}(f::FITSFile,
 
     return result
 
+end
+
+const mode_strs = [int32(0)=>"READONLY", int32(1)=>"READWRITE"]
+
+function show(io::IO, f::FITSFile)
+    print(io, "file: ", fits_file_name(f), "\n")
+    print(io, "mode: ", mode_strs[fits_file_mode(f)], "\n")
+    print(io, "extnum hdutype         hduname\n")
+
+    current = fits_get_hdu_num(f)  # Mark the current HDU.
+
+    for i = 1:fits_get_num_hdus(f)
+        hdutype = fits_movabs_hdu(f, i)
+        extname = fits_read_keyword(f, "EXTNAME")[1]
+        @printf io "%-6d %-15s %s\n" i hdutype extname
+    end
+    fits_movabs_hdu(f, current)  # Return to the HDU we were on.
 end
 
 end # module

@@ -1,15 +1,20 @@
 module FITSIO
 
 export FITSFile,
+       ColumnDef,
        fits_clobber_file,
        fits_close_file,
+       fits_create_ascii_tbl,
+       fits_create_binary_tbl,
        fits_create_file,
        fits_create_img,
        fits_delete_file,
        fits_delete_key,
        fits_delete_record,
+       fits_delete_rows,
        fits_file_mode,
        fits_file_name,
+       fits_get_col_repeat,
        fits_get_hdrspace,
        fits_get_hdu_num,
        fits_get_img_size,
@@ -17,6 +22,8 @@ export FITSFile,
        fits_get_num_hdus,
        fits_get_num_rows,
        fits_get_num_rowsll,
+       fits_get_rowsize,
+       fits_insert_rows,
        fits_movabs_hdu,
        fits_movrel_hdu,
        fits_open_data,
@@ -28,6 +35,7 @@ export FITSFile,
        fits_read_keyword,
        fits_read_pix,
        fits_read_record,
+       fits_write_col,
        fits_write_key,
        fits_write_pix,
        fits_write_record
@@ -79,7 +87,8 @@ for (a,b,T) in ((:fits_file_mode,     "ffflmd",  :Cint),
                 (:fits_get_num_cols,  "ffgncl",  :Cint),
                 (:fits_get_num_hdus,  "ffthdu",  :Cint),
                 (:fits_get_num_rows,  "ffgnrw",  :Clong),
-                (:fits_get_num_rowsll,"ffgnrwll",:Clonglong))
+                (:fits_get_num_rowsll,"ffgnrwll",:Clonglong),
+                (:fits_get_rowsize,   "ffgrsz",  :Cint))
     @eval begin
         function ($a)(f::FITSFile)
             result = $T[0]
@@ -316,26 +325,148 @@ end
 
 # ASCII/binary tables
 
+type ColumnDef
+    typestr::String
+    formstr::String
+    unitstr::String
+end
+
+for (a,b) in ((:fits_create_binary_tbl, 2),
+              (:fits_create_ascii_tbl,  1))
+    @eval begin
+        function ($a)(f::FITSFile, numrows::Integer,
+                      coldefs::Array{ColumnDef}, extname::String)
+
+            ntype = length(coldefs)
+            ttype = map((x) -> pointer(x.typestr.data), coldefs)
+            tform = map((x) -> pointer(x.formstr.data), coldefs)
+            tunit = map((x) -> pointer(x.unitstr.data), coldefs)
+
+            ccall(("ffcrtb", :libcfitsio), Int32,
+                  (Ptr{Void}, Int32, Int64, Int32,
+                   Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}},
+                   Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Int32}),
+                  f.ptr, $b, convert(Int32, numrows), ntype,
+                  ttype, tform, tunit, bytestring(extname),
+                  &f.status)
+            fits_assert_ok(f)
+        end
+    end
+end
+
+function fits_get_col_repeat(f::FITSFile, colnum::Integer)
+    typecode = Int32[0]
+    repeat = Int64[0]
+    width = Int64[0]
+
+    ccall((:ffgtclll, :libcfitsio), Int32,
+          (Ptr{Void}, Int32, Ptr{Int32}, Ptr{Int64}, Ptr{Int64}, Ptr{Int32}),
+          f.ptr, convert(Int32, colnum), typecode, repeat, width, &f.status)
+
+    (repeat[1], width[1])
+end
+
 function fits_read_col{T}(f::FITSFile,
                           ::Type{T},
-                          colnum::Int,
-                          firstrow::Int64,
-                          firstelem::Int64,
-                          nelements::Int64)
+                          colnum::Integer,
+                          firstrow::Integer,
+                          firstelem::Integer,
+                          data::Array{T})
 
-    result = zeros(T, nelements)
     anynull = Int32[0]
-    nullvalue = T[0]
 
-    ccall((:ffgcv,:libcfitsio), Int32,
-          (Ptr{Void}, Int32, Int32, Int64, Int64, Int64,
-           Ptr{T}, Ptr{T}, Ptr{Int32}, Ptr{Int32}),
-          f.ptr, _cfitsio_datatype(T), convert(Int32, colnum),
-          firstrow, firstelem, nelements,
-          nullvalue, result, anynull, &f.status)
+    firstrow64 = convert(Int64, firstrow)
+    firstelem64 = convert(Int64, firstelem)
+    nelements64 = convert(Int64, length(data))
 
-    return result
+    if isa(T, Type{String}) || isa(T, Type{ASCIIString})
 
+        # Make sure there is enough room for each string
+        repcount, width = fits_get_col_repeat(f, colnum)
+        for i in 1:length(data)
+            # We need to call `repeat' N times in order to allocate N
+            # strings
+            data[i] = repeat(" ", repcount)
+        end
+
+        ccall((:ffgcvs, :libcfitsio), Int32,
+              (Ptr{Void}, Int32, Int64, Int64, Int64,
+               Ptr{Uint8}, Ptr{Ptr{Uint8}}, Ptr{Int32}, Ptr{Int32}),
+              f.ptr, convert(Int32, colnum),
+              firstrow64, firstelem64, nelements64,
+              "", data, anynull, &f.status)
+
+        # Truncate the strings to the first NULL character (if present)
+        for idx in 1:length(data)
+            zeropos = search(data[idx], '\0')
+            if zeropos >= 1
+                data[idx] = (data[idx])[1:(zeropos-1)]
+            end
+        end
+
+    else
+
+        ccall((:ffgcv,:libcfitsio), Int32,
+              (Ptr{Void}, Int32, Int32, Int64, Int64, Int64,
+               Ptr{T}, Ptr{T}, Ptr{Int32}, Ptr{Int32}),
+              f.ptr, _cfitsio_datatype(T), convert(Int32, colnum),
+              firstrow64, firstelem64, nelements64,
+              T[0], data, anynull, &f.status)
+
+    end
+
+    fits_assert_ok(f)
+
+end
+
+function fits_write_col{T}(f::FITSFile,
+                           ::Type{T},
+                           colnum::Integer,
+                           firstrow::Integer,
+                           firstelem::Integer,
+                           data::Array{T})
+
+    firstrow64 = convert(Int64, firstrow)
+    firstelem64 = convert(Int64, firstelem)
+    nelements64 = convert(Int64, length(data))
+
+    if  isa(T, Type{String}) || isa(T, Type{ASCIIString})
+
+        ccall((:ffpcls, :libcfitsio), Int32,
+              (Ptr{Void}, Int32, Int64, Int64, Int64,
+               Ptr{Ptr{Uint8}}, Ptr{Int32}),
+              f.ptr, convert(Int32, colnum),
+              firstrow64, firstelem64, nelements64,
+              data, &f.status)
+
+    else
+
+        ccall((:ffpcl,:libcfitsio), Int32,
+              (Ptr{Void}, Int32, Int32, Int64, Int64, Int64,
+               Ptr{T}, Ptr{Int32}),
+              f.ptr, _cfitsio_datatype(T), convert(Int32, colnum),
+              firstrow64, firstelem64, nelements64,
+              data, &f.status)
+
+    end
+
+    fits_assert_ok(f)
+
+end
+
+for (a,b) in ((:fits_insert_rows, "ffirow"),
+              (:fits_delete_rows, "ffdrow"))
+    @eval begin
+        function ($a)(f::FITSFile, firstrow::Integer, nrows::Integer)
+            firstrow64 = convert(Int64, firstrow)
+            nrows64 = convert(Int64, nrows)
+
+            ccall(($b,:libcfitsio), Int32,
+                  (Ptr{Void}, Int64, Int64, Ptr{Int32}),
+                  f.ptr, firstrow64, nrows64, &f.status)
+            fits_assert_ok(f)
+        end
+    end
 end
 
 const mode_strs = [int32(0)=>"READONLY", int32(1)=>"READWRITE"]

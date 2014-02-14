@@ -144,3 +144,124 @@ Primary Array Routines
 
    Read pixels from the FITS file into ``data``.
 
+
+Table Routines
+--------------
+
+To create ASCII/binary tables in a new HDU, the FITSIO.jl library
+provides two functions: :func:`fits_create_ascii_table` and
+:func:`fits_create_binary_table`. In general, one should pick the
+second as binary tables require less space on the disk and are more
+efficient to read and write. (Moreover, a few datatypes are not
+supported in ASCII tables).
+
+In order to create a table, the programmer must specify the
+characteristics of each column by passing an array of
+:c:type:`ColumnDef` types. Here is an example:
+
+.. code-block:: julia
+
+   f = fits_create_file("!new.fits")
+   coldefs = [ColumnDef("SPEED", "1D", "m/s"),
+              ColumnDef("MASS", "1E", "kg"),
+              ColumnDef("PARTICLE", "20A", "Name")]
+   fits_create_binary_tbl(f, 10, coldefs, "PARTICLE")
+  
+
+This example creates a table with room for 10 entries, each of them
+describing the characteristics of a particle: its speed, its mass, and
+its name (codified as a 20-character string).
+
+.. class:: ColumnDef
+
+   This type describe one column in an ASCII/binary table. It contains
+   three fields:
+
+   1. `typestr` is a string which identifies the name of the column.
+      (Beware: this specifies the *name* and not the *type*: alas,
+      this is how the CFITSIO library names things!).
+   2. `formstr` specifies the data type and the repetition count. It
+      is a string made by a number (the repetition count) followed by
+      a letter specifying the type (in the example above, ``D`` stands
+      for `Float64`, ``E`` stands for Float32, ``A`` stands for
+      ``Char``). Refer to the CFITSIO documentation for more
+      information about the syntax of this parameter.
+   3. `unitstr` specifies the measure unit of this field. It is used
+      only as a comment.
+
+.. function:: fits_create_ascii_table(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
+
+   Append a new HDU containing an ASCII table. The table will have
+   `numrows` rows (this parameter can be set to zero), each
+   initialized with the default value. The columns are specified by
+   the `coldefs` variable, which is an array of :class:`ColumnDef`
+   types. The value of `extname` sets the "extended name" of the
+   table, i.e., a string that in some situations can be used to refer
+   to the HDU itself.
+
+   Note that, unlike for binary tables, CFITSIO puts some limitations
+   to the types that can be used in an ASCII table column. Refer to
+   the CFITSIO manual for further information.
+
+   See also :func:`fits_create_binary_table` for a similar function
+   which creates binary tables.
+
+.. function:: fits_create_binary_table(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
+
+   Append a new HDU containing a binary table. The meaning of the
+   parameters is the same as in a call to
+   :func:`fits_create_ascii_table`.
+
+.. function:: fits_get_col_repeat(f::FITSFile, colnum::Integer)
+
+   Provided that the current HDU contains either an ASCII or binary
+   table, this function returns a tuple containing two elements:
+
+   1. the repetition count for the column at position `colnum`
+      (starting from 1), and
+   2. the optimal number of characters needed to print the value of
+      any field contained in this column.
+
+.. function:: fits_insert_rows(f::FITSFile, firstrow::integer, nrows::Integer)
+
+   Insert a number of rows equal to `nrows` after the row number
+   `firstrow`. The elements in each row are initialized to their
+   default value: you can modify them later using
+   :func:`fits_write_col`.
+
+   Since the first row is at position 1, in order to insert rows
+   *before* the first one `firstrow` must be equal to zero.
+
+   See also :func:`fits_delete_rows`.
+
+.. function:: fits_delete_rows(f::FITSFile, firstrow::integer, nrows::Integer)
+
+   Delete `nrows` rows, starting from the one at position `firstrow`
+   (the first row has index 1).
+
+   See also :func:`fits_insert_rows`.
+
+
+.. function:: fits_read_col{T}(f::FITSFile, ::Type{T}, colnum::Int, firstrow::Int64, firstelem::Int64, data::Array{T})
+
+   Read data from one column of an ASCII/binary table and convert the
+   data into the specified type `T`. The column number is specified by
+   *colnum* (the first column has ``colnum=1``). The elements to be
+   read start from the row number `firstrow`; in case each cell
+   contains more than one element (i.e., the "repetition count" of the
+   field is greater than one), `firstelem` allows to specify which is
+   the first element to be read. The overall number of elements is
+   specified by the length of the array `data`, which at the end of
+   the call will be filled with the elements read from the column.
+
+.. function:: fits_write_col{T}(f::FITSFile, ::Type{T}, colnum::Int, firstrow::Int64, firstelem::Int64, data::Array{T})
+
+   Write some data in one column of a ASCII/binary table. The column
+   number is specified by *colnum* (the first column has
+   ``colnum=1``). The first element is written at the position
+   `firstelem` within the row number `firstrow` (both the indexes
+   start from one).
+
+   If there is no room for the elements, new rows will be created. (It
+   is therefore useless to call :func:`fits_insert_rows` if you only
+   need to *append* elements to the end of a table.)

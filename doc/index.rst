@@ -153,18 +153,19 @@ provides two functions: :func:`fits_create_ascii_table` and
 :func:`fits_create_binary_table`. In general, one should pick the
 second as binary tables require less space on the disk and are more
 efficient to read and write. (Moreover, a few datatypes are not
-supported in ASCII tables).
+supported in ASCII tables). In order to create a table, the programmer
+must specify the characteristics of each column by passing an array of
+tuples. See the documentation of :func:`fits_create_ascii_table` for
+more details.
 
-In order to create a table, the programmer must specify the
-characteristics of each column by passing an array of
-:c:type:`ColumnDef` types. Here is an example:
+Here is an example:
 
 .. code-block:: julia
 
    f = fits_create_file("!new.fits")
-   coldefs = [ColumnDef("SPEED", "1D", "m/s"),
-              ColumnDef("MASS", "1E", "kg"),
-              ColumnDef("PARTICLE", "20A", "Name")]
+   coldefs = [("SPEED", "1D", "m/s"),
+              ("MASS", "1E", "kg"),
+              ("PARTICLE", "20A", "Name")]
    fits_create_binary_tbl(f, 10, coldefs, "PARTICLE")
   
 
@@ -172,30 +173,24 @@ This example creates a table with room for 10 entries, each of them
 describing the characteristics of a particle: its speed, its mass, and
 its name (codified as a 20-character string).
 
-.. class:: ColumnDef
-
-   This type describe one column in an ASCII/binary table. It contains
-   three fields:
-
-   1. `typestr` is a string which identifies the name of the column.
-      (Beware: this specifies the *name* and not the *type*: alas,
-      this is how the CFITSIO library names things!).
-   2. `formstr` specifies the data type and the repetition count. It
-      is a string made by a number (the repetition count) followed by
-      a letter specifying the type (in the example above, ``D`` stands
-      for `Float64`, ``E`` stands for Float32, ``A`` stands for
-      ``Char``). Refer to the CFITSIO documentation for more
-      information about the syntax of this parameter.
-   3. `unitstr` specifies the measure unit of this field. It is used
-      only as a comment.
-
 .. function:: fits_create_ascii_table(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
 
    Append a new HDU containing an ASCII table. The table will have
    `numrows` rows (this parameter can be set to zero), each
    initialized with the default value. The columns are specified by
-   the `coldefs` variable, which is an array of :class:`ColumnDef`
-   types. The value of `extname` sets the "extended name" of the
+   the `coldefs` variable, which is an array of tuples. Each tuple
+   must have three string fields:
+
+   1. The name of the column.
+   2. The data type and the repetition count. It must be a string made
+      by a number (the repetition count) followed by a letter
+      specifying the type (in the example above, ``D`` stands for
+      `Float64`, ``E`` stands for Float32, ``A`` stands for ``Char``).
+      Refer to the CFITSIO documentation for more information about
+      the syntax of this parameter.
+   3. The measure unit of this field. This is used only as a comment.
+
+   The value of `extname` sets the "extended name" of the
    table, i.e., a string that in some situations can be used to refer
    to the HDU itself.
 

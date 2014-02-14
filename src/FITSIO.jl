@@ -1,7 +1,6 @@
 module FITSIO
 
 export FITSFile,
-       ColumnDef,
        fits_clobber_file,
        fits_close_file,
        fits_create_ascii_tbl,
@@ -325,11 +324,8 @@ end
 
 # ASCII/binary tables
 
-type ColumnDef
-    typestr::String
-    formstr::String
-    unitstr::String
-end
+# The three fields are: ttype, tform, tunit (CFITSIO's terminology)
+typealias ColumnDef (ASCIIString, ASCIIString, ASCIIString)
 
 for (a,b) in ((:fits_create_binary_tbl, 2),
               (:fits_create_ascii_tbl,  1))
@@ -338,9 +334,9 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
                       coldefs::Array{ColumnDef}, extname::String)
 
             ntype = length(coldefs)
-            ttype = map((x) -> pointer(x.typestr.data), coldefs)
-            tform = map((x) -> pointer(x.formstr.data), coldefs)
-            tunit = map((x) -> pointer(x.unitstr.data), coldefs)
+            ttype = map((x) -> pointer(x[1].data), coldefs)
+            tform = map((x) -> pointer(x[2].data), coldefs)
+            tunit = map((x) -> pointer(x[3].data), coldefs)
 
             ccall(("ffcrtb", :libcfitsio), Int32,
                   (Ptr{Void}, Int32, Int64, Int32,

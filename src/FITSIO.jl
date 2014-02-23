@@ -56,7 +56,7 @@ end
 
 function fits_assert_ok(status::Int32)
     if status != 0
-        throw(fits_get_errstatus(status))
+        error(fits_get_errstatus(status))
     end
 end
 

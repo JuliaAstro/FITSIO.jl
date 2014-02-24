@@ -25,6 +25,7 @@ export FITSFile,
        fits_insert_rows,
        fits_movabs_hdu,
        fits_movrel_hdu,
+       fits_movnam_hdu,
        fits_open_data,
        fits_open_file,
        fits_open_image,
@@ -256,6 +257,15 @@ for (a,b) in ((:fits_movabs_hdu,"ffmahd"),
     end
 end
 
+function fits_movnam_hdu(f::FITSFile, extname::String, extver::Integer=0,
+                         hdu_type::Integer=-1)
+    f.status = ccall((:ffmnhd,:libcfitsio), Int32,
+                     (Ptr{Void}, Int32, Ptr{Uint8}, Int32, Ptr{Int32}),
+                     f.ptr, int32(hdu_type), bytestring(extname),
+                     int32(extver), &f.status)
+    fits_assert_ok(f)
+end
+
 function fits_get_hdu_num(f::FITSFile)
     hdunum = Int32[0]
     ccall((:ffghdn,:libcfitsio), Int32,
@@ -470,14 +480,15 @@ const mode_strs = [int32(0)=>"READONLY", int32(1)=>"READWRITE"]
 function show(io::IO, f::FITSFile)
     print(io, "file: ", fits_file_name(f), "\n")
     print(io, "mode: ", mode_strs[fits_file_mode(f)], "\n")
-    print(io, "extnum hdutype         hduname\n")
+    print(io, "  extnum hdutype         hduname\n")
 
     current = fits_get_hdu_num(f)  # Mark the current HDU.
 
     for i = 1:fits_get_num_hdus(f)
+        marker = i == current ? '*' : ' '
         hdutype = fits_movabs_hdu(f, i)
         extname = fits_read_keyword(f, "EXTNAME")[1]
-        @printf io "%-6d %-15s %s\n" i hdutype extname
+        @printf io "%c %-6d %-15s %s\n" marker i hdutype extname
     end
     fits_movabs_hdu(f, current)  # Return to the HDU we were on.
 end

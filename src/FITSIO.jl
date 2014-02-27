@@ -22,6 +22,7 @@ export FITSFile,
        fits_get_num_rows,
        fits_get_num_rowsll,
        fits_get_rowsize,
+       fits_hdr2str,
        fits_insert_rows,
        fits_movabs_hdu,
        fits_movrel_hdu,
@@ -227,6 +228,24 @@ function fits_delete_key(f::FITSFile, keyname::String)
         (Ptr{Void},Ptr{Uint8},Ptr{Int32}),
         f.ptr, bytestring(keyname), &f.status)
     fits_assert_ok(f)
+end
+
+function fits_hdr2str(f::FITSFile, nocomments::Bool=false)
+    status = Int32[0]
+    header = Array(Ptr{Uint8}, 1)
+    nkeys = Int32[0]
+    ccall((:ffhdr2str, :libcfitsio), Ptr{Ptr{Uint8}},
+          (Ptr{Void},Int32, Ptr{Ptr{Uint8}}, Int32,
+           Ptr{Ptr{Uint8}}, Ptr{Int32}, Ptr{Int32}),
+          f.ptr, nocomments, &C_NULL, 0, header, nkeys, status)
+    result = bytestring(header[1])
+
+    # free header pointer allocated by cfitsio (result is a copy)
+    ccall((:fffree, :libcfitsio), Ptr{Int32},
+          (Ptr{Uint8}, Ptr{Int32}),
+          header[1], status)
+    fits_assert_ok(status[1])
+    result
 end
 
 # HDU functions

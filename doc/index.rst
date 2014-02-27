@@ -88,8 +88,7 @@ example which shows how to use them:
    HDUs (positive means forward), and return the same as
    :func:`fits_movabs_hdu`.
 
-.. function:: fits_movnam_hdu(f::FITSFile, extname::String, extver::Integer=0,
-                              hdu_type_int::Integer=-1)
+.. function:: fits_movnam_hdu(f::FITSFile, extname::String, extver::Integer=0, hdu_type_int::Integer=-1)
 
    Change the current HDU by moving to the (first) HDU which has the
    specified extension type and EXTNAME and EXTVER keyword values (or
@@ -136,6 +135,11 @@ Header Keyword Routines
 .. function:: fits_delete_key(f::FITSFile, keyname::String)
 
    Delete the keyword named ``keyname``.
+
+.. function:: fits_hdr2str(f::FITSFile, nocomments::Bool=false)
+
+   Return the header of the CHDU as a string. If ``nocomments`` is ``true``,
+   comment cards are stripped from the output.
 
 Primary Array Routines
 ----------------------

@@ -8,9 +8,6 @@ Installation
 julia> Pkg.add("FITSIO")
 ```
 
-Requires the [cfitsio](http://heasarc.gsfc.nasa.gov/fitsio/) library
-to be installed on your system.
-
 Simple Example
 --------------
 

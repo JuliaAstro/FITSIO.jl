@@ -45,13 +45,16 @@ export fitsread
 
 import Base: close, show
 
+using BinDeps
+@BinDeps.load_dependencies
+
 type FITSFile
     ptr::Ptr{Void}
 end
 
 function fits_get_errstatus(status::Int32)
     msg = Array(Uint8, 31)
-    ccall((:ffgerr,:libcfitsio), Void, (Int32,Ptr{Uint8}), status, msg)
+    ccall((:ffgerr,libcfitsio), Void, (Int32,Ptr{Uint8}), status, msg)
     bytestring(convert(Ptr{Uint8},msg))
 end
 
@@ -107,7 +110,7 @@ for (a,b,T) in ((:fits_file_mode,     "ffflmd",  :Cint),
         function ($a)(f::FITSFile)
             result = $T[0]
             status = Int32[0]
-            ccall(($b,:libcfitsio), Int32,
+            ccall(($b,libcfitsio), Int32,
                   (Ptr{Void}, Ptr{$T}, Ptr{Int32}),
                   f.ptr, result, status)
             fits_assert_ok(status[1])
@@ -121,7 +124,7 @@ end
 function fits_create_file(filename::String)
     ptr = Array(Ptr{Void}, 1)
     status = Int32[0]
-    ccall((:ffinit,:libcfitsio),
+    ccall((:ffinit,libcfitsio),
         Int32, (Ptr{Ptr{Void}},Ptr{Uint8},Ptr{Int32}),
         ptr, bytestring(filename), status)
     fits_assert_ok(status[1])
@@ -139,7 +142,7 @@ for (a,b) in ((:fits_open_data, "ffdopn"),
             ptr = Array(Ptr{Void}, 1)
             mode = int32(0) # readonly
             status = Int32[0]
-            ccall(($b,:libcfitsio), Int32,
+            ccall(($b,libcfitsio), Int32,
                   (Ptr{Ptr{Void}},Ptr{Uint8},Int32,Ptr{Int32}),
                   ptr, bytestring(filename), mode, status)
             fits_assert_ok(status[1])
@@ -153,7 +156,7 @@ for (a,b) in ((:fits_close_file, "ffclos"),
     @eval begin
         function ($a)(f::FITSFile)
             status = Int32[0]
-            ccall(($b,:libcfitsio), Int32,
+            ccall(($b,libcfitsio), Int32,
                   (Ptr{Void},Ptr{Int32}),
                   f.ptr, status)
             fits_assert_ok(status[1])
@@ -166,7 +169,7 @@ close(f::FITSFile) = fits_close_file(f)
 function fits_file_name(f::FITSFile)
     value = Array(Uint8, 1025)
     status = Int32[0]
-    ccall((:ffflnm,:libcfitsio), Int32,
+    ccall((:ffflnm,libcfitsio), Int32,
           (Ptr{Void},Ptr{Uint8},Ptr{Int32}),
           f.ptr, value, status)
     fits_assert_ok(status[1])
@@ -179,7 +182,7 @@ function fits_get_hdrspace(f::FITSFile)
     keysexist = Int32[0]
     morekeys = Int32[0]
     status = Int32[0]
-    ccall((:ffghsp,:libcfitsio), Int32,
+    ccall((:ffghsp,libcfitsio), Int32,
         (Ptr{Void},Ptr{Int32},Ptr{Int32},Ptr{Int32}),
         f.ptr, keysexist, morekeys, status)
     fits_assert_ok(status[1])
@@ -190,7 +193,7 @@ function fits_read_keyword(f::FITSFile, keyname::String)
     value = Array(Uint8, 71)
     comment = Array(Uint8, 71)
     status = Int32[0]
-    ccall((:ffgkey,:libcfitsio), Int32,
+    ccall((:ffgkey,libcfitsio), Int32,
         (Ptr{Void},Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Int32}),
         f.ptr, bytestring(keyname), value, comment, status)
     fits_assert_ok(status[1])
@@ -200,7 +203,7 @@ end
 function fits_read_record(f::FITSFile, keynum::Int)
     card = Array(Uint8, 81)
     status = Int32[0]
-    ccall((:ffgrec,:libcfitsio), Int32,
+    ccall((:ffgrec,libcfitsio), Int32,
         (Ptr{Void},Int32,Ptr{Uint8},Ptr{Int32}),
         f.ptr, keynum, card, status)
     fits_assert_ok(status[1])
@@ -212,7 +215,7 @@ function fits_read_keyn(f::FITSFile, keynum::Int)
     value = Array(Uint8, 71)
     comment = Array(Uint8, 71)
     status = Int32[0]
-    ccall((:ffgkyn,:libcfitsio), Int32,
+    ccall((:ffgkyn,libcfitsio), Int32,
         (Ptr{Void},Int32,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Int32}),
         f.ptr, keynum, keyname, value, comment, status)
     fits_assert_ok(status[1])
@@ -225,7 +228,7 @@ function fits_write_key(f::FITSFile, keyname::String, value::Union(Number,String
     cvalue = isa(value,String) ?  bytestring(value) :
              isa(value,Bool) ? [int32(value)] : [value]
     status = Int32[0]
-    ccall((:ffpky,:libcfitsio), Int32,
+    ccall((:ffpky,libcfitsio), Int32,
         (Ptr{Void},Int32,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Int32}),
         f.ptr, _cfitsio_datatype(typeof(value)), bytestring(keyname),
         cvalue, bytestring(comment), status)
@@ -234,7 +237,7 @@ end
 
 function fits_write_record(f::FITSFile, card::String)
     status = Int32[0]
-    ccall((:ffprec,:libcfitsio), Int32,
+    ccall((:ffprec,libcfitsio), Int32,
         (Ptr{Void},Ptr{Uint8},Ptr{Int32}),
         f.ptr, bytestring(card), status)
     fits_assert_ok(status[1])
@@ -242,7 +245,7 @@ end
 
 function fits_delete_record(f::FITSFile, keynum::Int)
     status = Int32[0]
-    ccall((:ffdrec,:libcfitsio), Int32,
+    ccall((:ffdrec,libcfitsio), Int32,
         (Ptr{Void},Int32,Ptr{Int32}),
         f.ptr, keynum, status)
     fits_assert_ok(status[1])
@@ -250,7 +253,7 @@ end
 
 function fits_delete_key(f::FITSFile, keyname::String)
     status = Int32[0]
-    ccall((:ffdkey,:libcfitsio), Int32,
+    ccall((:ffdkey,libcfitsio), Int32,
         (Ptr{Void},Ptr{Uint8},Ptr{Int32}),
         f.ptr, bytestring(keyname), status)
     fits_assert_ok(status[1])
@@ -260,14 +263,14 @@ function fits_hdr2str(f::FITSFile, nocomments::Bool=false)
     status = Int32[0]
     header = Array(Ptr{Uint8}, 1)
     nkeys = Int32[0]
-    ccall((:ffhdr2str, :libcfitsio), Ptr{Ptr{Uint8}},
+    ccall((:ffhdr2str, libcfitsio), Ptr{Ptr{Uint8}},
           (Ptr{Void},Int32, Ptr{Ptr{Uint8}}, Int32,
            Ptr{Ptr{Uint8}}, Ptr{Int32}, Ptr{Int32}),
           f.ptr, nocomments, &C_NULL, 0, header, nkeys, status)
     result = bytestring(header[1])
 
     # free header pointer allocated by cfitsio (result is a copy)
-    ccall((:fffree, :libcfitsio), Ptr{Int32},
+    ccall((:fffree, libcfitsio), Ptr{Int32},
           (Ptr{Uint8}, Ptr{Int32}),
           header[1], status)
     fits_assert_ok(status[1])
@@ -282,7 +285,7 @@ for (a,b) in ((:fits_movabs_hdu,"ffmahd"),
         function ($a)(f::FITSFile, hduNum::Integer)
             hdu_type = Int32[0]
             status = Int32[0]
-            ccall(($b,:libcfitsio), Int32,
+            ccall(($b,libcfitsio), Int32,
                   (Ptr{Void}, Int32, Ptr{Int32}, Ptr{Int32}),
                   f.ptr, hduNum, hdu_type, status)
             fits_assert_ok(status[1])
@@ -294,7 +297,7 @@ end
 function fits_movnam_hdu(f::FITSFile, extname::String, extver::Integer=0,
                          hdu_type::Integer=-1)
     status = Int32[0]
-    ccall((:ffmnhd,:libcfitsio), Int32,
+    ccall((:ffmnhd,libcfitsio), Int32,
           (Ptr{Void}, Int32, Ptr{Uint8}, Int32, Ptr{Int32}),
           f.ptr, int32(hdu_type), bytestring(extname), int32(extver), status)
     fits_assert_ok(status[1])
@@ -302,7 +305,7 @@ end
 
 function fits_get_hdu_num(f::FITSFile)
     hdunum = Int32[0]
-    ccall((:ffghdn,:libcfitsio), Int32,
+    ccall((:ffghdn,libcfitsio), Int32,
           (Ptr{Void},Ptr{Int32}),
           f.ptr, hdunum)
     hdunum[1]
@@ -313,12 +316,12 @@ end
 function fits_get_img_size(f::FITSFile)
     naxis = Int32[0]
     status = Int32[0]
-    ccall((:ffgidm,:libcfitsio), Int32,
+    ccall((:ffgidm,libcfitsio), Int32,
         (Ptr{Void},Ptr{Int32},Ptr{Int32}),
         f.ptr, naxis, status)
     fits_assert_ok(status[1])
     naxes = zeros(Int, naxis[1])
-    ccall((:ffgisz,:libcfitsio), Int32,
+    ccall((:ffgisz,libcfitsio), Int32,
         (Ptr{Void},Int32,Ptr{Int},Ptr{Int32}),
         f.ptr, naxis[1], naxes, status)
     fits_assert_ok(status[1])
@@ -327,7 +330,7 @@ end
 
 function fits_create_img(f::FITSFile, t::Type, naxes::Vector{Int})
     status = Int32[0]
-    ccall((:ffcrim,:libcfitsio), Int32,
+    ccall((:ffcrim,libcfitsio), Int32,
         (Ptr{Void},Int32,Int32,Ptr{Int},Ptr{Int32}),
         f.ptr, _cfitsio_bitpix(t), length(naxes), naxes, status)
     fits_assert_ok(status[1])
@@ -335,7 +338,7 @@ end
 
 function fits_write_pix{T}(f::FITSFile, fpixel::Vector{Int}, nelements::Int, data::Array{T})
     status = Int32[0]
-    ccall((:ffppx,:libcfitsio), Int32,
+    ccall((:ffppx,libcfitsio), Int32,
         (Ptr{Void},Int32,Ptr{Int},Int,Ptr{Void},Ptr{Int32}),
         f.ptr, _cfitsio_datatype(T), fpixel, nelements, data, status)
     fits_assert_ok(status[1])
@@ -345,7 +348,7 @@ fits_write_pix(f::FITSFile, data::Array) = fits_write_pix(f, ones(Int,length(siz
 function fits_read_pix{T}(f::FITSFile, fpixel::Vector{Int}, nelements::Int, nullval::T, data::Array{T})
     anynull = Int32[0]
     status = Int32[0]
-    ccall((:ffgpxv,:libcfitsio), Int32,
+    ccall((:ffgpxv,libcfitsio), Int32,
         (Ptr{Void},Int32,Ptr{Int},Int,Ptr{Void},Ptr{Void},Ptr{Int32},Ptr{Int32}),
         f.ptr, _cfitsio_datatype(T), fpixel, nelements, &nullval, data, anynull, status)
     fits_assert_ok(status[1])
@@ -354,7 +357,7 @@ end
 function fits_read_pix{T}(f::FITSFile, fpixel::Vector{Int}, nelements::Int, data::Array{T})
     anynull = Int32[0]
     status = Int32[0]
-    ccall((:ffgpxv,:libcfitsio), Int32,
+    ccall((:ffgpxv,libcfitsio), Int32,
         (Ptr{Void},Int32,Ptr{Int},Int,Ptr{Void},Ptr{Void},Ptr{Int32},Ptr{Int32}),
         f.ptr, _cfitsio_datatype(T), fpixel, nelements, C_NULL, data, anynull, status)
     fits_assert_ok(status[1])
@@ -388,7 +391,7 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
             tunit = map((x) -> pointer(x[3].data), coldefs)
             status = Int32[0]
 
-            ccall(("ffcrtb", :libcfitsio), Int32,
+            ccall(("ffcrtb", libcfitsio), Int32,
                   (Ptr{Void}, Int32, Int64, Int32,
                    Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}},
                    Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Int32}),
@@ -406,7 +409,7 @@ function fits_get_col_repeat(f::FITSFile, colnum::Integer)
     width = Int64[0]
     status = Int32[0]
 
-    ccall((:ffgtclll, :libcfitsio), Int32,
+    ccall((:ffgtclll, libcfitsio), Int32,
           (Ptr{Void}, Int32, Ptr{Int32}, Ptr{Int64}, Ptr{Int64}, Ptr{Int32}),
           f.ptr, convert(Int32, colnum), typecode, repeat, width, status)
 
@@ -437,7 +440,7 @@ function fits_read_col{T}(f::FITSFile,
             data[i] = repeat(" ", repcount)
         end
 
-        ccall((:ffgcvs, :libcfitsio), Int32,
+        ccall((:ffgcvs, libcfitsio), Int32,
               (Ptr{Void}, Int32, Int64, Int64, Int64,
                Ptr{Uint8}, Ptr{Ptr{Uint8}}, Ptr{Int32}, Ptr{Int32}),
               f.ptr, convert(Int32, colnum),
@@ -454,7 +457,7 @@ function fits_read_col{T}(f::FITSFile,
 
     else
 
-        ccall((:ffgcv,:libcfitsio), Int32,
+        ccall((:ffgcv,libcfitsio), Int32,
               (Ptr{Void}, Int32, Int32, Int64, Int64, Int64,
                Ptr{T}, Ptr{T}, Ptr{Int32}, Ptr{Int32}),
               f.ptr, _cfitsio_datatype(T), convert(Int32, colnum),
@@ -481,7 +484,7 @@ function fits_write_col{T}(f::FITSFile,
 
     if  isa(T, Type{String}) || isa(T, Type{ASCIIString})
 
-        ccall((:ffpcls, :libcfitsio), Int32,
+        ccall((:ffpcls, libcfitsio), Int32,
               (Ptr{Void}, Int32, Int64, Int64, Int64,
                Ptr{Ptr{Uint8}}, Ptr{Int32}),
               f.ptr, convert(Int32, colnum),
@@ -490,7 +493,7 @@ function fits_write_col{T}(f::FITSFile,
 
     else
 
-        ccall((:ffpcl,:libcfitsio), Int32,
+        ccall((:ffpcl,libcfitsio), Int32,
               (Ptr{Void}, Int32, Int32, Int64, Int64, Int64,
                Ptr{T}, Ptr{Int32}),
               f.ptr, _cfitsio_datatype(T), convert(Int32, colnum),
@@ -511,7 +514,7 @@ for (a,b) in ((:fits_insert_rows, "ffirow"),
             nrows64 = convert(Int64, nrows)
             status = Int32[0]
 
-            ccall(($b,:libcfitsio), Int32,
+            ccall(($b,libcfitsio), Int32,
                   (Ptr{Void}, Int64, Int64, Ptr{Int32}),
                   f.ptr, firstrow64, nrows64, status)
             fits_assert_ok(status[1])

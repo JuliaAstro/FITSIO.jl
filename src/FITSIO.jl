@@ -3,6 +3,7 @@ module FITSIO
 export FITSFile,
        fits_clobber_file,
        fits_close_file,
+       fits_copy_image_section,
        fits_create_ascii_tbl,
        fits_create_binary_tbl,
        fits_create_file,

@@ -1,5 +1,17 @@
 type FITSFile
     ptr::Ptr{Void}
+
+    function FITSFile(ptr::Ptr{Void})
+        f = new(ptr)
+        finalizer(f, fits_close_file)
+        f
+    end
+end
+
+function fits_assert_open(f::FITSFile)
+    if f.ptr == C_NULL
+        error("attempt to access closed FITS file")
+    end
 end
 
 function fits_get_errstatus(status::Int32)
@@ -105,11 +117,17 @@ for (a,b) in ((:fits_close_file, "ffclos"),
               (:fits_delete_file,"ffdelt"))
     @eval begin
         function ($a)(f::FITSFile)
-            status = Int32[0]
-            ccall(($b,libcfitsio), Int32,
-                  (Ptr{Void},Ptr{Int32}),
-                  f.ptr, status)
-            fits_assert_ok(status[1])
+            
+            # fits_close_file() is called during garbage collection, but file
+            # may already be closed by user, so we need to check if it is open.
+            if f.ptr != C_NULL
+                status = Int32[0]
+                ccall(($b,libcfitsio), Int32,
+                      (Ptr{Void},Ptr{Int32}),
+                      f.ptr, status)
+                fits_assert_ok(status[1])
+                f.ptr = C_NULL
+            end
         end
     end
 end

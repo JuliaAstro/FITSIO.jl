@@ -365,6 +365,22 @@ function fits_read_pix{T}(f::FITSFile, fpixel::Vector{Int}, nelements::Int, data
 end
 fits_read_pix(f::FITSFile, data::Array) = fits_read_pix(f, ones(Int,length(size(data))), length(data), data)
 
+function fits_read_subset{T}(f::FITSFile,
+                             fpixel::Vector{Clong},
+                             lpixel::Vector{Clong},
+                             inc::Vector{Clong},
+                             data::Array{T})
+    anynull = Cint[0]
+    status = Cint[0]
+    ccall((:ffgsv,libcfitsio), Cint,
+          (Ptr{Void},Cint,Ptr{Clong},Ptr{Clong},Ptr{Clong},Ptr{Void},Ptr{Void},
+           Ptr{Cint},Ptr{Cint}),
+          f.ptr, _cfitsio_datatype(T), fpixel, lpixel, inc, C_NULL, data,
+          anynull, status)
+    fits_assert_ok(status[1])
+    anynull[1]
+end
+
 function fits_copy_image_section(fin::FITSFile, fout::FITSFile,
                                  section::String)
     status = Int32[0]

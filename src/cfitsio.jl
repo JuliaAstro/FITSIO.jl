@@ -59,6 +59,12 @@ end
 
 const mode_strs = [int32(0)=>"READONLY", int32(1)=>"READWRITE"]
 
+const bitpix_to_str = [int32(8)=>"BYTE_IMG", int32(16)=>"SHORT_IMG",
+                       int32(32)=>"LONG_IMG", int32(64)=>"LONGLONG_IMG",
+                       int32(-32)=>"FLOAT_IMG", int32(-64)=>"DOUBLE_IMG"]
+const bitpix_to_type = [int32(8)=>Uint8, int32(16)=>Int16,
+                        int32(32)=>Int32, int32(64)=>Int64,
+                        int32(-32)=>Float32, int32(-64)=>Float64]
 
 # General-purpose functions
 
@@ -279,19 +285,45 @@ function fits_get_hdu_num(f::FITSFile)
     hdunum[1]
 end
 
+function fits_get_hdu_type(f::FITSFile)
+    hdutype = Int32[0]
+    status = Int32[0]
+    ccall((:ffghdt, libcfitsio), Int32,
+          (Ptr{Void}, Ptr{Int32}, Ptr{Int32}),
+          f.ptr, hdutype, status)
+    fits_assert_ok(status[1])
+    hdu_int_to_type(hdutype[1])
+end
+
 # primary array or IMAGE extension
 
-function fits_get_img_size(f::FITSFile)
-    naxis = Int32[0]
+function fits_get_img_type(f::FITSFile)
+    bitpix = Int32[0]
+    status = Int32[0]
+    ccall((:ffgidt,libcfitsio), Int32,
+        (Ptr{Void},Ptr{Int32},Ptr{Int32}),
+        f.ptr, bitpix, status)
+    fits_assert_ok(status[1])
+    bitpix[1]
+end
+
+function fits_get_img_dim(f::FITSFile)
+    ndim = Int32[0]
     status = Int32[0]
     ccall((:ffgidm,libcfitsio), Int32,
         (Ptr{Void},Ptr{Int32},Ptr{Int32}),
-        f.ptr, naxis, status)
+        f.ptr, ndim, status)
     fits_assert_ok(status[1])
-    naxes = zeros(Int, naxis[1])
+    ndim[1]
+end
+
+function fits_get_img_size(f::FITSFile)
+    ndim = fits_get_img_dim(f)
+    naxes = zeros(Int, ndim)
+    status = Int32[0]
     ccall((:ffgisz,libcfitsio), Int32,
         (Ptr{Void},Int32,Ptr{Int},Ptr{Int32}),
-        f.ptr, naxis[1], naxes, status)
+        f.ptr, ndim, naxes, status)
     fits_assert_ok(status[1])
     naxes
 end

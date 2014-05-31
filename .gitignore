@@ -1,0 +1,7 @@
+deps/builds
+deps/deps.jl
+deps/downloads
+deps/src
+deps/usr
+doc/_build
+*~

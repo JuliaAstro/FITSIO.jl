@@ -546,27 +546,3 @@ for (a,b) in ((:fits_insert_rows, "ffirow"),
         end
     end
 end
-
-function show(io::IO, f::FITSFile)
-    print(io, "file: ", fits_file_name(f), "\n")
-    print(io, "mode: ", mode_strs[fits_file_mode(f)], "\n")
-    print(io, "  extnum hdutype         hduname\n")
-
-    current = fits_get_hdu_num(f)  # Mark the current HDU.
-
-    for i = 1:fits_get_num_hdus(f)
-        marker = i == current ? '*' : ' '
-        hdutype = fits_movabs_hdu(f, i)
-        extname = ""
-        try
-            extname = fits_read_keyword(f, "EXTNAME")[1]
-        catch
-            try
-                extname = fits_read_keyword(f, "HDUNAME")[1]
-            catch
-            end
-        end
-        @printf io "%c %-6d %-15s %s\n" marker i hdutype extname
-    end
-    fits_movabs_hdu(f, current)  # Return to the HDU we were on.
-end

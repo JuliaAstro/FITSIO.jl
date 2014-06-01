@@ -17,7 +17,10 @@ export FITSFile,
        fits_get_col_repeat,
        fits_get_hdrspace,
        fits_get_hdu_num,
+       fits_get_hdu_type,
+       fits_get_img_dim,
        fits_get_img_size,
+       fits_get_img_type,
        fits_get_num_cols,
        fits_get_num_hdus,
        fits_get_num_rows,
@@ -37,6 +40,7 @@ export FITSFile,
        fits_read_keyword,
        fits_read_pix,
        fits_read_record,
+       fits_read_subset,
        fits_write_col,
        fits_write_key,
        fits_write_pix,
@@ -44,11 +48,17 @@ export FITSFile,
 
 export fitsread
 
-import Base: close, show
+# HDU type interface
+export FITS,
+       HDU,
+       ImageHDU
+
+import Base: getindex, length, show, read, write, close, ndims, size
 
 using BinDeps
 @BinDeps.load_dependencies
 
-include("cfitsio.jl")
+include("cfitsio.jl")  # Low-level cfitsio functions
+include("hdutypes.jl")  # HDU type interface
 
 end # module

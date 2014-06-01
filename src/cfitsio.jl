@@ -390,15 +390,6 @@ function fits_copy_image_section(fin::FITSFile, fout::FITSFile,
     fits_assert_ok(status[1])
 end
 
-function fitsread(filename::String)
-    f = fits_open_file(filename)
-    s = fits_get_img_size(f)
-    a = Array(Float64, s...)
-    fits_read_pix(f, a)
-    fits_close_file(f)
-    a'
-end
-
 # ASCII/binary tables
 
 # The three fields are: ttype, tform, tunit (CFITSIO's terminology)

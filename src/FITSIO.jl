@@ -46,8 +46,6 @@ export FITSFile,
        fits_write_pix,
        fits_write_record
 
-export fitsread
-
 # HDU type interface
 export FITS,
        HDU,

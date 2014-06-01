@@ -1,5 +1,7 @@
-FITSIO.jl: Flexible Image Transport System (FITS) support for Julia
-===================================================================
+FITSIO.jl
+=========
+
+Flexible Image Transport System (FITS) support for Julia
 
 Installation
 ------------
@@ -12,13 +14,18 @@ Simple Example
 --------------
 
 ```jlcon
-julia> require("FITSIO")
+
 julia> using FITSIO
-julia> x = fitsread("/path/to/file.fits")
+
+julia> f = FITS("file.fits", "r")
+file: test.fits
+mode: r
+extnum exttype         extname
+1      image_hdu
 ```
 
-Documentation
--------------
+Complete Documentation
+----------------------
 
-* [Low-level API](https://julia-fitsio.readthedocs.org/)
+https://julia-fitsio.readthedocs.org/
 

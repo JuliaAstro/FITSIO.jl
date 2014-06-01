@@ -1,19 +1,68 @@
-FITSIO --- FITS File I/O
-========================
+=======================
+FITSIO.jl Documentation
+=======================
 
 .. module:: FITSIO
    :synopsis: Read and write FITS files.
 
-A wrapper for the CFITSIO_ library. 
+A Julia_ module for reading and writing Flexible Image Transport
+System (FITS) files, based on the CFITSIO_ library. Some features:
 
+* Read and write image, binary table, and ascii table FITS extensions.
+* Read a subset of an image without reading the entire image into memory.
+
+The high-level interface is inspired by Erin Sheldon's FITSIO_ python module.
+
+.. _Julia: http://julialang.org
 .. _CFITSIO: http://heasarc.gsfc.nasa.gov/fitsio/
+.. _FITSIO: https://github.com/esheldon/fitsio
 
-File Access Routines
---------------------
+-------
+Install
+-------
+
+::
+
+    julia> Pkg.add("FITSIO")
+
+The cfitsio library is automatically downloaded and compiled. This
+will not interfere with any other versions of cfitsio on your system.
+
+-----
+Usage
+-----
+
+Open an existing file for reading or exploration::
+
+    julia> using FITSIO
+
+    julia> f = FITS("file.fits", "r")
+    file: file.fits
+    mode: r
+    extnum exttype         extname
+    1      image_hdu       
+
+At the REPL, information about the file contents is shown. The second
+argument can be ``"r"`` (read-only), ``"r+"`` (read-write) or ``"w"``
+(write). In "write" mode, any existing file of the same name is overwritten.
+
+--------------
+High-level API
+--------------
+
+-------------
+Low-level API
+-------------
+
+These methods operate on ``FITSFile`` objects. For the most part, they are
+direct translations from the CFITSIO_ routines.
+
+File access
+-----------
 
 .. function:: fits_create_file(filename::String)
 
-   Create and open a new empty output FITS file.
+   Create and open a new empty output ``FITSFile``.
 
 .. function:: fits_clobber_file(filename::String)
 
@@ -45,7 +94,7 @@ File Access Routines
 .. function:: fits_delete_file(f::FITSFile)
 
    Close an opened FITS file (like :func:`fits_close_file`) and
-   removes it from the disk
+   removes it from the disk.
 
 .. function:: fits_file_name(f::FITSFile)
 
@@ -54,7 +103,7 @@ File Access Routines
 HDU Routines
 ------------
 
-The functions described in this section allow to change the default
+The functions described in this section allow to change the current
 HDU and to find their number and type. The following is a short
 example which shows how to use them:
 

@@ -106,9 +106,8 @@ for (a,b) in ((:fits_open_data, "ffdopn"),
               (:fits_open_image,"ffiopn"),
               (:fits_open_table,"fftopn"))
     @eval begin
-        function ($a)(filename::String)
+        function ($a)(filename::String, mode::Int=0)
             ptr = Array(Ptr{Void}, 1)
-            mode = int32(0) # readonly
             status = Int32[0]
             ccall(($b,libcfitsio), Int32,
                   (Ptr{Ptr{Void}},Ptr{Uint8},Int32,Ptr{Int32}),

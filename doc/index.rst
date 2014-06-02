@@ -2,8 +2,7 @@
 FITSIO.jl Documentation
 =======================
 
-.. module:: FITSIO
-   :synopsis: Read and write FITS files.
+
 
 A Julia_ module for reading and writing Flexible Image Transport
 System (FITS) files, based on the CFITSIO_ library. Some features:
@@ -32,27 +31,101 @@ will not interfere with any other versions of cfitsio on your system.
 Usage
 -----
 
+Reading
+-------
+
 Open an existing file for reading or exploration::
 
     julia> using FITSIO
 
-    julia> f = FITS("file.fits", "r")
+    julia> f = FITS("file.fits")
     file: file.fits
     mode: r
     extnum exttype         extname
     1      image_hdu       
+    2      image_hdu
 
-At the REPL, information about the file contents is shown. The second
-argument can be ``"r"`` (read-only), ``"r+"`` (read-write) or ``"w"``
-(write). In "write" mode, any existing file of the same name is overwritten.
+At the REPL, information about the file contents is shown. Get
+information about the first header-data unit (HDU)::
 
---------------
-High-level API
---------------
+    julia> f[1]
+    file: file.fits
+    extension: 1
+    type: IMAGE
+    image info:
+      bitpix: -64
+      size: (800,800)
 
--------------
-Low-level API
--------------
+Read the image data from disk::
+
+    julia> data = read(f[1]);
+
+Read just a subset of the image::
+
+    julia> data = f[1][:, 790:end];
+
+Read the entire header (work in progress)::
+
+    julia> read_header(f[1])
+    8-element Array{Dict{String,Any},1}:
+    ["name"=>"SIMPLE","value"=>true,"comment"=>"file does conform to FITS standard"]                                          
+    ["name"=>"BITPIX","value"=>-64,"comment"=>"number of bits per data pixel"]                                                 
+    ["name"=>"NAXIS","value"=>2,"comment"=>"number of data axes"]                                                             
+    ["name"=>"NAXIS1","value"=>800,"comment"=>"length of data axis 1"]                                                          
+    ["name"=>"NAXIS2","value"=>800,"comment"=>"length of data axis 2"]                                                         
+    ["name"=>"EXTEND","value"=>true,"comment"=>"FITS dataset may contain extensions"]                                         
+    ["name"=>"COMMENT","value"=>nothing,"comment"=>"  FITS (Flexible Image Transport System) format is defined in 'Astronomy"]
+    ["name"=>"COMMENT","value"=>nothing,"comment"=>"  and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"] 
+
+Close the file ::
+
+    julia> close(f)
+
+``FITS`` objects are also closed automatically when they go out of scope.
+
+Writing
+-------
+
+Open the file for writing::
+
+    julia> f = FITS("newfile.fits", "w");
+
+The second argument can be ``"r"`` (read-only; default), ``"r+"``
+(read-write) or ``"w"`` (write). In "write" mode, any existing file of
+the same name is overwritten. Write an image to the file ::
+
+    julia> write(f, reshape([1:100], 5, 20))
+
+This adds an image extension.
+
+------------------------
+High-level API reference
+------------------------
+
+.. function:: FITS(filename::String, mode::String="r")
+
+   Open or create a FITS file. ``mode`` can be one of ``"r"``
+   (read-only), ``"r+"`` (read-write) or ``"w"`` (write). In "write"
+   mode, any existing file of the same name is overwritten.
+
+.. function:: length(f::FITS)
+
+   Return the number of HDUs in ``f``.
+
+.. function:: getindex(f::FITS, extnum::Integer)
+
+   Return the HDU at position ``extnum``, same as ``f[extnum]``.
+
+Image operations
+----------------
+
+.. function:: read(hdu::ImageHDU)
+
+   Read the entire image from disk.
+
+-----------------------
+Low-level API Reference
+-----------------------
 
 These methods operate on ``FITSFile`` objects. For the most part, they are
 direct translations from the CFITSIO_ routines.

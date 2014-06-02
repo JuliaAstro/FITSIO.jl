@@ -19,6 +19,7 @@ export FITSFile,
        fits_get_hdu_num,
        fits_get_hdu_type,
        fits_get_img_dim,
+       fits_get_img_equivtype,
        fits_get_img_size,
        fits_get_img_type,
        fits_get_num_cols,
@@ -51,7 +52,8 @@ export FITS,
        HDU,
        ImageHDU
 
-import Base: getindex, length, show, read, write, close, ndims, size
+import Base: getindex, length, show, read, write, close, ndims, size,
+             endof
 
 using BinDeps
 @BinDeps.load_dependencies

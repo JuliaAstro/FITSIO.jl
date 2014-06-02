@@ -15,10 +15,10 @@ type FITS
     hdus::Dict{Int, HDU}
 
     function FITS(filename::String, mode::String="r")
-        f = (mode == "r"                      ? fits_open_file(filename, 0):
-             mode == "r+" && isfile(filename) ? fits_open_file(filename, 1):
-             mode == "r+"                     ? fits_create_file(filename):
-             mode == "w"                      ? fits_create_file("!"*filename):
+        f = (mode == "r"                      ? fits_open_file(filename, 0)    :
+             mode == "r+" && isfile(filename) ? fits_open_file(filename, 1)    :
+             mode == "r+"                     ? fits_create_file(filename)     :
+             mode == "w"  || mode == "w+"     ? fits_create_file("!"*filename) :
              error("invalid open mode: $mode"))
 
         new(f, filename, mode, Dict{Int, HDU}())
@@ -47,7 +47,7 @@ end
 
 function length(f::FITS)
     fits_assert_open(f.fitsfile)
-    fits_get_num_hdus(f.fitsfile)
+    int(fits_get_num_hdus(f.fitsfile))
 end
 
 endof(f::FITS) = length(f)
@@ -75,7 +75,7 @@ function show(io::IO, f::FITS)
 end
 
 # Returns HDU object based on extension number
-function getindex(f::FITS, i::Int)
+function getindex(f::FITS, i::Integer)
     fits_assert_open(f.fitsfile)
 
     if haskey(f.hdus, i)
@@ -125,7 +125,7 @@ end
 function show(io::IO, hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    bitpix = fits_get_img_type(hdu.fitsfile)
+    bitpix = fits_get_img_equivtype(hdu.fitsfile)
     sz = fits_get_img_size(hdu.fitsfile)
     @printf io "file: %s\nextension: %d\ntype: IMAGE\nimage info:\n  bitpix: %d\n  size: %s" fits_file_name(hdu.fitsfile) hdu.ext bitpix tuple(sz...)
 end
@@ -158,7 +158,7 @@ function read(hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
-    bitpix = fits_get_img_type(hdu.fitsfile)
+    bitpix = fits_get_img_equivtype(hdu.fitsfile)
     data = Array(bitpix_to_type[bitpix], sz...)
     fits_read_pix(hdu.fitsfile, data)
     data
@@ -175,7 +175,7 @@ function getindex(hdu::ImageHDU, rs::Range...)
     steps = Clong[step(r) for r in rs]
 
     # construct output array
-    bitpix = fits_get_img_type(hdu.fitsfile)
+    bitpix = fits_get_img_equivtype(hdu.fitsfile)
     
     datasz = [length(r) for r in rs]
     data = Array(bitpix_to_type[bitpix], datasz...)
@@ -184,6 +184,8 @@ function getindex(hdu::ImageHDU, rs::Range...)
 end
 
 # Add a new ImageHDU to a FITS object
+# The following Julia data types are supported for writing images by cfitsio:
+# Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64, Float32, Float64
 function write{T}(f::FITS, data::Array{T})
     fits_assert_open(f.fitsfile)
     s = size(data)

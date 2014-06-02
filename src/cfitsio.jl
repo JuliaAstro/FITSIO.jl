@@ -28,8 +28,26 @@ end
 
 # constants
 
-_cfitsio_bitpix{T<:Integer}(::Type{T}) = int32(8*sizeof(T))
-_cfitsio_bitpix{T<:FloatingPoint}(::Type{T}) = int32(-8*sizeof(T))
+_cfitsio_bitpix(::Type{Uint8}) = int32(8)  # BYTE_IMG
+_cfitsio_bitpix(::Type{Int16}) = int32(16) # SHORT_IMG
+_cfitsio_bitpix(::Type{Int32}) = int32(32) # LONG_IMG
+_cfitsio_bitpix(::Type{Int64}) = int32(64) # LONGLONG_IMG
+_cfitsio_bitpix(::Type{Float32}) = int32(-32) # FLOAT_IMG
+_cfitsio_bitpix(::Type{Float64}) = int32(-64) # DOUBLE_IMG
+
+# cfitsio "aliases":
+# SBYTE_IMG => BITPIX = 8, BSCALE = 1, BZERO = -128
+# USHORT_IMG => BITPIX = 16, BSCALE = 1, BZERO = 32768
+# ULONG_IMG => BITPIX = 32, BSCALE = 1, BZERO = 2147483648
+_cfitsio_bitpix(::Type{Int8}) = int32(10)  # SBYTE_IMG
+_cfitsio_bitpix(::Type{Uint16}) = int32(20) # USHORT_IMG
+_cfitsio_bitpix(::Type{Uint32}) = int32(40) # ULONG_IMG
+
+const bitpix_to_type = [int32(8)=>Uint8, int32(16)=>Int16,
+                        int32(32)=>Int32, int32(64)=>Int64,
+                        int32(-32)=>Float32, int32(-64)=>Float64,
+                        int32(10)=>Int8, int32(20)=>Uint16,
+                        int32(40)=>Uint32]
 
 _cfitsio_datatype(::Type{Uint8})      = int32(11)
 _cfitsio_datatype(::Type{Int8})       = int32(12)
@@ -59,12 +77,6 @@ end
 
 const mode_strs = [int32(0)=>"READONLY", int32(1)=>"READWRITE"]
 
-const bitpix_to_str = [int32(8)=>"BYTE_IMG", int32(16)=>"SHORT_IMG",
-                       int32(32)=>"LONG_IMG", int32(64)=>"LONGLONG_IMG",
-                       int32(-32)=>"FLOAT_IMG", int32(-64)=>"DOUBLE_IMG"]
-const bitpix_to_type = [int32(8)=>Uint8, int32(16)=>Int16,
-                        int32(32)=>Int32, int32(64)=>Int64,
-                        int32(-32)=>Float32, int32(-64)=>Float64]
 
 # General-purpose functions
 
@@ -300,6 +312,16 @@ function fits_get_img_type(f::FITSFile)
     bitpix = Int32[0]
     status = Int32[0]
     ccall((:ffgidt,libcfitsio), Int32,
+        (Ptr{Void},Ptr{Int32},Ptr{Int32}),
+        f.ptr, bitpix, status)
+    fits_assert_ok(status[1])
+    bitpix[1]
+end
+
+function fits_get_img_equivtype(f::FITSFile)
+    bitpix = Int32[0]
+    status = Int32[0]
+    ccall((:ffgiet,libcfitsio), Int32,
         (Ptr{Void},Ptr{Int32},Ptr{Int32}),
         f.ptr, bitpix, status)
     fits_assert_ok(status[1])

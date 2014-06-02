@@ -50,7 +50,9 @@ export FITSFile,
 # HDU type interface
 export FITS,
        HDU,
-       ImageHDU
+       ImageHDU,
+       read_key,
+       read_header
 
 import Base: getindex, length, show, read, write, close, ndims, size,
              endof

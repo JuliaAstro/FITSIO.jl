@@ -1,32 +1,10 @@
 
-abstract HDU
-
-# FITS is analagous to FITSFile, but holds a reference to all of its
-# HDU objects. This is so that only a single HDU object is created for
-# each extension in the file. It also allows a FITS object to tell
-# previously created HDUs about events that happen to the file, such 
-# as deleting extensions. This could be done by, e.g., setting ext=-1 in
-# the HDU object.
-
-type FITS
-    fitsfile::FITSFile
-    filename::String
-    mode::String
-    hdus::Dict{Int, HDU}
-
-    function FITS(filename::String, mode::String="r")
-        f = (mode == "r"                      ? fits_open_file(filename, 0)    :
-             mode == "r+" && isfile(filename) ? fits_open_file(filename, 1)    :
-             mode == "r+"                     ? fits_create_file(filename)     :
-             mode == "w"  || mode == "w+"     ? fits_create_file("!"*filename) :
-             error("invalid open mode: $mode"))
-
-        new(f, filename, mode, Dict{Int, HDU}())
-    end
-end
+# -----------------------------------------------------------------------------
+# Types
 
 # TODO : Cache metadata such as extname, extver, image size and data type?
 #        This might allow faster access for size(ImageHDU) and ndim(ImageHDU)
+abstract HDU
 type ImageHDU <: HDU
     fitsfile::FITSFile
     ext::Int
@@ -42,8 +20,31 @@ type AsciiHDU <: HDU
     ext::Int
 end
 
+# FITS is analagous to FITSFile, but holds a reference to all of its
+# HDU objects. This is so that only a single HDU object is created for
+# each extension in the file. It also allows a FITS object to tell
+# previously created HDUs about events that happen to the file, such 
+# as deleting extensions. This could be done by, e.g., setting ext=-1 in
+# the HDU object.
+type FITS
+    fitsfile::FITSFile
+    filename::String
+    mode::String
+    hdus::Dict{Int, HDU}
+
+    function FITS(filename::String, mode::String="r")
+        f = (mode == "r"                     ? fits_open_file(filename, 0)   :
+             mode == "r+" && isfile(filename)? fits_open_file(filename, 1)   :
+             mode == "r+"                    ? fits_create_file(filename)    :
+             mode == "w"                     ? fits_create_file("!"*filename):
+             error("invalid open mode: $mode"))
+
+        new(f, filename, mode, Dict{Int, HDU}())
+    end
+end
+
 # -----------------------------------------------------------------------------
-# FITS
+# FITS methods
 
 function length(f::FITS)
     fits_assert_open(f.fitsfile)
@@ -82,6 +83,9 @@ function getindex(f::FITS, i::Integer)
         return f.hdus[i]
     end
 
+    if i > length(f)
+        error("index out of bounds")
+    end
     hdutype = fits_movabs_hdu(f.fitsfile, i)
     f.hdus[i] = (hdutype == :image_hdu ? ImageHDU(f.fitsfile, i) :
                  hdutype == :binary_table ? TableHDU(f.fitsfile, i) :
@@ -119,6 +123,68 @@ function close(f::FITS)
 end
 
 # -----------------------------------------------------------------------------
+# Header methods
+
+
+# returns one of: ASCIIString, Bool, Int, Float64, nothing
+function _convert(val::String)
+    try
+        return int(val)
+    catch
+        try
+            return float(val)
+        catch
+        end
+    end
+    val == "T" ? true :
+    val == "F" ? false :
+    val == "" ? nothing :
+    length(val) > 1 && val[1] == '\'' && val[end] == '\'' ? val[2:end-1] :
+    error("couldn't parse keyword value: \"$val\"")
+end
+
+function read_key(hdu::HDU, keynum::Integer)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    name, val, comment = fits_read_keyn(hdu.fitsfile, keynum)
+    name, _convert(val), comment
+end
+
+function read_key(hdu::HDU, keyname::String)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    name, val = fits_read_keyword(hdu.fitsfile, heyname)
+    name, _convert(val)
+end
+
+function read_header(hdu::HDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+
+    # Below, we use a direct call to ffgkyn so that we can keep reusing the
+    # same keyname, value, comment buffers.
+    keyname = Array(Uint8, 9)
+    value = Array(Uint8, 71)
+    comment = Array(Uint8, 71)
+    status = Int32[0]
+
+    nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
+
+    header = Array(Dict{String, Any}, nkeys)
+    for i=1:nkeys
+        ccall((:ffgkyn,libcfitsio), Int32,
+              (Ptr{Void},Int32,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Int32}),
+              hdu.fitsfile.ptr, i, keyname, value, comment, status)
+        header[i] = ["name"=>bytestring(convert(Ptr{Uint8},keyname)),
+                     "value"=>_convert(bytestring(convert(Ptr{Uint8},value))),
+                     "comment"=>bytestring(convert(Ptr{Uint8},comment))]
+    end
+    fits_assert_ok(status[1])
+    return header
+end
+
+
+# -----------------------------------------------------------------------------
 # ImageHDU methods
 
 # Display the image datatype and dimensions
@@ -153,7 +219,6 @@ function size(hdu::ImageHDU, i::Integer)
 end
 
 # Read a full image from an HDU
-# TODO: Correct support for BSCALE'd images
 function read(hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)

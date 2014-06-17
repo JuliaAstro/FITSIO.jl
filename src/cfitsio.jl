@@ -182,7 +182,8 @@ function fits_read_keyword(f::FITSFile, keyname::String)
         (Ptr{Void},Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Int32}),
         f.ptr, bytestring(keyname), value, comment, status)
     fits_assert_ok(status[1])
-    bytestring(convert(Ptr{Uint8},value)), bytestring(convert(Ptr{Uint8},comment))
+    bytestring(convert(Ptr{Uint8},value)),
+    bytestring(convert(Ptr{Uint8},comment))
 end
 
 function fits_read_record(f::FITSFile, keynum::Int)
@@ -209,7 +210,8 @@ function fits_read_keyn(f::FITSFile, keynum::Int)
     bytestring(convert(Ptr{Uint8},comment))
 end
 
-function fits_write_key(f::FITSFile, keyname::String, value::Union(Number,String), comment::String)
+function fits_write_key(f::FITSFile, keyname::String,
+                        value::Union(FloatingPoint,String), comment::String)
     cvalue = isa(value,String) ?  bytestring(value) :
              isa(value,Bool) ? [int32(value)] : [value]
     status = Int32[0]
@@ -217,6 +219,44 @@ function fits_write_key(f::FITSFile, keyname::String, value::Union(Number,String
         (Ptr{Void},Int32,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Int32}),
         f.ptr, _cfitsio_datatype(typeof(value)), bytestring(keyname),
         cvalue, bytestring(comment), status)
+    fits_assert_ok(status[1])
+end
+
+function fits_write_comment(f::FITSFile, comment::ASCIIString)
+    status = Cint[0]
+    ccall((:ffpcom, libcfitsio), Cint, (Ptr{Void}, Ptr{Uint8}, Ptr{Cint}),
+          f.ptr, bytestring(comment), status)
+    fits_assert_ok(status[1])
+end
+
+function fits_write_history(f::FITSFile, history::ASCIIString)
+    status = Cint[0]
+    ccall((:ffphis, libcfitsio), Cint, (Ptr{Void}, Ptr{Uint8}, Ptr{Cint}),
+          f.ptr, bytestring(history), status)
+    fits_assert_ok(status[1])
+end
+
+# update key: if already present, update it, otherwise add it.
+for (a,T,S) in (("ffukys", :ASCIIString, :(Ptr{Uint8})),
+                ("ffukyl", :Bool,        :Cint),
+                ("ffukyj", :Integer,     :Clonglong))
+    @eval begin
+        function fits_update_key(f::FITSFile, key::ASCIIString, value::$T,
+                                 comment::Union(ASCIIString, Ptr{None})=C_NULL)
+            status = Cint[0]
+            ccall(($a, libcfitsio), Cint,
+                  (Ptr{Void}, Ptr{Uint8}, $S, Ptr{Uint8}, Ptr{Cint}),
+                  f.ptr, key, value, comment, status)
+            fits_assert_ok(status[1])
+        end
+    end
+end
+function fits_update_key(f::FITSFile, key::ASCIIString, value::FloatingPoint,
+                         comment::Union(ASCIIString, Ptr{None})=C_NULL)
+    status = Cint[0]
+    ccall(("ffukyd", libcfitsio), Cint,
+          (Ptr{Void}, Ptr{Uint8}, Cdouble, Cint, Ptr{Uint8}, Ptr{Cint}),
+          f.ptr, key, value, -15, comment, status)
     fits_assert_ok(status[1])
 end
 

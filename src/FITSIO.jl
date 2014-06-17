@@ -51,11 +51,14 @@ export FITSFile,
 export FITS,
        HDU,
        ImageHDU,
-       read_key,
-       read_header
+       FITSHeader,
+       readkey,
+       readheader,
+       getcomment,
+       setcomment!
 
-import Base: getindex, length, show, read, write, close, ndims, size,
-             endof
+import Base: getindex, setindex!, length, show, read, write, close, ndims,
+             size, endof, haskey, keys
 
 using BinDeps
 @BinDeps.load_dependencies

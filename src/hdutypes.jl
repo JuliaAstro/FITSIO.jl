@@ -43,6 +43,27 @@ type FITS
     end
 end
 
+# FITSHeader stores the (key, value, comment) information for each card in
+# a header. We could almost just use an OrderedDict for this, but we need
+# to store comments so they are not lost when reading from disk,
+# then writing back to disk with modifications.
+type FITSHeader
+    keys::Vector{ASCIIString}
+    values::Vector{Any}
+    comments::Vector{ASCIIString}
+    map::Dict{ASCIIString, Int}
+
+    function FITSHeader(keys::Vector{ASCIIString}, values::Vector{Any},
+                        comments::Vector{ASCIIString})
+        if ((length(keys) != length(values)) ||
+            (length(keys) != length(comments)))
+            error("keys, values, comments must be same length")
+        end
+        map = [keys[i]=>i for i=1:length(keys)]
+        new(keys, values, comments, map)
+    end
+end
+
 # -----------------------------------------------------------------------------
 # FITS methods
 
@@ -125,9 +146,8 @@ end
 # -----------------------------------------------------------------------------
 # Header methods
 
-
 # returns one of: ASCIIString, Bool, Int, Float64, nothing
-function _convert(val::String)
+function parse_header_val(val::String)
     try
         return int(val)
     catch
@@ -143,46 +163,180 @@ function _convert(val::String)
     error("couldn't parse keyword value: \"$val\"")
 end
 
-function read_key(hdu::HDU, keynum::Integer)
+function readkey(hdu::HDU, key::Integer)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    name, val, comment = fits_read_keyn(hdu.fitsfile, keynum)
-    name, _convert(val), comment
+    keyout, value, comment = fits_read_keyn(hdu.fitsfile, key)
+    keyout, parse_header_val(value), comment
 end
 
-function read_key(hdu::HDU, keyname::String)
+function readkey(hdu::HDU, key::ASCIIString)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    name, val = fits_read_keyword(hdu.fitsfile, heyname)
-    name, _convert(val)
+    value, comment = fits_read_keyword(hdu.fitsfile, key)
+    parse_header_val(value), comment
 end
 
-function read_header(hdu::HDU)
+function readheader(hdu::HDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     # Below, we use a direct call to ffgkyn so that we can keep reusing the
-    # same keyname, value, comment buffers.
-    keyname = Array(Uint8, 9)
+    # same buffers.
+    key = Array(Uint8, 9)
     value = Array(Uint8, 71)
     comment = Array(Uint8, 71)
     status = Int32[0]
 
     nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
 
-    header = Array(Dict{String, Any}, nkeys)
+    # Initialize output arrays
+    keys = Array(ASCIIString, nkeys)
+    values = Array(Any, nkeys)
+    comments = Array(ASCIIString, nkeys)
     for i=1:nkeys
         ccall((:ffgkyn,libcfitsio), Int32,
               (Ptr{Void},Int32,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Int32}),
-              hdu.fitsfile.ptr, i, keyname, value, comment, status)
-        header[i] = ["name"=>bytestring(convert(Ptr{Uint8},keyname)),
-                     "value"=>_convert(bytestring(convert(Ptr{Uint8},value))),
-                     "comment"=>bytestring(convert(Ptr{Uint8},comment))]
+              hdu.fitsfile.ptr, i, key, value, comment, status)
+        keys[i] = bytestring(convert(Ptr{Uint8},key))
+        values[i] = parse_header_val(bytestring(convert(Ptr{Uint8},value)))
+        comments[i] = bytestring(convert(Ptr{Uint8},comment))
     end
     fits_assert_ok(status[1])
-    return header
+    FITSHeader(keys, values, comments)
 end
 
+
+length(hdr::FITSHeader) = length(hdr.keys)
+haskey(hdr::FITSHeader, key::ASCIIString) = in(key, hdr.keys)
+keys(hdr::FITSHeader) = hdr.keys
+values(hdr::FITSHeader) = hdr.values
+getindex(hdr::FITSHeader, key::ASCIIString) = hdr.values[hdr.map[key]]
+getindex(hdr::FITSHeader, i::Integer) = hdr.values[i]
+
+function setindex!(hdr::FITSHeader, value::Any, key::ASCIIString)
+    if in(key, hdr.keys)
+        hdr.values[hdr.map[key]] = value
+    else
+        push!(hdr.keys, key)
+        push!(hdr.values, value)
+        push!(hdr.comments, "")
+        hdr.map[key] = length(hdr.keys)
+    end
+end
+
+function setindex!(hdr::FITSHeader, value::Any, i::Integer)
+    hdr.values[i] = value
+end
+
+# Comments
+getcomment(hdr::FITSHeader, key::ASCIIString) = hdr.comments[hdr.map[key]]
+getcomment(hdr::FITSHeader, i::Integer) = hdr.comments[i]
+function setcomment!(hdr::FITSHeader, key::ASCIIString, comment::ASCIIString)
+    hdr.comments[hdr.map[key]] = comment
+end
+function setcomment!(hdr::FITSHeader, i::Integer, comment::ASCIIString)
+    hdr.comments[i] = comment
+end
+
+# Display the header
+hdrval_to_str(val::Bool) = val ? "T" : "F"
+hdrval_to_str(val::Nothing) = ""
+hdrval_to_str(val::ASCIIString) = @sprintf "'%s'" val
+hdrval_to_str(val::Union(FloatingPoint, Integer)) = string(val)
+
+function show(io::IO, hdr::FITSHeader)
+    for i=1:length(hdr)
+        if hdr.keys[i] == "COMMENT"
+            @printf "COMMENT %s\n" hdr.comments[i]
+        elseif hdr.keys[i] == "HISTORY"
+            @printf "HISTORY %s\n" hdr.comments[i]
+        else
+            @printf "%-8s= %20s" hdr.keys[i] hdrval_to_str(hdr.values[i]) 
+            if length(hdr.comments[i]) > 0
+                @printf " / %s" hdr.comments[i]
+            end
+            print("\n")
+        end
+    end
+end
+
+const RESERVED_KEYS = ["SIMPLE","EXTEND","XTENSION","BITPIX","PCOUNT","GCOUNT",
+                       "THEAP","EXTNAME","BUNIT","BSCALE","BZERO","BLANK",
+                       "ZQUANTIZ","ZDITHER0","ZIMAGE","ZCMPTYPE","ZSIMPLE",
+                       "ZTENSION","ZPCOUNT","ZGCOUNT","ZBITPIX","ZEXTEND",
+                       "CHECKSUM","DATASUM"]
+
+# This is more complex than you would think because some reserved keys 
+# are only reserved when other keys are present. Also, in general a key
+# may appear more than once in a header.
+function reserved_key_indicies(hdr::FITSHeader)
+    nhdr = length(hdr)
+    indicies = Int[]
+    for i=1:nhdr
+        if in(hdr.keys[i], RESERVED_KEYS)
+            push!(indicies, i)
+        end
+    end
+
+    # Note that this removes anything matching NAXIS\d regardless of # of axes.
+    if in("NAXIS", hdr.keys)
+        for i=1:nhdr
+            if ismatch(r"^NAXIS\d*$", hdr.keys[i])
+                push!(indicies, i)
+            end
+        end
+    end
+
+    if in("ZNAXIS", hdr.keys)
+        for i=1:nhdr
+            if (ismatch(r"^ZNAXIS\d*$", hdr.keys[i]) ||
+                ismatch(r"^ZTILE\d*$", hdr.keys[i]) ||
+                ismatch(r"^ZNAME\d*$", hdr.keys[i]) ||
+                ismatch(r"^ZVAL\d*$", hdr.keys[i]))
+                push!(indicies, i)
+            end
+        end
+    end
+
+    if in("TFIELDS", hdr.keys)
+        for i=1:nhdr
+            for re in [r"^TFORM\d*$", r"^TTYPE\d*$", r"^TDIM\d*$",
+                       r"^TUNIT\d*$", r"^TSCAL\d*$", r"^TZERO\d*$",
+                       r"^TNULL\d*$", r"^TDISP\d*$", r"^TDMIN\d*$",
+                       r"^TDMAX\d*$", r"^TDESC\d*$", r"^TROTA\d*$",
+                       r"^TRPIX\d*$", r"^TRVAL\d*$", r"^TDELT\d*$",
+                       r"^TCUNI\d*$", r"^TFIELDS$"]
+                if ismatch(re, hdr.keys[i])
+                    push!(indicies, i)
+                end
+            end
+        end
+    end
+
+    return indicies
+end
+
+
+# Header writing: "low-level" (works directly on FITSFile)
+# if `clean` is true, skip writing reserved header keywords
+function write_header(f::FITSFile, hdr::FITSHeader, clean::Bool=true)
+    indicies = clean? reserved_key_indicies(hdr): Int[]
+    for i=1:length(hdr)
+        if clean && in(i, indicies)
+            continue
+        end
+        if hdr.keys[i] == "COMMENT"
+            fits_write_comment(f, hdr.comments[i])
+        elseif hdr.keys[i] == "HISTORY"
+            fits_write_history(f, hdr.comments[i])
+        elseif hdr.comments[i] == ""
+            fits_update_key(f, hdr.keys[i], hdr.values[i])
+        else
+            fits_update_key(f, hdr.keys[i], hdr.values[i], hdr.comments[i])
+        end
+    end
+end
 
 # -----------------------------------------------------------------------------
 # ImageHDU methods
@@ -251,10 +405,14 @@ end
 # Add a new ImageHDU to a FITS object
 # The following Julia data types are supported for writing images by cfitsio:
 # Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64, Float32, Float64
-function write{T}(f::FITS, data::Array{T})
+function write{T}(f::FITS, data::Array{T};
+                  header::Union(Nothing, FITSHeader)=nothing)
     fits_assert_open(f.fitsfile)
     s = size(data)
     fits_create_img(f.fitsfile, T, [s...])
+    if isa(header, FITSHeader)
+        write_header(f.fitsfile, header, true)
+    end
     fits_write_pix(f.fitsfile, ones(Int, length(s)), length(data), data)
     nothing
 end

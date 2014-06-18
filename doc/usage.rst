@@ -2,6 +2,11 @@
 High-level usage guide
 ======================
 
+.. note::
+
+   The high-level interface does not yet support binary or ASCII
+   table extensions.
+
 Reading
 -------
 

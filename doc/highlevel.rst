@@ -40,3 +40,20 @@ Image operations
 
    Read the entire image from disk.
 
+.. function:: copy_section(hdu::ImageHDU, destination::FITS, r::Range...)
+
+   Copy a rectangular section of an image and write it to a new FITS
+   primary image or image extension. The new image HDU is appended to
+   the end of the destination file; all the keywords in the input image
+   will be copied to the output image. The common WCS keywords will be
+   updated if necessary to correspond to the coordinates of the
+   section. Examples:
+
+   Copy the lower-left 200 x 200 pixel section of the image in ``hdu``
+   to an open file, ``f``::
+ 
+       copy_section(hdu, f, 1:200, 1:200)
+
+   Same as above but only copy odd columns in y::
+
+       copy_section(hdu, f, 1:200, 1:2:200)

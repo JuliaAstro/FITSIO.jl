@@ -22,6 +22,29 @@ if isfile(fname)
     rm(fname)
 end
 
+# copy_section()
+fname1 = tempname() * ".fits"
+f1 = FITS(fname1, "w")
+indata = reshape(Float32[1:400], 20, 20)
+write(f1, indata)
+
+fname2 = tempname() * ".fits"
+f2 = FITS(fname2, "w")
+copy_section(f1[1], f2, 1:10, 1:10)
+copy_section(f1[1], f2, 1:10, 1:2:20)
+outdata = read(f2[1])
+@test outdata == indata[1:10, 1:10]
+outdata = read(f2[2])
+@test outdata == indata[1:10, 1:2:20]
+close(f1)
+close(f2)
+if isfile(fname1)
+    rm(fname1)
+end
+if isfile(fname2)
+    rm(fname2)
+end
+
 # -----------------------------------------------------------------------------
 # FITSHeader
 

@@ -416,3 +416,23 @@ function write{T}(f::FITS, data::Array{T};
     fits_write_pix(f.fitsfile, ones(Int, length(s)), length(data), data)
     nothing
 end
+
+# Copy a rectangular section of an image and write it to a new FITS
+# primary image or image extension. The new image HDU is appended to
+# the end of the output file; all the keywords in the input image will
+# be copied to the output image. The common WCS keywords will be
+# updated if necessary to correspond to the coordinates of the section.
+
+# TODO: Change Range types once v0.2 is no longer supported.
+
+range2fits_str(r::Range1) = @sprintf "%d:%d" first(r) last(r)
+range2fits_str(r::Range) = @sprintf "%d:%d:%d" first(r) last(r) step(r)
+fits_copy_image_section(fin::FITSFile, fout::FITSFile, r...) =
+    fits_copy_image_section(fin, fout, join([range2str(ri) for ri in r], ','))
+function copy_section(hdu::ImageHDU, destination::FITS, r::Range...)
+    fits_assert_open(hdu.fitsfile)
+    fits_assert_open(destination.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    fits_copy_image_section(hdu.fitsfile, destination.fitsfile,
+                            join([range2fits_str(ri) for ri in r], ','))
+end

@@ -55,7 +55,8 @@ export FITS,
        readkey,
        readheader,
        getcomment,
-       setcomment!
+       setcomment!,
+       copy_section
 
 import Base: getindex, setindex!, length, show, read, write, close, ndims,
              size, endof, haskey, keys

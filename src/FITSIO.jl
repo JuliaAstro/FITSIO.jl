@@ -61,8 +61,11 @@ export FITS,
 import Base: getindex, setindex!, length, show, read, write, close, ndims,
              size, endof, haskey, keys
 
-using BinDeps
-@BinDeps.load_dependencies
+if isfile(joinpath(dirname(@__FILE__),"..","deps","deps.jl"))
+    include("../deps/deps.jl")
+else
+    error("FITSIO not properly installed. Please run Pkg.build(\"FITSIO\")")
+end
 
 include("cfitsio.jl")  # Low-level cfitsio functions
 include("hdutypes.jl")  # HDU type interface

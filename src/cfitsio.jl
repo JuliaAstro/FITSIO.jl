@@ -242,7 +242,7 @@ for (a,T,S) in (("ffukys", :ASCIIString, :(Ptr{Uint8})),
                 ("ffukyj", :Integer,     :Clonglong))
     @eval begin
         function fits_update_key(f::FITSFile, key::ASCIIString, value::$T,
-                                 comment::Union(ASCIIString, Ptr{None})=C_NULL)
+                                 comment::Union(ASCIIString, Ptr{Void})=C_NULL)
             status = Cint[0]
             ccall(($a, libcfitsio), Cint,
                   (Ptr{Void}, Ptr{Uint8}, $S, Ptr{Uint8}, Ptr{Cint}),
@@ -252,7 +252,7 @@ for (a,T,S) in (("ffukys", :ASCIIString, :(Ptr{Uint8})),
     end
 end
 function fits_update_key(f::FITSFile, key::ASCIIString, value::FloatingPoint,
-                         comment::Union(ASCIIString, Ptr{None})=C_NULL)
+                         comment::Union(ASCIIString, Ptr{Void})=C_NULL)
     status = Cint[0]
     ccall(("ffukyd", libcfitsio), Cint,
           (Ptr{Void}, Ptr{Uint8}, Cdouble, Cint, Ptr{Uint8}, Ptr{Cint}),

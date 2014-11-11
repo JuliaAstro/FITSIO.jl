@@ -5,3 +5,6 @@ deps/src
 deps/usr
 doc/_build
 *~
+
+# coverage files
+*.jl.cov

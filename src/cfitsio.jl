@@ -1,3 +1,5 @@
+using Compat
+
 type FITSFile
     ptr::Ptr{Void}
 
@@ -43,11 +45,11 @@ _cfitsio_bitpix(::Type{Int8}) = int32(10)  # SBYTE_IMG
 _cfitsio_bitpix(::Type{Uint16}) = int32(20) # USHORT_IMG
 _cfitsio_bitpix(::Type{Uint32}) = int32(40) # ULONG_IMG
 
-const bitpix_to_type = [int32(8)=>Uint8, int32(16)=>Int16,
+const bitpix_to_type = @compat Dict(int32(8)=>Uint8, int32(16)=>Int16,
                         int32(32)=>Int32, int32(64)=>Int64,
                         int32(-32)=>Float32, int32(-64)=>Float64,
                         int32(10)=>Int8, int32(20)=>Uint16,
-                        int32(40)=>Uint32]
+                        int32(40)=>Uint32)
 
 _cfitsio_datatype(::Type{Uint8})      = int32(11)
 _cfitsio_datatype(::Type{Int8})       = int32(12)
@@ -75,7 +77,7 @@ function hdu_int_to_type(hdu_type_int)
     :unknown
 end
 
-const mode_strs = [int32(0)=>"READONLY", int32(1)=>"READWRITE"]
+const mode_strs = @compat Dict(int32(0)=>"READONLY", int32(1)=>"READWRITE")
 
 
 # General-purpose functions

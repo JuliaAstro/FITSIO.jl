@@ -3,19 +3,26 @@ using Base.Test
 
 # -----------------------------------------------------------------------------
 # Images
-#
-# * create a FITS() instance
-# * write(f::FITS, data::Array) for 9 supported data types
-#
+
+# Create a FITS instance and loop over supported types.
 fname = tempname() * ".fits"
 f = FITS(fname, "w")
 for T in [Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
           Float32, Float64]
     indata = reshape(T[1:100], 5, 20)
+
+    # Test writing the data to a new extension
     write(f, indata)
-    outdata = read(f[end])
+
+    # test reading the full array
+    outdata = read(f[end])    
     @test indata == outdata
     @test eltype(indata) == eltype(outdata)
+
+    # test reading subsets of the array
+    @test f[end][:, :] == indata
+    @test f[end][4, 1:10] == indata[4, 1:10]
+    @test f[end][:, 1:2:10] == indata[:, 1:2:10]
 end
 close(f)
 if isfile(fname)
@@ -84,3 +91,5 @@ close(f)
 if isfile(fname)
     rm(fname)
 end
+
+println("All tests passed.")

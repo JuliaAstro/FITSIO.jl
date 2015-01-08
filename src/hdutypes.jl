@@ -383,20 +383,20 @@ function read(hdu::ImageHDU)
     data
 end
 
-# Read all or a subset of an HDU
-function getindex(hdu::ImageHDU, rs::Range...)
+# Read a subset of an ImageHDU
+function getindex(hdu::ImageHDU, I::Union(Range{Int},Int)...)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     # construct first, last and step vectors
-    firsts = Clong[first(r) for r in rs]
-    lasts = Clong[last(r) for r in rs]
-    steps = Clong[step(r) for r in rs]
+    firsts = Clong[first(i) for i in I]
+    lasts = Clong[last(i) for i in I]
+    steps = Clong[isa(i, Int)? 1: step(i) for i in I]
 
     # construct output array
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
     
-    datasz = [length(r) for r in rs]
+    datasz = [length(i) for i in I]
     data = Array(bitpix_to_type[bitpix], datasz...)
     fits_read_subset(hdu.fitsfile, firsts, lasts, steps, data)
     data

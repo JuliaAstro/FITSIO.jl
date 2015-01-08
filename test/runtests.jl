@@ -87,6 +87,13 @@ outhdr = readheader(f[1])
 @test readkey(f[1], 9) == ("FLTKEY", 2.0, "floating point keyword")
 @test readkey(f[1], "FLTKEY") == (2.0, "floating point keyword")
 
+# Test that show() works and that the beginning of output is what we expect.
+io = IOBuffer()
+show(io, f)
+s = takebuf_string(io)
+@test s[1:6] == "file: "
+
+# Clean up from last test.
 close(f)
 if isfile(fname)
     rm(fname)

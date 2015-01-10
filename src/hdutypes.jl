@@ -1,4 +1,6 @@
 
+import Base: checkbounds
+
 # -----------------------------------------------------------------------------
 # Types
 
@@ -372,6 +374,11 @@ function size(hdu::ImageHDU, i::Integer)
     sz[i]
 end
 
+# `endof` is needed so that hdu[:] can throw DimensionMismatch
+# when ndim != 1, rather than no method.
+length(hdu::ImageHDU) = prod(size(hdu))
+endof(hdu::ImageHDU) = length(hdu::ImageHDU)
+
 # Read a full image from an HDU
 function read(hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
@@ -383,10 +390,46 @@ function read(hdu::ImageHDU)
     data
 end
 
+# `trailingsize` is used to compute last index in checkbounds.
+# sz: array size (tuple), n: starting index.
+# Same as Base.trailingsize but takes size tuple rather than array.
+function trailingsize(sz, n)
+    s = 1
+    for i=n:length(sz)
+        s *= sz[i]
+    end
+    return s
+end
+
+# `checkbounds` method, used for ImageHDU. (ImageHDU is not a subtype
+# of AbstractArray, so we can't just use methods in Base.) Note that
+# this takes a size tuple whereas Methods in Base take array A and use
+# size(A,n). For ImageHDU, size(hdu,n) gets size(hdu) as in
+# intermediary, so it is better to just get that tuple once.
+function checkbounds(sz::NTuple, I::Union(Int, Range{Int})...)
+    n = length(I)
+    if n > 0
+        for dim = 1:(n-1)
+            checkbounds(sz[dim], I[dim])
+        end
+        checkbounds(trailingsize(sz,n), I[n])
+    end
+end
+
 # Read a subset of an ImageHDU
-function getindex(hdu::ImageHDU, I::Union(Range{Int},Int)...)
+function _getindex(hdu::ImageHDU, I::Union(Range{Int},Int)...)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+
+    # check number of indicies and bounds.
+    # Note that N_indicies != ndim is not supported, differing from Array.
+    # It could be supported in the future with care taken in constructing
+    # first, last, step arrays passed to cfitsio.
+    sz = tuple(fits_get_img_size(hdu.fitsfile)...)
+    if length(I) != length(sz)
+        throw(DimensionMismatch("number of indicies must match dimensions"))
+    end
+    checkbounds(sz, I...)
 
     # construct first, last and step vectors
     firsts = Clong[first(i) for i in I]
@@ -395,12 +438,15 @@ function getindex(hdu::ImageHDU, I::Union(Range{Int},Int)...)
 
     # construct output array
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    
-    datasz = [length(i) for i in I]
-    data = Array(bitpix_to_type[bitpix], datasz...)
+    data = Array(bitpix_to_type[bitpix], Base.index_shape(I...))
+
     fits_read_subset(hdu.fitsfile, firsts, lasts, steps, data)
     data
 end
+
+# general method and version that returns a single value rather than 0-d array
+getindex(hdu::ImageHDU, I::Union(Range{Int},Int)...) = _getindex(hdu, I...)
+getindex(hdu::ImageHDU, I::Int...) = _getindex(hdu, I...)[1]
 
 # Add a new ImageHDU to a FITS object
 # The following Julia data types are supported for writing images by cfitsio:

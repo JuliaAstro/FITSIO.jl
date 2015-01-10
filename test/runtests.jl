@@ -15,14 +15,24 @@ for T in [Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
     write(f, indata)
 
     # test reading the full array
-    outdata = read(f[end])    
+    outdata = read(f[end])
     @test indata == outdata
     @test eltype(indata) == eltype(outdata)
 
     # test reading subsets of the array
     @test f[end][:, :] == indata
-    @test f[end][4, 1:10] == indata[4, 1:10]
+    @test f[end][4, 1:10] == indata[4, 1:10]  # 2-d array
+    @test f[end][:, 4] == indata[:, 4]  # 1-d array
+    @test f[end][2, 3] == indata[2, 3]  # scalar
     @test f[end][:, 1:2:10] == indata[:, 1:2:10]
+    @test f[end][1:3, :] == indata[1:3, :]
+
+    # test expected errors
+    @test_throws DimensionMismatch f[end][:]
+    @test_throws DimensionMismatch f[end][:, :, 1]
+    @test_throws BoundsError f[end][1:6, :]
+    @test_throws BoundsError f[end][1, 0]
+
 end
 close(f)
 if isfile(fname)

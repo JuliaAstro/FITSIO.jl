@@ -144,8 +144,6 @@ function hdu_int_to_type(hdu_type_int)
     :unknown
 end
 
-const mode_strs = @compat Dict(cint(0)=>"READONLY", cint(1)=>"READWRITE")
-
 
 # General-purpose functions
 

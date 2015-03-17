@@ -241,7 +241,7 @@ function fits_get_hdrspace(f::FITSFile)
     (keysexist[1], morekeys[1])
 end
 
-function fits_read_keyword(f::FITSFile, keyname::String)
+function fits_read_keyword(f::FITSFile, keyname::ASCIIString)
     value = Array(Uint8, 71)
     comment = Array(Uint8, 71)
     status = Cint[0]
@@ -277,9 +277,9 @@ function fits_read_keyn(f::FITSFile, keynum::Integer)
     bytestring(convert(Ptr{Uint8},comment))
 end
 
-function fits_write_key(f::FITSFile, keyname::String,
-                        value::Union(FloatingPoint,String), comment::String)
-    cvalue = isa(value,String) ?  bytestring(value) :
+function fits_write_key(f::FITSFile, keyname::ASCIIString,
+                        value::Union(FloatingPoint,ASCIIString), comment::ASCIIString)
+    cvalue = isa(value,ASCIIString) ?  bytestring(value) :
              isa(value,Bool) ? [cint(value)] : [value]
     status = Cint[0]
     ccall((:ffpky,libcfitsio), Cint,
@@ -327,7 +327,7 @@ function fits_update_key(f::FITSFile, key::ASCIIString, value::FloatingPoint,
     fits_assert_ok(status[1])
 end
 
-function fits_write_record(f::FITSFile, card::String)
+function fits_write_record(f::FITSFile, card::ASCIIString)
     status = Cint[0]
     ccall((:ffprec,libcfitsio), Cint,
         (Ptr{Void},Ptr{Uint8},Ptr{Cint}),
@@ -343,7 +343,7 @@ function fits_delete_record(f::FITSFile, keynum::Integer)
     fits_assert_ok(status[1])
 end
 
-function fits_delete_key(f::FITSFile, keyname::String)
+function fits_delete_key(f::FITSFile, keyname::ASCIIString)
     status = Cint[0]
     ccall((:ffdkey,libcfitsio), Cint,
         (Ptr{Void},Ptr{Uint8},Ptr{Cint}),
@@ -386,7 +386,7 @@ for (a,b) in ((:fits_movabs_hdu,"ffmahd"),
     end
 end
 
-function fits_movnam_hdu(f::FITSFile, extname::String, extver::Integer=0,
+function fits_movnam_hdu(f::FITSFile, extname::ASCIIString, extver::Integer=0,
                          hdu_type::Integer=-1)
     status = Cint[0]
     ccall((:ffmnhd,libcfitsio), Cint,
@@ -494,7 +494,7 @@ function fits_read_subset{S1<:Integer,S2<:Integer,S3<:Integer,T}(f::FITSFile,
 end
 
 function fits_copy_image_section(fin::FITSFile, fout::FITSFile,
-                                 section::String)
+                                 section::ASCIIString)
     status = Cint[0]
     ccall((:fits_copy_image_section,libcfitsio), Cint,
           (Ptr{Void}, Ptr{Void}, Ptr{Uint8}, Ptr{Cint}),
@@ -511,7 +511,7 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
               (:fits_create_ascii_tbl,  1))
     @eval begin
         function ($a)(f::FITSFile, numrows::Integer,
-                      coldefs::Array{ColumnDef}, extname::String)
+                      coldefs::Array{ColumnDef}, extname::ASCIIString)
 
             ntype = length(coldefs)
             ttype = map((x) -> pointer(x[1].data), coldefs)

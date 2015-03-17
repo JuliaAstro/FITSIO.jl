@@ -555,6 +555,7 @@ function fits_read_col{T}(f::FITSFile,
 
     anynull = Cint[0]
     status = Cint[0]
+    nelements = length(data)
 
     if isa(T, Type{String}) || isa(T, Type{ASCIIString})
 
@@ -603,6 +604,7 @@ function fits_write_col{T}(f::FITSFile,
                            data::Array{T})
 
     status = Cint[0]
+    nelements = length(data)
 
     if  isa(T, Type{String}) || isa(T, Type{ASCIIString})
 

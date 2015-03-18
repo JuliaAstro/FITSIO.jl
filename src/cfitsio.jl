@@ -531,129 +531,6 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
     end
 end
 
-function fits_get_col_repeat(f::FITSFile, colnum::Integer)
-    typecode = Cint[0]
-    repeat = Int64[0]
-    width = Int64[0]
-    status = Cint[0]
-
-    ccall((:ffgtclll, libcfitsio), Cint,
-          (Ptr{Void}, Cint, Ptr{Cint}, Ptr{Int64}, Ptr{Int64}, Ptr{Cint}),
-          f.ptr, colnum, typecode, repeat, width, status)
-
-    (repeat[1], width[1])
-end
-
-function fits_read_col(f::FITSFile,
-                        colnum::Integer,
-                        firstrow::Integer,
-                        firstelem::Integer,
-                        data::Array{ASCIIString})
-
-    # Make sure there is enough room for each string
-    repcount, width = fits_get_col_repeat(f, colnum)
-    for i in 1:length(data)
-        # We need to call `repeat' N times in order to allocate N
-        # strings
-        data[i] = repeat(" ", repcount)
-    end
-
-    # Call the CFITSIO function
-    anynull = Cint[0]
-    status = Cint[0]
-    ccall((:ffgcvs, libcfitsio), Cint,
-          (Ptr{Void}, Cint, Int64, Int64, Int64,
-           Ptr{Uint8}, Ptr{Ptr{Uint8}}, Ptr{Cint}, Ptr{Cint}),
-          f.ptr, colnum, firstrow, firstelem, length(data),
-          "", data, anynull, status)
-    fits_assert_ok(status[1])
-
-    # Truncate the strings to the first NULL character (if present)
-    for idx in 1:length(data)
-        zeropos = search(data[idx], '\0')
-        if zeropos >= 1
-            data[idx] = (data[idx])[1:(zeropos-1)]
-        end
-    end
-end
-
-function fits_read_col{T}(f::FITSFile,
-                          colnum::Integer,
-                          firstrow::Integer,
-                          firstelem::Integer,
-                          data::Array{T})
-    anynull = Cint[0]
-    status = Cint[0]
-    ccall((:ffgcv,libcfitsio), Cint,
-          (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
-           Ptr{T}, Ptr{T}, Ptr{Cint}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), colnum,
-          firstrow, firstelem, length(data),
-          T[0], data, anynull, status)
-    fits_assert_ok(status[1])
-end
-
-# old syntax provided for compatibility:
-function fits_read_col{T}(f::FITSFile,
-                          ::Type{T},
-                          colnum::Integer,
-                          firstrow::Integer,
-                          firstelem::Integer,
-                          data::Array{T})
-    fits_read_col(f, colnum, firstrow, firstelem, data)
-end
-
-function fits_write_col(f::FITSFile,
-                        colnum::Integer,
-                        firstrow::Integer,
-                        firstelem::Integer,
-                        data::Array{ASCIIString})
-    status = Cint[0]
-    ccall((:ffpcls, libcfitsio), Cint,
-          (Ptr{Void}, Cint, Int64, Int64, Int64,
-           Ptr{Ptr{Uint8}}, Ptr{Cint}),
-          f.ptr, colnum, firstrow, firstelem, length(data),
-          data, status)
-    fits_assert_ok(status[1])
-end
-
-function fits_write_col{T}(f::FITSFile,
-                           colnum::Integer,
-                           firstrow::Integer,
-                           firstelem::Integer,
-                           data::Array{T})
-    status = Cint[0]
-    ccall((:ffpcl, libcfitsio), Cint,
-          (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
-           Ptr{T}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), colnum,
-          firstrow, firstelem, length(data),
-          data, status)
-    fits_assert_ok(status[1])
-end
-
-# old syntax provided for compatibility:
-function fits_write_col{T}(f::FITSFile,
-                           ::Type{T},
-                           colnum::Integer,
-                           firstrow::Integer,
-                           firstelem::Integer,
-                           data::Array{T})
-    fits_write_col(f, colnum, firstrow, firstelem, data)
-end
-
-for (a,b) in ((:fits_insert_rows, "ffirow"),
-              (:fits_delete_rows, "ffdrow"))
-    @eval begin
-        function ($a)(f::FITSFile, firstrow::Integer, nrows::Integer)
-            status = Cint[0]
-            ccall(($b,libcfitsio), Cint,
-                  (Ptr{Void}, Int64, Int64, Ptr{Cint}),
-                  f.ptr, firstrow, nrows, status)
-            fits_assert_ok(status[1])
-        end
-    end
-end
 
 # The function `fits_read_tdim()` returns the dimensions of a table column in a
 # binary table. Normally this information is given by the TDIMn keyword, but if
@@ -703,6 +580,99 @@ let fn, T, ffgtdm, ffgtcl, ffeqty
                   ff.ptr, colnum, length(naxes), naxis, naxes, status)
             fits_assert_ok(status[1])
             return naxes[1:naxis[1]]
+        end
+    end
+end
+
+
+function fits_read_col(f::FITSFile,
+                       colnum::Integer,
+                       firstrow::Integer,
+                       firstelem::Integer,
+                       data::Array{ASCIIString})
+
+    # Make sure there is enough room for each string
+    _, repcount, width = fits_get_coltype(f, colnum)
+    for i in 1:length(data)
+        # We need to call `repeat' N times in order to allocate N
+        # strings
+        data[i] = repeat(" ", repcount)
+    end
+
+    # Call the CFITSIO function
+    anynull = Cint[0]
+    status = Cint[0]
+    ccall((:ffgcvs, libcfitsio), Cint,
+          (Ptr{Void}, Cint, Int64, Int64, Int64,
+           Ptr{Uint8}, Ptr{Ptr{Uint8}}, Ptr{Cint}, Ptr{Cint}),
+          f.ptr, colnum, firstrow, firstelem, length(data),
+          "", data, anynull, status)
+    fits_assert_ok(status[1])
+
+    # Truncate the strings to the first NULL character (if present)
+    for idx in 1:length(data)
+        zeropos = search(data[idx], '\0')
+        if zeropos >= 1
+            data[idx] = (data[idx])[1:(zeropos-1)]
+        end
+    end
+end
+
+
+function fits_read_col{T}(f::FITSFile,
+                          colnum::Integer,
+                          firstrow::Integer,
+                          firstelem::Integer,
+                          data::Array{T})
+    anynull = Cint[0]
+    status = Cint[0]
+    ccall((:ffgcv,libcfitsio), Cint,
+          (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
+           Ptr{T}, Ptr{T}, Ptr{Cint}, Ptr{Cint}),
+          f.ptr, _cfitsio_datatype(T), colnum,
+          firstrow, firstelem, length(data),
+          T[0], data, anynull, status)
+    fits_assert_ok(status[1])
+end
+
+function fits_write_col(f::FITSFile,
+                        colnum::Integer,
+                        firstrow::Integer,
+                        firstelem::Integer,
+                        data::Array{ASCIIString})
+    status = Cint[0]
+    ccall((:ffpcls, libcfitsio), Cint,
+          (Ptr{Void}, Cint, Int64, Int64, Int64,
+           Ptr{Ptr{Uint8}}, Ptr{Cint}),
+          f.ptr, colnum, firstrow, firstelem, length(data),
+          data, status)
+    fits_assert_ok(status[1])
+end
+
+function fits_write_col{T}(f::FITSFile,
+                           colnum::Integer,
+                           firstrow::Integer,
+                           firstelem::Integer,
+                           data::Array{T})
+    status = Cint[0]
+    ccall((:ffpcl, libcfitsio), Cint,
+          (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
+           Ptr{T}, Ptr{Cint}),
+          f.ptr, _cfitsio_datatype(T), colnum,
+          firstrow, firstelem, length(data),
+          data, status)
+    fits_assert_ok(status[1])
+end
+
+for (a,b) in ((:fits_insert_rows, "ffirow"),
+              (:fits_delete_rows, "ffdrow"))
+    @eval begin
+        function ($a)(f::FITSFile, firstrow::Integer, nrows::Integer)
+            status = Cint[0]
+            ccall(($b,libcfitsio), Cint,
+                  (Ptr{Void}, Int64, Int64, Ptr{Cint}),
+                  f.ptr, firstrow, nrows, status)
+            fits_assert_ok(status[1])
         end
     end
 end

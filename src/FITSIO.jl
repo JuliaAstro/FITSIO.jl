@@ -72,5 +72,6 @@ end
 
 include("cfitsio.jl")  # Low-level cfitsio functions
 include("hdutypes.jl")  # HDU type interface
+include("deprecations.jl")  # deprecated low-level cfitsio methods
 
 end # module

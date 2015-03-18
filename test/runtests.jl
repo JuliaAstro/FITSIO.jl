@@ -9,7 +9,7 @@ fname = tempname() * ".fits"
 f = FITS(fname, "w")
 for T in [Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
           Float32, Float64]
-    indata = reshape(T[1:100], 5, 20)
+    indata = reshape(T[1:100;], 5, 20)
 
     # Test writing the data to a new extension
     write(f, indata)
@@ -42,7 +42,7 @@ end
 # copy_section()
 fname1 = tempname() * ".fits"
 f1 = FITS(fname1, "w")
-indata = reshape(Float32[1:400], 20, 20)
+indata = reshape(Float32[1:400;], 20, 20)
 write(f1, indata)
 
 fname2 = tempname() * ".fits"
@@ -81,7 +81,7 @@ inhdr["INTKEY"] = 2  # test setting by key
 inhdr[1] = 2.0  # test settting by index
 setcomment!(inhdr, "INTKEY", "integer keyword") # test setting a comment
 
-indata = reshape(Float32[1:100], 5, 20)
+indata = reshape(Float32[1:100;], 5, 20)
 write(f, indata; header=inhdr)
 outhdr = readheader(f[1])
 @test outhdr["FLTKEY"] === 2.0

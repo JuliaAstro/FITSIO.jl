@@ -1,4 +1,7 @@
-using Compat
+
+# NOTE: `convert(Vector{Int}, x)` can be changed to `Vector{Int}(x)` once
+#       v0.3 is no longer supported, or can be changed to
+#       `@compat Vector{Int}(x)` once syntax support is in Compat.
 
 # functions to convert to C integer types (this could be in Julia Base module):
 for (f, T) in ((:cint,  Cint),
@@ -123,7 +126,7 @@ end
 function fits_get_errstatus(status::Cint)
     msg = Array(Uint8, 31)
     ccall((:ffgerr,libcfitsio), Void, (Cint,Ptr{Uint8}), status, msg)
-    bytestring(convert(Ptr{Uint8},msg))
+    bytestring(pointer(msg))
 end
 
 function fits_assert_ok(status::Cint)
@@ -225,7 +228,7 @@ function fits_file_name(f::FITSFile)
           (Ptr{Void},Ptr{Uint8},Ptr{Cint}),
           f.ptr, value, status)
     fits_assert_ok(status[1])
-    bytestring(convert(Ptr{Uint8}, value))
+    bytestring(pointer(value))
 end
 
 # header keywords
@@ -249,8 +252,7 @@ function fits_read_keyword(f::FITSFile, keyname::ASCIIString)
         (Ptr{Void},Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
         f.ptr, bytestring(keyname), value, comment, status)
     fits_assert_ok(status[1])
-    bytestring(convert(Ptr{Uint8},value)),
-    bytestring(convert(Ptr{Uint8},comment))
+    bytestring(pointer(value)), bytestring(pointer(comment))
 end
 
 function fits_read_record(f::FITSFile, keynum::Integer)
@@ -260,7 +262,7 @@ function fits_read_record(f::FITSFile, keynum::Integer)
         (Ptr{Void},Cint,Ptr{Uint8},Ptr{Cint}),
         f.ptr, keynum, card, status)
     fits_assert_ok(status[1])
-    bytestring(convert(Ptr{Uint8},card))
+    bytestring(pointer(card))
 end
 
 function fits_read_keyn(f::FITSFile, keynum::Integer)
@@ -272,9 +274,8 @@ function fits_read_keyn(f::FITSFile, keynum::Integer)
         (Ptr{Void},Cint,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
         f.ptr, keynum, keyname, value, comment, status)
     fits_assert_ok(status[1])
-    bytestring(convert(Ptr{Uint8},keyname)),
-    bytestring(convert(Ptr{Uint8},value)),
-    bytestring(convert(Ptr{Uint8},comment))
+    (bytestring(pointer(keyname)), bytestring(pointer(value)),
+     bytestring(pointer(comment)))
 end
 
 function fits_write_key(f::FITSFile, keyname::ASCIIString,
@@ -443,7 +444,7 @@ function fits_create_img{S<:Integer}(f::FITSFile, t::Type, naxes::Vector{S})
     status = Cint[0]
     ccall((:ffcrimll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Ptr{Int64}, Ptr{Cint}),
-          f.ptr, _cfitsio_bitpix(t), length(naxes), int64(naxes), status)
+          f.ptr, _cfitsio_bitpix(t), length(naxes), convert(Vector{Int64}, naxes), status)
     fits_assert_ok(status[1])
 end
 
@@ -452,7 +453,7 @@ function fits_write_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     status = Cint[0]
     ccall((:ffppxll, libcfitsio), Cint,
         (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Cint}),
-        f.ptr, _cfitsio_datatype(T), int64(fpixel), nelements, data, status)
+        f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel), nelements, data, status)
     fits_assert_ok(status[1])
 end
 fits_write_pix(f::FITSFile, data::Array) = fits_write_pix(f, ones(Int64, length(size(data))), length(data), data)
@@ -462,7 +463,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S}, nelements::
     status = Cint[0]
     ccall((:ffgpxv,libcfitsio), Cint,
           (Ptr{Void},Cint,Ptr{Clong},Int64,Ptr{Void},Ptr{Void},Ptr{Cint},Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), int64(fpixel), nelements, &nullval, data, anynull, status)
+          f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel), nelements, &nullval, data, anynull, status)
     fits_assert_ok(status[1])
     anynull[1]
 end
@@ -471,7 +472,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S}, nelements::
     status = Cint[0]
     ccall((:ffgpxv,libcfitsio), Cint,
           (Ptr{Void},Cint,Ptr{Clong},Int64,Ptr{Void},Ptr{Void},Ptr{Cint},Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), int64(fpixel), nelements, C_NULL, data, anynull, status)
+          f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel), nelements, C_NULL, data, anynull, status)
     fits_assert_ok(status[1])
     anynull[1]
 end
@@ -558,7 +559,7 @@ let fn, T, ffgtdm, ffgtcl, ffeqty
                   (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
                   ff.ptr, colnum, typecode, repcnt, width, status)
             fits_assert_ok(status[1])
-            return (int(typecode[1]), int(repcnt[1]), int(width[1]))
+            return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
         end
         function fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
             typecode = Cint[0]
@@ -569,7 +570,7 @@ let fn, T, ffgtdm, ffgtcl, ffeqty
                   (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
                   ff.ptr, colnum, typecode, repcnt, width, status)
             fits_assert_ok(status[1])
-            return (int(typecode[1]), int(repcnt[1]), int(width[1]))
+            return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
         end
         function fits_read_tdim(ff::FITSFile, colnum::Integer)
             naxes = Array($T, 99) # 99 is the maximum allowed number of axes

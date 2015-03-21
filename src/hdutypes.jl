@@ -16,7 +16,7 @@ type TableHDU <: HDU
     ext::Int
 end
 
-type AsciiHDU <: HDU
+type ASCIIHDU <: HDU
     fitsfile::FITSFile
     ext::Int
 end
@@ -111,7 +111,7 @@ function getindex(f::FITS, i::Integer)
     hdutype = fits_movabs_hdu(f.fitsfile, i)
     f.hdus[i] = (hdutype == :image_hdu ? ImageHDU(f.fitsfile, i) :
                  hdutype == :binary_table ? TableHDU(f.fitsfile, i) :
-                 hdutype == :ascii_table ? AsciiHDU(f.fitsfile, i) :
+                 hdutype == :ascii_table ? ASCIIHDU(f.fitsfile, i) :
                  error("bad HDU type"))
     return f.hdus[i]
 end
@@ -129,7 +129,7 @@ function getindex(f::FITS, name::String, ver::Int=0)
     hdutype = fits_get_hdu_type(f.fitsfile)
     f.hdus[i] = (hdutype == :image_hdu ? ImageHDU(f.fitsfile, i) :
                  hdutype == :binary_table ? TableHDU(f.fitsfile, i) :
-                 hdutype == :ascii_table ? AsciiHDU(f.fitsfile, i) :
+                 hdutype == :ascii_table ? ASCIIHDU(f.fitsfile, i) :
                  error("bad HDU type"))
     return f.hdus[i]
 end

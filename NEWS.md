@@ -14,3 +14,7 @@ v0.6.0 (unreleased)
 
 - Cleanup and correction of type specifications (e.g., `Cint` in place
   of `Int32`, `ASCIIString` in place of `String`)
+
+- `AsciiTable` renamed to `ASCIITable` (correctly camel-cased). This
+  shouldn't affect anyone because the name was not exported and there
+  were no methods that operated specifically on this type.

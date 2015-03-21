@@ -1,4 +1,3 @@
-
 import Base: checkbounds
 
 # -----------------------------------------------------------------------------
@@ -71,7 +70,7 @@ end
 
 function length(f::FITS)
     fits_assert_open(f.fitsfile)
-    int(fits_get_num_hdus(f.fitsfile))
+    @compat Int(fits_get_num_hdus(f.fitsfile))
 end
 
 endof(f::FITS) = length(f)
@@ -149,12 +148,12 @@ end
 # Header methods
 
 # returns one of: ASCIIString, Bool, Int, Float64, nothing
-function parse_header_val(val::String)
+function parse_header_val(val::ASCIIString)
     try
-        return int(val)
+        return parseint(val)
     catch
         try
-            return float(val)
+            return parsefloat(val)
         catch
         end
     end
@@ -200,9 +199,9 @@ function readheader(hdu::HDU)
         ccall((:ffgkyn,libcfitsio), Int32,
               (Ptr{Void},Int32,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Int32}),
               hdu.fitsfile.ptr, i, key, value, comment, status)
-        keys[i] = bytestring(convert(Ptr{Uint8},key))
-        values[i] = parse_header_val(bytestring(convert(Ptr{Uint8},value)))
-        comments[i] = bytestring(convert(Ptr{Uint8},comment))
+        keys[i] = bytestring(pointer(key))
+        values[i] = parse_header_val(bytestring(pointer(value)))
+        comments[i] = bytestring(pointer(comment))
     end
     fits_assert_ok(status[1])
     FITSHeader(keys, values, comments)

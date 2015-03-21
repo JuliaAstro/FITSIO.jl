@@ -1,4 +1,7 @@
-using Compat
+
+# NOTE: `convert(Vector{Int}, x)` can be changed to `Vector{Int}(x)` once
+#       v0.3 is no longer supported, or can be changed to
+#       `@compat Vector{Int}(x)` once syntax support is in Compat.
 
 # functions to convert to C integer types (this could be in Julia Base module):
 for (f, T) in ((:cint,  Cint),
@@ -123,7 +126,7 @@ end
 function fits_get_errstatus(status::Cint)
     msg = Array(Uint8, 31)
     ccall((:ffgerr,libcfitsio), Void, (Cint,Ptr{Uint8}), status, msg)
-    bytestring(convert(Ptr{Uint8},msg))
+    bytestring(pointer(msg))
 end
 
 function fits_assert_ok(status::Cint)
@@ -225,7 +228,7 @@ function fits_file_name(f::FITSFile)
           (Ptr{Void},Ptr{Uint8},Ptr{Cint}),
           f.ptr, value, status)
     fits_assert_ok(status[1])
-    bytestring(convert(Ptr{Uint8}, value))
+    bytestring(pointer(value))
 end
 
 # header keywords
@@ -249,8 +252,7 @@ function fits_read_keyword(f::FITSFile, keyname::ASCIIString)
         (Ptr{Void},Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
         f.ptr, bytestring(keyname), value, comment, status)
     fits_assert_ok(status[1])
-    bytestring(convert(Ptr{Uint8},value)),
-    bytestring(convert(Ptr{Uint8},comment))
+    bytestring(pointer(value)), bytestring(pointer(comment))
 end
 
 function fits_read_record(f::FITSFile, keynum::Integer)
@@ -260,7 +262,7 @@ function fits_read_record(f::FITSFile, keynum::Integer)
         (Ptr{Void},Cint,Ptr{Uint8},Ptr{Cint}),
         f.ptr, keynum, card, status)
     fits_assert_ok(status[1])
-    bytestring(convert(Ptr{Uint8},card))
+    bytestring(pointer(card))
 end
 
 function fits_read_keyn(f::FITSFile, keynum::Integer)
@@ -272,9 +274,8 @@ function fits_read_keyn(f::FITSFile, keynum::Integer)
         (Ptr{Void},Cint,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
         f.ptr, keynum, keyname, value, comment, status)
     fits_assert_ok(status[1])
-    bytestring(convert(Ptr{Uint8},keyname)),
-    bytestring(convert(Ptr{Uint8},value)),
-    bytestring(convert(Ptr{Uint8},comment))
+    (bytestring(pointer(keyname)), bytestring(pointer(value)),
+     bytestring(pointer(comment)))
 end
 
 function fits_write_key(f::FITSFile, keyname::ASCIIString,
@@ -443,7 +444,7 @@ function fits_create_img{S<:Integer}(f::FITSFile, t::Type, naxes::Vector{S})
     status = Cint[0]
     ccall((:ffcrimll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Ptr{Int64}, Ptr{Cint}),
-          f.ptr, _cfitsio_bitpix(t), length(naxes), int64(naxes), status)
+          f.ptr, _cfitsio_bitpix(t), length(naxes), convert(Vector{Int64}, naxes), status)
     fits_assert_ok(status[1])
 end
 
@@ -452,7 +453,7 @@ function fits_write_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     status = Cint[0]
     ccall((:ffppxll, libcfitsio), Cint,
         (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Cint}),
-        f.ptr, _cfitsio_datatype(T), int64(fpixel), nelements, data, status)
+        f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel), nelements, data, status)
     fits_assert_ok(status[1])
 end
 fits_write_pix(f::FITSFile, data::Array) = fits_write_pix(f, ones(Int64, length(size(data))), length(data), data)
@@ -462,7 +463,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S}, nelements::
     status = Cint[0]
     ccall((:ffgpxv,libcfitsio), Cint,
           (Ptr{Void},Cint,Ptr{Clong},Int64,Ptr{Void},Ptr{Void},Ptr{Cint},Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), int64(fpixel), nelements, &nullval, data, anynull, status)
+          f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel), nelements, &nullval, data, anynull, status)
     fits_assert_ok(status[1])
     anynull[1]
 end
@@ -471,7 +472,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S}, nelements::
     status = Cint[0]
     ccall((:ffgpxv,libcfitsio), Cint,
           (Ptr{Void},Cint,Ptr{Clong},Int64,Ptr{Void},Ptr{Void},Ptr{Cint},Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), int64(fpixel), nelements, C_NULL, data, anynull, status)
+          f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel), nelements, C_NULL, data, anynull, status)
     fits_assert_ok(status[1])
     anynull[1]
 end
@@ -531,27 +532,68 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
     end
 end
 
-function fits_get_col_repeat(f::FITSFile, colnum::Integer)
-    typecode = Cint[0]
-    repeat = Int64[0]
-    width = Int64[0]
-    status = Cint[0]
 
-    ccall((:ffgtclll, libcfitsio), Cint,
-          (Ptr{Void}, Cint, Ptr{Cint}, Ptr{Int64}, Ptr{Int64}, Ptr{Cint}),
-          f.ptr, colnum, typecode, repeat, width, status)
-
-    (repeat[1], width[1])
+# The function `fits_read_tdim()` returns the dimensions of a table column in a
+# binary table. Normally this information is given by the TDIMn keyword, but if
+# this keyword is not present then this routine returns `[r]` with `r` equals
+# to the repeat count in the TFORM keyword.
+let fn, T, ffgtdm, ffgtcl, ffeqty
+    if  promote_type(Int, Clong) == Clong
+        T = Clong
+        ffgtdm = "ffgtdm"
+        ffgtcl = "ffgtcl"
+        ffeqty = "ffeqty"
+    else
+        T = Int64
+        ffgtdm = "ffgtdmll"
+        ffgtcl = "ffgtclll"
+        ffeqty = "ffeqtyll"
+    end
+    @eval begin
+        function fits_get_coltype(ff::FITSFile, colnum::Integer)
+            typecode = Cint[0]
+            repcnt = $T[0]
+            width = $T[0]
+            status = Cint[0]
+            ccall(($ffgtcl,libcfitsio), Cint,
+                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
+                  ff.ptr, colnum, typecode, repcnt, width, status)
+            fits_assert_ok(status[1])
+            return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
+        end
+        function fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
+            typecode = Cint[0]
+            repcnt = $T[0]
+            width = $T[0]
+            status = Cint[0]
+            ccall(($ffeqty,libcfitsio), Cint,
+                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
+                  ff.ptr, colnum, typecode, repcnt, width, status)
+            fits_assert_ok(status[1])
+            return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
+        end
+        function fits_read_tdim(ff::FITSFile, colnum::Integer)
+            naxes = Array($T, 99) # 99 is the maximum allowed number of axes
+            naxis = Cint[0]
+            status = Cint[0]
+            ccall(($ffgtdm,libcfitsio), Cint,
+                  (Ptr{Void}, Cint, Cint, Ptr{Cint}, Ptr{$T}, Ptr{Cint}),
+                  ff.ptr, colnum, length(naxes), naxis, naxes, status)
+            fits_assert_ok(status[1])
+            return naxes[1:naxis[1]]
+        end
+    end
 end
 
+
 function fits_read_col(f::FITSFile,
-                        colnum::Integer,
-                        firstrow::Integer,
-                        firstelem::Integer,
-                        data::Array{ASCIIString})
+                       colnum::Integer,
+                       firstrow::Integer,
+                       firstelem::Integer,
+                       data::Array{ASCIIString})
 
     # Make sure there is enough room for each string
-    repcount, width = fits_get_col_repeat(f, colnum)
+    _, repcount, width = fits_get_coltype(f, colnum)
     for i in 1:length(data)
         # We need to call `repeat' N times in order to allocate N
         # strings
@@ -577,6 +619,7 @@ function fits_read_col(f::FITSFile,
     end
 end
 
+
 function fits_read_col{T}(f::FITSFile,
                           colnum::Integer,
                           firstrow::Integer,
@@ -591,16 +634,6 @@ function fits_read_col{T}(f::FITSFile,
           firstrow, firstelem, length(data),
           T[0], data, anynull, status)
     fits_assert_ok(status[1])
-end
-
-# old syntax provided for compatibility:
-function fits_read_col{T}(f::FITSFile,
-                          ::Type{T},
-                          colnum::Integer,
-                          firstrow::Integer,
-                          firstelem::Integer,
-                          data::Array{T})
-    fits_read_col(f, colnum, firstrow, firstelem, data)
 end
 
 function fits_write_col(f::FITSFile,
@@ -632,16 +665,6 @@ function fits_write_col{T}(f::FITSFile,
     fits_assert_ok(status[1])
 end
 
-# old syntax provided for compatibility:
-function fits_write_col{T}(f::FITSFile,
-                           ::Type{T},
-                           colnum::Integer,
-                           firstrow::Integer,
-                           firstelem::Integer,
-                           data::Array{T})
-    fits_write_col(f, colnum, firstrow, firstelem, data)
-end
-
 for (a,b) in ((:fits_insert_rows, "ffirow"),
               (:fits_delete_rows, "ffdrow"))
     @eval begin
@@ -651,58 +674,6 @@ for (a,b) in ((:fits_insert_rows, "ffirow"),
                   (Ptr{Void}, Int64, Int64, Ptr{Cint}),
                   f.ptr, firstrow, nrows, status)
             fits_assert_ok(status[1])
-        end
-    end
-end
-
-# The function `fits_read_tdim()` returns the dimensions of a table column in a
-# binary table. Normally this information is given by the TDIMn keyword, but if
-# this keyword is not present then this routine returns `[r]` with `r` equals
-# to the repeat count in the TFORM keyword.
-let fn, T, ffgtdm, ffgtcl, ffeqty
-    if  promote_type(Int, Clong) == Clong
-        T = Clong
-        ffgtdm = "ffgtdm"
-        ffgtcl = "ffgtcl"
-        ffeqty = "ffeqty"
-    else
-        T = Int64
-        ffgtdm = "ffgtdmll"
-        ffgtcl = "ffgtclll"
-        ffeqty = "ffeqtyll"
-    end
-    @eval begin
-        function fits_get_coltype(ff::FITSFile, colnum::Integer)
-            typecode = Cint[0]
-            repcnt = $T[0]
-            width = $T[0]
-            status = Cint[0]
-            ccall(($ffgtcl,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, typecode, repcnt, width, status)
-            fits_assert_ok(status[1])
-            return (int(typecode[1]), int(repcnt[1]), int(width[1]))
-        end
-        function fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
-            typecode = Cint[0]
-            repcnt = $T[0]
-            width = $T[0]
-            status = Cint[0]
-            ccall(($ffeqty,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, typecode, repcnt, width, status)
-            fits_assert_ok(status[1])
-            return (int(typecode[1]), int(repcnt[1]), int(width[1]))
-        end
-        function fits_read_tdim(ff::FITSFile, colnum::Integer)
-            naxes = Array($T, 99) # 99 is the maximum allowed number of axes
-            naxis = Cint[0]
-            status = Cint[0]
-            ccall(($ffgtdm,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Cint, Ptr{Cint}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, length(naxes), naxis, naxes, status)
-            fits_assert_ok(status[1])
-            return naxes[1:naxis[1]]
         end
     end
 end

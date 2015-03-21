@@ -1,5 +1,7 @@
 module FITSIO
 
+using Compat
+
 export FITSFile,
        fits_clobber_file,
        fits_close_file,
@@ -72,5 +74,6 @@ end
 
 include("cfitsio.jl")  # Low-level cfitsio functions
 include("hdutypes.jl")  # HDU type interface
+include("deprecations.jl")  # deprecated low-level cfitsio methods
 
 end # module

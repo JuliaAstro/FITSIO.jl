@@ -507,3 +507,39 @@ function copy_section(hdu::ImageHDU, destination::FITS, r::Range...)
     fits_copy_image_section(hdu.fitsfile, destination.fitsfile,
                             join([range2fits_str(ri) for ri in r], ','))
 end
+
+
+# -----------------------------------------------------------------------------
+# TableHDU methods
+
+function show(io::IO, hdu::TableHDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    ncols = fits_get_num_cols(hdu.fitsfile)
+
+    # allocate return arrays for column names & types
+    colnames_in = [Array(Cchar, 70) for i=1:ncols]
+    coltypes_in = [Array(Cchar, 70) for i=1:ncols]
+    nrows_in = Array(Int64, 1)
+    status = Cint[0]
+
+    # fits_read_btblhdrll (Can pass NULL for return fields not needed.)
+    ccall(("ffghbnll", libcfitsio), Cint,
+          (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
+           Ptr{Int64}, Ptr{Cint}, Ptr{Ptr{Cchar}},  # nrows, tfields, ttype
+           Ptr{Ptr{Cchar}}, Ptr{Ptr{Cchar}}, Ptr{Cchar},  # tform,tunit,extname
+           Ptr{Clong}, Ptr{Cint}),  # pcount, status
+          hdu.fitsfile.ptr, ncols, nrows_in, C_NULL, colnames_in, coltypes_in,
+          C_NULL, C_NULL, C_NULL, status)
+    fits_assert_ok(status[1])
+
+    # parse out results
+    nrows = nrows_in[1]
+    colnames = [bytestring(pointer(item)) for item in colnames_in]
+    coltypes = [bytestring(pointer(item)) for item in coltypes_in]
+
+    @printf io "file: %s\nextension: %d\ntype: BINARY TABLE\nrows: %d\ncolumns:" fits_file_name(hdu.fitsfile) hdu.ext nrows
+    for i in 1:ncols
+        @printf io "\n    %s (%s)" colnames[i] coltypes[i]
+    end
+end

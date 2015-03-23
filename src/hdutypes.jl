@@ -150,10 +150,10 @@ end
 # returns one of: ASCIIString, Bool, Int, Float64, nothing
 function parse_header_val(val::ASCIIString)
     try
-        return parseint(val)
+        return @compat parse(Int, val)
     catch
         try
-            return parsefloat(val)
+            return @compat parse(Float64, val)
         catch
         end
     end

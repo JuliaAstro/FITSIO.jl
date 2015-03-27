@@ -157,11 +157,19 @@ function parse_header_val(val::ASCIIString)
         catch
         end
     end
-    val == "T" ? true :
-    val == "F" ? false :
-    val == "" ? nothing :
-    length(val) > 1 && val[1] == '\'' && val[end] == '\'' ? val[2:end-1] :
-    error("couldn't parse keyword value: \"$val\"")
+    if val == "T"
+        return true
+    elseif val == "F"
+        return false
+    elseif val == ""
+        return nothing  # The value area is empty.
+    elseif length(val) > 1 && val[1] == '\'' && val[end] == '\''
+        return val[2:end-1]  # The value is a string. Strip the quotes.
+                             # TODO: strip any trailing white space?
+    else
+        return val  # The value (probably) doesn't comply with the FITS
+                    # standard. Give up and return the unparsed string.
+    end
 end
 
 function readkey(hdu::HDU, key::Integer)

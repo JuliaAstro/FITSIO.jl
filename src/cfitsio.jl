@@ -14,7 +14,8 @@
 #   `@compat Vector{T}(x)` once syntax support is in Compat.
 # - `convert(Cint, x)` can be changed to `Cint(x)` once v0.3 is not supported
 #   or `@compat Cint(x)` once syntax support is in Compat.
-#
+# - Once v0.3 is no longer supported, the type `Nothing` should be changed to
+#   `Void` (this is the type of `nothing`).
 #
 # The following table gives the correspondances between CFITSIO "types",
 # the BITPIX keyword and Julia types.
@@ -299,6 +300,15 @@ function fits_update_key(f::FITSFile, key::ASCIIString, value::FloatingPoint,
     ccall(("ffukyd", libcfitsio), Cint,
           (Ptr{Void}, Ptr{Uint8}, Cdouble, Cint, Ptr{Uint8}, Ptr{Cint}),
           f.ptr, key, value, -15, comment, status)
+    fits_assert_ok(status[1])
+end
+
+function fits_update_key(f::FITSFile, key::ASCIIString, value::Nothing,
+                         comment::Union(ASCIIString, Ptr{Void})=C_NULL)
+    status = Cint[0]
+    ccall(("ffukyu", libcfitsio), Cint,
+          (Ptr{Void}, Ptr{Uint8}, Ptr{Uint8}, Ptr{Cint}),
+          f.ptr, key, comment, status)
     fits_assert_ok(status[1])
 end
 

@@ -31,7 +31,11 @@ Header operations
 .. function:: readheader(hdu::HDU)
 
    Read the entire header from the given HDU and return a
-   ``FITSHeader`` object.
+   ``FITSHeader`` object. The value of each header record is parsed as
+   ``Int``, ``Float64``, ``ASCIIString``, ``Bool`` or ``nothing``
+   according to the FITS standard.  (If the value cannot be parsed
+   according to the FITS standard, the value is stored as the raw unparsed
+   ``ASCIIString``.)
 
 Image operations
 ----------------

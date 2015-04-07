@@ -24,7 +24,7 @@ end
 # FITS is analagous to FITSFile, but holds a reference to all of its
 # HDU objects. This is so that only a single HDU object is created for
 # each extension in the file. It also allows a FITS object to tell
-# previously created HDUs about events that happen to the file, such 
+# previously created HDUs about events that happen to the file, such
 # as deleting extensions. This could be done by, e.g., setting ext=-1 in
 # the HDU object.
 type FITS
@@ -191,10 +191,10 @@ function readheader(hdu::HDU)
 
     # Below, we use a direct call to ffgkyn so that we can keep reusing the
     # same buffers.
-    key = Array(Uint8, 9)
-    value = Array(Uint8, 71)
-    comment = Array(Uint8, 71)
-    status = Int32[0]
+    key = Array(Uint8, 81)
+    value = Array(Uint8, 81)
+    comment = Array(Uint8, 81)
+    status = Cint[0]
 
     nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
 
@@ -203,8 +203,8 @@ function readheader(hdu::HDU)
     values = Array(Any, nkeys)
     comments = Array(ASCIIString, nkeys)
     for i=1:nkeys
-        ccall((:ffgkyn,libcfitsio), Int32,
-              (Ptr{Void},Int32,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Int32}),
+        ccall((:ffgkyn,libcfitsio), Cint,
+              (Ptr{Void},Cint,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
               hdu.fitsfile.ptr, i, key, value, comment, status)
         keys[i] = bytestring(pointer(key))
         values[i] = parse_header_val(bytestring(pointer(value)))
@@ -289,7 +289,7 @@ const RESERVED_KEYS = ["SIMPLE","EXTEND","XTENSION","BITPIX","PCOUNT","GCOUNT",
                        "ZTENSION","ZPCOUNT","ZGCOUNT","ZBITPIX","ZEXTEND",
                        "CHECKSUM","DATASUM"]
 
-# This is more complex than you would think because some reserved keys 
+# This is more complex than you would think because some reserved keys
 # are only reserved when other keys are present. Also, in general a key
 # may appear more than once in a header.
 function reserved_key_indicies(hdr::FITSHeader)

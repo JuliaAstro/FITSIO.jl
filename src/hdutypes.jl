@@ -149,26 +149,38 @@ end
 
 # returns one of: ASCIIString, Bool, Int, Float64, nothing
 function parse_header_val(val::ASCIIString)
-    try
-        return @compat parse(Int, val)
-    catch
+    len = length(val)
+    if len < 1
+        return nothing
+    end
+    c = val[1]
+    if len == 1 && c == 'T'
+        return true
+    elseif len == 1 && c == 'F'
+        return false
+    elseif len >= 2 && c == '\'' && val[end] == '\''
+        # This is a character string; according to FITS standard, trailing
+        # spaces are insignificant, thus we remove them as well as the
+        # surrounding quotes.
+        return rstrip(val[2:end-1])
+    else
         try
-            return @compat parse(Float64, val)
+            return @compat parse(Int, val)
         catch
+            try
+                return @compat parse(Float64, val)
+            catch
+            end
         end
     end
-    if val == "T"
-        return true
-    elseif val == "F"
-        return false
-    elseif val == ""
-        return nothing  # The value area is empty.
-    elseif length(val) > 1 && val[1] == '\'' && val[end] == '\''
-        return val[2:end-1]  # The value is a string. Strip the quotes.
-    else
-        return val  # The value (probably) doesn't comply with the FITS
-                    # standard. Give up and return the unparsed string.
-    end
+    return val  # The value (probably) doesn't comply with the FITS
+                # standard. Give up and return the unparsed string.
+end
+
+function readkey(fitsfile::FITSFile, key::Integer)
+    fits_assert_open(fitsfile)
+    keyout, value, comment = fits_read_keyn(fitsfile, key)
+    keyout, parse_header_val(value), comment
 end
 
 function readkey(hdu::HDU, key::Integer)
@@ -178,6 +190,12 @@ function readkey(hdu::HDU, key::Integer)
     keyout, parse_header_val(value), comment
 end
 
+function readkey(fitsfile::FITSFile, key::ASCIIString)
+    fits_assert_open(fitsfile)
+    value, comment = fits_read_keyword(fitsfile, key)
+    parse_header_val(value), comment
+end
+
 function readkey(hdu::HDU, key::ASCIIString)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
@@ -185,9 +203,8 @@ function readkey(hdu::HDU, key::ASCIIString)
     parse_header_val(value), comment
 end
 
-function readheader(hdu::HDU)
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+function readheader(fitsfile::FITSFile)
+    fits_assert_open(fitsfile)
 
     # Below, we use a direct call to ffgkyn so that we can keep reusing the
     # same buffers.
@@ -196,7 +213,7 @@ function readheader(hdu::HDU)
     comment = Array(Uint8, 81)
     status = Cint[0]
 
-    nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
+    nkeys, morekeys = fits_get_hdrspace(fitsfile)
 
     # Initialize output arrays
     keys = Array(ASCIIString, nkeys)
@@ -205,7 +222,7 @@ function readheader(hdu::HDU)
     for i=1:nkeys
         ccall((:ffgkyn,libcfitsio), Cint,
               (Ptr{Void},Cint,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
-              hdu.fitsfile.ptr, i, key, value, comment, status)
+              fitsfile.ptr, i, key, value, comment, status)
         keys[i] = bytestring(pointer(key))
         values[i] = parse_header_val(bytestring(pointer(value)))
         comments[i] = bytestring(pointer(comment))
@@ -214,6 +231,11 @@ function readheader(hdu::HDU)
     FITSHeader(keys, values, comments)
 end
 
+function readheader(hdu::HDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    readheader(hdu.fitsfile)
+end
 
 length(hdr::FITSHeader) = length(hdr.keys)
 haskey(hdr::FITSHeader, key::ASCIIString) = in(key, hdr.keys)

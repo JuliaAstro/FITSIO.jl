@@ -157,11 +157,18 @@ function parse_header_val(val::ASCIIString)
         catch
         end
     end
-    val == "T" ? true :
-    val == "F" ? false :
-    val == "" ? nothing :
-    length(val) > 1 && val[1] == '\'' && val[end] == '\'' ? val[2:end-1] :
-    error("couldn't parse keyword value: \"$val\"")
+    if val == "T"
+        return true
+    elseif val == "F"
+        return false
+    elseif val == ""
+        return nothing  # The value area is empty.
+    elseif length(val) > 1 && val[1] == '\'' && val[end] == '\''
+        return val[2:end-1]  # The value is a string. Strip the quotes.
+    else
+        return val  # The value (probably) doesn't comply with the FITS
+                    # standard. Give up and return the unparsed string.
+    end
 end
 
 function readkey(hdu::HDU, key::Integer)
@@ -242,22 +249,36 @@ end
 
 # Display the header
 hdrval_to_str(val::Bool) = val ? "T" : "F"
-hdrval_to_str(val::Nothing) = ""
 hdrval_to_str(val::ASCIIString) = @sprintf "'%s'" val
 hdrval_to_str(val::Union(FloatingPoint, Integer)) = string(val)
-
 function show(io::IO, hdr::FITSHeader)
     for i=1:length(hdr)
-        if hdr.keys[i] == "COMMENT"
-            @printf "COMMENT %s\n" hdr.comments[i]
-        elseif hdr.keys[i] == "HISTORY"
-            @printf "HISTORY %s\n" hdr.comments[i]
-        else
-            @printf "%-8s= %20s" hdr.keys[i] hdrval_to_str(hdr.values[i]) 
-            if length(hdr.comments[i]) > 0
-                @printf " / %s" hdr.comments[i]
+        cl = length(hdr.comments[i])
+        if hdr.keys[i] == "COMMENT" || hdr.keys[i] == "HISTORY"
+            if cl > 71
+                @printf io "%s %s\n" hdr.keys[i] hdr.comments[i][1:71]
+            else
+                @printf io "%s %s\n" hdr.keys[i] hdr.comments[i]
             end
-            print("\n")
+        else
+            @printf io "%-8s" hdr.keys[i]
+            if hdr.values[i] === nothing
+                print(io, "                      ")
+                rc = 50  # remaining characters on line
+            else
+                val = hdrval_to_str(hdr.values[i])
+                @printf io "= %20s" val
+                rc = length(val) <= 20 ? 50 : 70 - length(val)
+            end
+
+            if cl > 0
+                if cl > rc - 3
+                    @printf io " / %s" hdr.comments[i][1:rc-3]
+                else
+                    @printf io " / %s" hdr.comments[i]
+                end
+            end
+            print(io, "\n")
         end
     end
 end

@@ -109,4 +109,70 @@ if isfile(fname)
     rm(fname)
 end
 
+# -----------------------------------------------------------------------------
+# parsing non-standard keyword records
+
+# `create_test_file` : Create a simple FITS file for testing, with the
+# given header string added after the required keywords. The length of
+# `header` must be a multiple of 80.  The purpose of creating such
+# files is to test the parsing of non-standard FITS keyword records
+# (non-standard files can't be created with cfitsio).
+
+function create_test_file(fname::String, header::ASCIIString)
+    if length(header) % 80 != 0
+        error("length of header must be multiple of 80")
+    end
+
+    f = open(fname, "w")
+
+    stdhdr = "SIMPLE  =                    T / file does conform to FITS standard             BITPIX  =                  -64 / number of bits per data pixel                  NAXIS   =                    2 / number of data axes                            NAXIS1  =                   10 / length of data axis 1                          NAXIS2  =                   10 / length of data axis 2                          EXTEND  =                    T / FITS dataset may contain extensions            "
+    endline = "END                                                                             "
+    data = fill(0., (10, 10))  # 10x10 array of big-endian Float64 zeros
+
+    # write header
+    write(f, stdhdr)
+    write(f, header)
+    write(f, endline)
+
+    # add padding
+    block_position = (length(stdhdr) + length(header) + length(endline)) % 2880
+    padding = (block_position == 0) ? 0 : 2880 - block_position
+    write(f, " "^padding)
+
+    # write data
+    write(f, data)
+
+    # add padding
+    block_position = sizeof(data) % 2880
+    padding = (block_position == 0) ? 0 : 2880 - block_position
+    write(f, fill(0x00, (padding,)))
+
+    close(f)
+end
+
+# Create a test file with a few non-standard keyword records
+fname = tempname() * ".fits"
+header = "        Warning: CROTA2 is inaccurate due to considerable skew                  SKEW    =  1.9511305786508E+00,  1.9234924037208E+00 /Measure of skew           "
+create_test_file(fname, header)
+
+# check that we can read the header (and data).
+f = FITS(fname)
+hdr = readheader(f[1])
+data = read(f[1])
+close(f)
+
+# test that we can write it back out.
+fname2 = tempname() * ".fits"
+f2 = FITS(fname2, "w")
+write(f2, data; header=hdr)
+close(f2)
+
+# clean up.
+if isfile(fname)
+    rm(fname)
+end
+if isfile(fname2)
+    rm(fname2)
+end
+
 println("All tests passed.")

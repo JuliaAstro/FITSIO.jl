@@ -24,7 +24,7 @@ end
 # FITS is analagous to FITSFile, but holds a reference to all of its
 # HDU objects. This is so that only a single HDU object is created for
 # each extension in the file. It also allows a FITS object to tell
-# previously created HDUs about events that happen to the file, such 
+# previously created HDUs about events that happen to the file, such
 # as deleting extensions. This could be done by, e.g., setting ext=-1 in
 # the HDU object.
 type FITS
@@ -149,26 +149,32 @@ end
 
 # returns one of: ASCIIString, Bool, Int, Float64, nothing
 function parse_header_val(val::ASCIIString)
-    try
-        return @compat parse(Int, val)
-    catch
+    len = length(val)
+    if len < 1
+        return nothing
+    end
+    c = val[1]
+    if len == 1 && c == 'T'
+        return true
+    elseif len == 1 && c == 'F'
+        return false
+    elseif len >= 2 && c == '\'' && val[end] == '\''
+        # This is a character string; according to FITS standard, trailing
+        # spaces are insignificant, thus we remove them as well as the
+        # surrounding quotes.
+        return rstrip(val[2:end-1])
+    else
         try
-            return @compat parse(Float64, val)
+            return @compat parse(Int, val)
         catch
+            try
+                return @compat parse(Float64, val)
+            catch
+            end
         end
     end
-    if val == "T"
-        return true
-    elseif val == "F"
-        return false
-    elseif val == ""
-        return nothing  # The value area is empty.
-    elseif length(val) > 1 && val[1] == '\'' && val[end] == '\''
-        return val[2:end-1]  # The value is a string. Strip the quotes.
-    else
-        return val  # The value (probably) doesn't comply with the FITS
-                    # standard. Give up and return the unparsed string.
-    end
+    return val  # The value (probably) doesn't comply with the FITS
+                # standard. Give up and return the unparsed string.
 end
 
 function readkey(hdu::HDU, key::Integer)
@@ -191,10 +197,10 @@ function readheader(hdu::HDU)
 
     # Below, we use a direct call to ffgkyn so that we can keep reusing the
     # same buffers.
-    key = Array(Uint8, 9)
-    value = Array(Uint8, 71)
-    comment = Array(Uint8, 71)
-    status = Int32[0]
+    key = Array(Uint8, 81)
+    value = Array(Uint8, 81)
+    comment = Array(Uint8, 81)
+    status = Cint[0]
 
     nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
 
@@ -203,8 +209,8 @@ function readheader(hdu::HDU)
     values = Array(Any, nkeys)
     comments = Array(ASCIIString, nkeys)
     for i=1:nkeys
-        ccall((:ffgkyn,libcfitsio), Int32,
-              (Ptr{Void},Int32,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Int32}),
+        ccall((:ffgkyn,libcfitsio), Cint,
+              (Ptr{Void},Cint,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
               hdu.fitsfile.ptr, i, key, value, comment, status)
         keys[i] = bytestring(pointer(key))
         values[i] = parse_header_val(bytestring(pointer(value)))
@@ -213,7 +219,6 @@ function readheader(hdu::HDU)
     fits_assert_ok(status[1])
     FITSHeader(keys, values, comments)
 end
-
 
 length(hdr::FITSHeader) = length(hdr.keys)
 haskey(hdr::FITSHeader, key::ASCIIString) = in(key, hdr.keys)
@@ -289,7 +294,7 @@ const RESERVED_KEYS = ["SIMPLE","EXTEND","XTENSION","BITPIX","PCOUNT","GCOUNT",
                        "ZTENSION","ZPCOUNT","ZGCOUNT","ZBITPIX","ZEXTEND",
                        "CHECKSUM","DATASUM"]
 
-# This is more complex than you would think because some reserved keys 
+# This is more complex than you would think because some reserved keys
 # are only reserved when other keys are present. Also, in general a key
 # may appear more than once in a header.
 function reserved_key_indicies(hdr::FITSHeader)

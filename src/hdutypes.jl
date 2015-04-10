@@ -177,23 +177,11 @@ function parse_header_val(val::ASCIIString)
                 # standard. Give up and return the unparsed string.
 end
 
-function readkey(fitsfile::FITSFile, key::Integer)
-    fits_assert_open(fitsfile)
-    keyout, value, comment = fits_read_keyn(fitsfile, key)
-    keyout, parse_header_val(value), comment
-end
-
 function readkey(hdu::HDU, key::Integer)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     keyout, value, comment = fits_read_keyn(hdu.fitsfile, key)
     keyout, parse_header_val(value), comment
-end
-
-function readkey(fitsfile::FITSFile, key::ASCIIString)
-    fits_assert_open(fitsfile)
-    value, comment = fits_read_keyword(fitsfile, key)
-    parse_header_val(value), comment
 end
 
 function readkey(hdu::HDU, key::ASCIIString)
@@ -203,8 +191,9 @@ function readkey(hdu::HDU, key::ASCIIString)
     parse_header_val(value), comment
 end
 
-function readheader(fitsfile::FITSFile)
-    fits_assert_open(fitsfile)
+function readheader(hdu::HDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     # Below, we use a direct call to ffgkyn so that we can keep reusing the
     # same buffers.
@@ -213,7 +202,7 @@ function readheader(fitsfile::FITSFile)
     comment = Array(Uint8, 81)
     status = Cint[0]
 
-    nkeys, morekeys = fits_get_hdrspace(fitsfile)
+    nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
 
     # Initialize output arrays
     keys = Array(ASCIIString, nkeys)
@@ -222,19 +211,13 @@ function readheader(fitsfile::FITSFile)
     for i=1:nkeys
         ccall((:ffgkyn,libcfitsio), Cint,
               (Ptr{Void},Cint,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
-              fitsfile.ptr, i, key, value, comment, status)
+              hdu.fitsfile.ptr, i, key, value, comment, status)
         keys[i] = bytestring(pointer(key))
         values[i] = parse_header_val(bytestring(pointer(value)))
         comments[i] = bytestring(pointer(comment))
     end
     fits_assert_ok(status[1])
     FITSHeader(keys, values, comments)
-end
-
-function readheader(hdu::HDU)
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    readheader(hdu.fitsfile)
 end
 
 length(hdr::FITSHeader) = length(hdr.keys)

@@ -543,3 +543,25 @@ function show(io::IO, hdu::TableHDU)
         @printf io "\n    %s (%s)" colnames[i] coltypes[i]
     end
 end
+
+# Read a table column into an array of the "equivalent type"
+function read(hdu::TableHDU, colname::ASCIIString)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+
+    # get number of rows in table
+    nrows = fits_get_num_rowsll(hdu.fitsfile.ptr)
+
+    # get index of column, given name
+    # use `fits_get_colnum` (need to write)
+    #  - lower/upper case?
+    #  - require exact match?
+
+    # get column type, using `fits_get_eqcoltype`
+    # (default should be to do the conversion, reading raw values can be an
+    # option)
+
+    # construct output array given length, shape and type
+
+    # use `fits_read_col` to actually read it.
+end

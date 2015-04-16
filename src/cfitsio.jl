@@ -569,6 +569,19 @@ for (a,b,T) in ((:fits_get_num_cols,  "ffgncl",  :Cint),
     end
 end
 
+function fits_get_colnum(f::FITSFile, tmplt::ASCIIString)
+    result = Cint[0]
+    status = Cint[0]
+
+    # Second argument is case-sensitivity of search: 0 = case-insensitive
+    #                                                1 = case-sensitive
+    ccall(("ffgcno", libcfitsio), Cint,
+          (Ptr{Void}, Cint, Ptr{Uint8}, Ptr{Cint}, Ptr{Cint}),
+          f.ptr, 0, tmplt, result, status)
+    fits_assert_ok(status[1])
+    return result[1]
+end
+
 # The function `fits_read_tdim()` returns the dimensions of a table column in a
 # binary table. Normally this information is given by the TDIMn keyword, but if
 # this keyword is not present then this routine returns `[r]` with `r` equals

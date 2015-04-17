@@ -641,13 +641,16 @@ function fits_read_col(f::FITSFile,
                        firstelem::Integer,
                        data::Array{ASCIIString})
 
-    # Make sure there is enough room for each string
-    _, repcount, width = fits_get_coltype(f, colnum)
-    for i in 1:length(data)
-        # We need to call `repeat' N times in order to allocate N
-        # strings
-        data[i] = repeat(" ", repcount)
-    end
+    # get repcount: total number of characters in each row
+    typecode, repcount, width = fits_get_coltype(f, colnum)
+
+    # ensure that data are strings, otherwise cfitsio will try to write
+    # formatted strings, which have widths given by fits_get_col_display_width
+    # not by the repeat value from fits_get_coltype.
+    abs(typecode) == 16 || error("not a string column")
+
+    # create an array of character buffers of the correct width
+    buffers = [Array(Uint8, repcount) for i in 1:length(data)]
 
     # Call the CFITSIO function
     anynull = Cint[0]
@@ -656,15 +659,15 @@ function fits_read_col(f::FITSFile,
           (Ptr{Void}, Cint, Int64, Int64, Int64,
            Ptr{Uint8}, Ptr{Ptr{Uint8}}, Ptr{Cint}, Ptr{Cint}),
           f.ptr, colnum, firstrow, firstelem, length(data),
-          "", data, anynull, status)
+          "", buffers, anynull, status)
     fits_assert_ok(status[1])
 
-    # Truncate the strings to the first NULL character (if present)
-    for idx in 1:length(data)
-        zeropos = search(data[idx], '\0')
-        if zeropos >= 1
-            data[idx] = (data[idx])[1:(zeropos-1)]
-        end
+    # Create strings out of our buffers, terminating at null characters.
+    # Note that `ASCIIString(x)` does not copy the buffer x.
+    for i in 1:length(data)
+        zeropos = search(buffers[i], 0x00)
+        data[i] = (zeropos >= 1) ? ASCIIString(buffers[i][1:(zeropos-1)]) :
+                                   ASCIIString(buffers[i])
     end
 end
 

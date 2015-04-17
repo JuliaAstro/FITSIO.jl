@@ -680,10 +680,10 @@ function fits_read_col{T}(f::FITSFile,
     status = Cint[0]
     ccall((:ffgcv,libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
-           Ptr{T}, Ptr{T}, Ptr{Cint}, Ptr{Cint}),
+           Ptr{Void}, Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
           f.ptr, _cfitsio_datatype(T), colnum,
           firstrow, firstelem, length(data),
-          T[0], data, anynull, status)
+          0, data, anynull, status)
     fits_assert_ok(status[1])
 end
 
@@ -709,7 +709,7 @@ function fits_write_col{T}(f::FITSFile,
     status = Cint[0]
     ccall((:ffpcl, libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
-           Ptr{T}, Ptr{Cint}),
+           Ptr{Void}, Ptr{Cint}),
           f.ptr, _cfitsio_datatype(T), colnum,
           firstrow, firstelem, length(data),
           data, status)

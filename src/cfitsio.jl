@@ -533,10 +533,11 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
         function ($a)(f::FITSFile, numrows::Integer,
                       coldefs::Array{ColumnDef}, extname::ASCIIString)
 
+            # get length and convert coldefs to three arrays of Ptr{Uint8}
             ntype = length(coldefs)
-            ttype = map((x) -> pointer(x[1].data), coldefs)
-            tform = map((x) -> pointer(x[2].data), coldefs)
-            tunit = map((x) -> pointer(x[3].data), coldefs)
+            ttype = [pointer(x[1]) for x in coldefs]
+            tform = [pointer(x[2]) for x in coldefs]
+            tunit = [pointer(x[3]) for x in coldefs]
             status = Cint[0]
 
             ccall(("ffcrtb", libcfitsio), Cint,

@@ -63,6 +63,23 @@ if isfile(fname2)
 end
 
 # -----------------------------------------------------------------------------
+# Tables
+
+fname = tempname() * ".fits"
+f = FITS(fname, "w")
+#for T in [Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
+#          Float32, Float64]
+for T in [Float64]
+    indata = T[1:100;]
+    write(f, "col1", indata)
+    outdata = read(f[2], "col1")
+    @test outdata == indata
+    @test eltype(outdata) == T
+end
+close(f)
+isfile(fname) && rm(fname)
+
+# -----------------------------------------------------------------------------
 # FITSHeader
 
 fname = tempname() * ".fits"

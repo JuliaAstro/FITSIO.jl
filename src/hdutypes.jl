@@ -518,16 +518,16 @@ function show(io::IO, hdu::TableHDU)
     ncols = fits_get_num_cols(hdu.fitsfile)
 
     # allocate return arrays for column names & types
-    colnames_in = [Array(Cchar, 70) for i=1:ncols]
-    coltypes_in = [Array(Cchar, 70) for i=1:ncols]
+    colnames_in = [Array(Uint8, 70) for i=1:ncols]
+    coltypes_in = [Array(Uint8, 70) for i=1:ncols]
     nrows_in = Array(Int64, 1)
     status = Cint[0]
 
     # fits_read_btblhdrll (Can pass NULL for return fields not needed.)
     ccall(("ffghbnll", libcfitsio), Cint,
           (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
-           Ptr{Int64}, Ptr{Cint}, Ptr{Ptr{Cchar}},  # nrows, tfields, ttype
-           Ptr{Ptr{Cchar}}, Ptr{Ptr{Cchar}}, Ptr{Cchar},  # tform,tunit,extname
+           Ptr{Int64}, Ptr{Cint}, Ptr{Ptr{Uint8}},  # nrows, tfields, ttype
+           Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}}, Ptr{Uint8},  # tform,tunit,extname
            Ptr{Clong}, Ptr{Cint}),  # pcount, status
           hdu.fitsfile.ptr, ncols, nrows_in, C_NULL, colnames_in, coltypes_in,
           C_NULL, C_NULL, C_NULL, status)
@@ -549,19 +549,66 @@ function read(hdu::TableHDU, colname::ASCIIString)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
-    # get number of rows in table
-    nrows = fits_get_num_rowsll(hdu.fitsfile.ptr)
+    nrows = fits_get_num_rowsll(hdu.fitsfile)
+    colnum = fits_get_colnum(hdu.fitsfile, colname)
 
-    # get index of column, given name
-    # use `fits_get_colnum` (need to write)
-    #  - lower/upper case?
-    #  - require exact match?
+    # use 'eqcoltype' rather than 'coltype': do the conversion for
+    # SCALE/ZERO automatically.
+    typecode, repcnt, width = fits_get_eqcoltype(hdu.fitsfile, colnum)
 
-    # get column type, using `fits_get_eqcoltype`
-    # (default should be to do the conversion, reading raw values can be an
-    # option)
+    # Get the dimension of each row
+    rowsize = fits_read_tdim(hdu.fitsfile, colnum)
+
+    # If string, first dimension is just number of characters, so remove it.
+    # If rowsize == [1], it isn't a vector column, so make it [].
+    if typecode == 16 || (length(rowsize) == 1 && rowsize[1] == 1)
+        rowsize = rowsize[2:end]
+    end
+
+    # BitArrays not yet supported.
+    (typecode == 1) && error("BitArray ('X') columns not yet supported")
 
     # construct output array given length, shape and type
+    T = _cfitsio_datatype(typecode)
+    result = Array(T, rowsize..., nrows)
 
-    # use `fits_read_col` to actually read it.
+    # TODO: allow altering first row and first element.
+    fits_read_col(hdu.fitsfile, colnum, 1, 1, result)
+
+    return result
+end
+
+# Add a new TableHDU to a FITS object
+function write{T}(f::FITS, name::ASCIIString, data::Array{T};
+                  header::Union(Nothing, FITSHeader)=nothing)
+    fits_assert_open(f.fitsfile)
+
+    # calculate repeat: product of all but last dimension, which is rows
+    r = 1
+    s = size(data)
+    for i=1:length(s)-1
+        r *= s[i]
+    end
+
+    tf = "$r$(fits_tform(T))"
+
+    # call ffcrtb directly (rather than using fits_create_binary_tbl)
+    # so we can pass null pointers for tunit and extname
+    ttype = [pointer(name)]
+    tform = [pointer(tf)]
+    tunit = C_NULL
+    extname = C_NULL
+    status = Cint[0]
+    ccall(("ffcrtb", libcfitsio), Cint,
+          (Ptr{Void}, Cint, Int64, Cint, Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}},
+           Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Cint}),
+          f.fitsfile.ptr, 2, 0, 1,  # ptr, table type, nrows, ncols,
+          ttype, tform, tunit, extname, status)
+    fits_assert_ok(status[1])
+
+    if isa(header, FITSHeader)
+        write_header(f.fitsfile, header, true)
+    end
+    fits_write_col(f.fitsfile, 1, 1, 1, data)
+    nothing
 end

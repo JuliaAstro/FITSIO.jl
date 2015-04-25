@@ -79,23 +79,29 @@ for (T, code) in ((Uint8,     8), # BYTE_IMG
     end
 end
 
-for (T, code) in ((Uint8,       11),
-                  (Int8,        12),
-                  (Bool,        14),
-                  (ASCIIString, 16),
-                  (Cushort,     20),
-                  (Cshort,      21),
-                  (Cuint,       30),
-                  (Cint,        31),
-                  (Culong,      40),
-                  (Clong,       41),
-                  (Float32,     42),
-                  (Int64,       81),
-                  (Float64,     82),
-                  (Complex64,   83),
-                  (Complex128, 163))
+const _DATATYPES = Dict{Int, DataType}()
+for (T, code, tform) in ((Uint8,       11, 'B'),
+                         (Int8,        12, 'S'),
+                         (Bool,        14, 'L'),
+                         (ASCIIString, 16, 'A'),
+                         (Cushort,     20, 'U'),
+                         (Cshort,      21, 'I'),
+                         (Cuint,       30, 'V'),
+                         (Cint,        31, nothing),
+                         (Culong,      40, nothing),
+                         (Clong,       41, nothing),
+                         (Float32,     42, 'E'),
+                         (Int64,       81, 'K'),
+                         (Float64,     82, 'D'),
+                         (Complex64,   83, 'C'),
+                         (Complex128, 163, 'M'))
+    _DATATYPES[code] = T
     @eval _cfitsio_datatype(::Type{$T}) = convert(Cint, $code)
+    if tform !== nothing
+        @eval fits_tform(::Type{$T}) = $tform
+    end
 end
+_cfitsio_datatype(code::Integer) = _DATATYPES[code]
 
 
 type FITSFile
@@ -642,7 +648,7 @@ function fits_read_col(f::FITSFile,
                        data::Array{ASCIIString})
 
     # get repcount: total number of characters in each row
-    typecode, repcount, width = fits_get_coltype(f, colnum)
+    typecode, repcount, width = fits_get_eqcoltype(f, colnum)
 
     # ensure that data are strings, otherwise cfitsio will try to write
     # formatted strings, which have widths given by fits_get_col_display_width

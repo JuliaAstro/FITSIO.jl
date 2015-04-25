@@ -61,3 +61,17 @@ Image operations
    Same as above but only copy odd columns in y::
 
        copy_section(hdu, f, 1:200, 1:2:200)
+
+
+Table Operations
+----------------
+
+.. function:: read(hdu, colname)
+
+   Read a column as an array from the given table HDU.
+
+   The column name may contain wild card characters (*, ?, or #). The
+   `*' wild card character matches any sequence of characters
+   (including zero characters) and the `?' character matches any
+   single character. The # wildcard will match any consecutive string
+   of decimal digits (0-9). The string must match a unique column.

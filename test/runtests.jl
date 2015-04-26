@@ -67,14 +67,24 @@ end
 
 fname = tempname() * ".fits"
 f = FITS(fname, "w")
-#for T in [Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
-#          Float32, Float64]
-for T in [Float64]
-    indata = T[1:100;]
-    write(f, "col1", indata)
-    outdata = read(f[2], "col1")
-    @test outdata == indata
-    @test eltype(outdata) == T
+
+# Create some fake data
+indata = Dict{ASCIIString, Array}()
+for (i, T) in enumerate([Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
+                         Float32, Float64])
+    indata["col$i"] = T[1:20;]
+end
+i = length(indata) + 1
+indata["col$i"] = [randstring(10) for j=1:20]
+i += 1
+
+
+write(f, indata)
+
+for (colname, incol) in indata
+    outcol = read(f[2], colname)
+    @test outcol == incol
+    @test eltype(outcol) == eltype(incol)
 end
 close(f)
 isfile(fname) && rm(fname)

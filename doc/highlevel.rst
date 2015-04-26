@@ -5,7 +5,7 @@ High-level API reference
 This is currently an incomplete reference of methods for ``FITS``,
 ``FITSHeader``, and ``ImageHDU`` types.
 
-FITS operations
+File operations
 ---------------
 
 .. function:: FITS(filename::String, mode::String="r")
@@ -19,11 +19,14 @@ FITS operations
    Return the number of HDUs in ``f``.
 
 .. function:: getindex(f::FITS, i::Integer)
+
+   Return the ``i``-th HDU. Same as ``f[i]``.
+
 .. function:: getindex(f::FITS, name::String, ver::Int=0)
 
-   In the first form, returns the ``i``-th HDU. Same as ``f[i]``.
-   In the second form returns the HDU by HDUNAME (EXTNAME), and optionally
-   HDUVER (EXTVER). Same as ``f[name]`` or ``f[name, ver]``.
+   Returns the HDU containing the given HDUNAME (EXTNAME) keyword,
+   and optionally the given HDUVER (EXTVER) keyword.
+   Same as ``f[name]`` or ``f[name, ver]``.
 
 Header operations
 -----------------
@@ -66,7 +69,15 @@ Image operations
 Table Operations
 ----------------
 
-.. function:: read(hdu, colname)
+.. function:: write(f::FITS, data::Dict)
+
+   Create a new table extension and write data to it. If the FITS file is
+   currently empty then a dummy primary array will be created before
+   appending the table extension to it. ``data`` should be a dictionary
+   with ASCIIString keys (giving the column names) and Array values
+   (giving data to write to each column).
+
+.. function:: read(hdu::TableHDU, colname)
 
    Read a column as an array from the given table HDU.
 

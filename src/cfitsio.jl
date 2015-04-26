@@ -63,15 +63,15 @@
 #
 
 const bitpix_to_type = Dict{Cint, DataType}()
-for (T, code) in ((Uint8,     8), # BYTE_IMG
+for (T, code) in ((UInt8,     8), # BYTE_IMG
                   (Int16,    16), # SHORT_IMG
                   (Int32,    32), # LONG_IMG
                   (Int64,    64), # LONGLONG_IMG
                   (Float32, -32), # FLOAT_IMG
                   (Float64, -64), # DOUBLE_IMG
                   (Int8,     10), # SBYTE_IMG
-                  (Uint16,   20), # USHORT_IMG
-                  (Uint32,   40)) # ULONG_IMG
+                  (UInt16,   20), # USHORT_IMG
+                  (UInt32,   40)) # ULONG_IMG
     local value = convert(Cint, code)
     @eval begin
         bitpix_to_type[$value] = $T
@@ -79,30 +79,55 @@ for (T, code) in ((Uint8,     8), # BYTE_IMG
     end
 end
 
-const _DATATYPES = Dict{Int, DataType}()
-for (T, code, tform) in ((Uint8,       11, 'B'),
-                         (Int8,        12, 'S'),
-                         (Bool,        14, 'L'),
-                         (ASCIIString, 16, 'A'),
-                         (Cushort,     20, 'U'),
-                         (Cshort,      21, 'I'),
-                         (Cuint,       30, 'V'),
-                         (Cint,        31, nothing),
-                         (Culong,      40, nothing),
-                         (Clong,       41, nothing),
-                         (Float32,     42, 'E'),
-                         (Int64,       81, 'K'),
-                         (Float64,     82, 'D'),
-                         (Complex64,   83, 'C'),
-                         (Complex128, 163, 'M'))
-    _DATATYPES[code] = T
-    @eval _cfitsio_datatype(::Type{$T}) = convert(Cint, $code)
-    if tform !== nothing
-        @eval fits_tform(::Type{$T}) = $tform
-    end
+# Table type conversions
+# ----------------------
+# fits_tform_letter(::DataType) -> Char
+#     Given Julia array eltype, what FITS table letter code should be used
+#     when defining a table column? For example, to store an array of UInt32,
+#     use the TFORM letter 'V'.
+# CFITSIO_COLTYPE[::Int] -> DataType
+#     Given return code from fits_get_eqcoltype(), what type of Julia array
+#     should be constructed? For example, for 'V' columns,
+#     fits_get_eqcoltype() returns 40. This function maps that code back to
+#     UInt32. This also illustrates why we can't simply use the normal CFITSIO
+#     datatype mapping: 40 would map to Culong, which is a 64-bit unsigned
+#     integer on 64-bit UNIX platforms.
+const CFITSIO_COLTYPE = Dict{Int, DataType}()
+for (T, tform, code) in ((UInt8,       'B',  11),
+                         (Int8,        'S',  12),
+                         (Bool,        'L',  14),
+                         (ASCIIString, 'A',  16),
+                         (UInt16,      'U',  20),
+                         (Int16,       'I',  21),
+                         (UInt32,      'V',  40),
+                         (Int32,       'J',  41),
+                         (Int64,       'K',  81),
+                         (Float32,     'E',  42),
+                         (Float64,     'D',  82),
+                         (Complex64,   'C',  83),
+                         (Complex128,  'M', 163))
+    @eval fits_tform_char(::Type{$T}) = $tform
+    CFITSIO_COLTYPE[code] = T
 end
-_cfitsio_datatype(code::Integer) = _DATATYPES[code]
 
+# TODO: elimiate duplicates (Clong vs Int64 or Clong vs Cint) ?
+for (T, code) in ((UInt8,       11),
+                  (Int8,        12),
+                  (Bool,        14),
+                  (ASCIIString, 16),
+                  (Cushort,     20),
+                  (Cshort,      21),
+                  (Cuint,       30),
+                  (Cint,        31),
+                  (Culong,      40),
+                  (Clong,       41),
+                  (Float32,     42),
+                  (Int64,       81),
+                  (Float64,     82),
+                  (Complex64,   83),
+                  (Complex128, 163))
+    @eval _cfitsio_datatype(::Type{$T}) = convert(Cint, $code)
+end
 
 type FITSFile
     ptr::Ptr{Void}
@@ -597,11 +622,13 @@ let fn, T, ffgtdm, ffgtcl, ffeqty
     if  promote_type(Int, Clong) == Clong
         T = Clong
         ffgtdm = "ffgtdm"
+        ffptdm = "ffptdm"
         ffgtcl = "ffgtcl"
         ffeqty = "ffeqty"
     else
         T = Int64
         ffgtdm = "ffgtdmll"
+        ffptdm = "ffptdmll"
         ffgtcl = "ffgtclll"
         ffeqty = "ffeqtyll"
     end
@@ -637,6 +664,14 @@ let fn, T, ffgtdm, ffgtcl, ffeqty
                   ff.ptr, colnum, length(naxes), naxis, naxes, status)
             fits_assert_ok(status[1])
             return naxes[1:naxis[1]]
+        end
+        function fits_write_tdim(ff::FITSFile, colnum::Integer,
+                                 naxes::Array{$T})
+            status = Cint[0]
+            ccall(($ffptdm, libcfitsio), Cint,
+                  (Ptr{Void}, Cint, Cint, Ptr{$T}, Ptr{Cint}),
+                  ff.ptr, colnum, length(naxes), naxes, status)
+            fits_assert_ok(status[1])
         end
     end
 end

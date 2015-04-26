@@ -1,5 +1,3 @@
-import Base: checkbounds
-
 # -----------------------------------------------------------------------------
 # Types
 
@@ -569,7 +567,7 @@ function read(hdu::TableHDU, colname::ASCIIString)
     (typecode == 1) && error("BitArray ('X') columns not yet supported")
 
     # construct output array given length, shape and type
-    T = _cfitsio_datatype(typecode)
+    T = CFITSIO_COLTYPE[typecode]
     result = Array(T, rowsize..., nrows)
 
     # TODO: allow altering first row and first element.
@@ -578,37 +576,76 @@ function read(hdu::TableHDU, colname::ASCIIString)
     return result
 end
 
+## Helper functions for writing a table
+
+# get fits tdim shape for given array
+fits_tdim(A::Array) = (ndims(A) == 1)? [1]: [size(A, i) for i=1:ndims(A)-1]
+function fits_tdim(A::Array{ASCIIString})
+    n = ndims(A)
+    tdim = Array(Int, n)
+    tdim[1] = maximum(length, A)
+    for i=2:n
+        tdim[n] = size(A, n-1)
+    end
+    tdim
+end
+
+# get fits tform string for given array
+fits_tform{T}(A::Array{T}) = "$(prod(fits_tdim(A)))$(fits_tform_char(T))"
+
+
 # Add a new TableHDU to a FITS object
-function write{T}(f::FITS, name::ASCIIString, data::Array{T};
-                  header::Union(Nothing, FITSHeader)=nothing)
+#
+# TODO:
+# - separate method for Dict, (colnames, data)
+# - colnames option (for order)
+# - data as array of arrays (with colnames)
+# - ASCII tables
+# - units as array (every column would have units)
+
+function write(f::FITS, data::Dict{ASCIIString, Array};
+               units=nothing, header=nothing, hdutype=TableHDU, extname=nothing)
     fits_assert_open(f.fitsfile)
 
-    # calculate repeat: product of all but last dimension, which is rows
-    r = 1
-    s = size(data)
-    for i=1:length(s)-1
-        r *= s[i]
+    # TODO: ASCII-specific TFORM and check supported types
+    hdutype == TableHDU || error("ASCII tables not yet supported")
+
+    ncols = length(data)
+    ttype = [pointer(name) for name in keys(data)]
+    tform_str = [fits_tform(a) for a in values(data)]  # keep strings visible
+    tform = [pointer(s) for s in tform_str]
+
+    # get units
+    if isa(units, Nothing)
+        tunit = C_NULL
+    else
+        tunit = Ptr{Uint8}[(haskey(units, name)? pointer(units[name]): C_NULL)
+                           for name in keys(data)]
     end
+    
+    # extension name
+    extname_ptr = (isa(extname, Nothing) ? convert(Ptr{Uint8}, C_NULL) :
+                   pointer(extname))
 
-    tf = "$r$(fits_tform(T))"
-
-    # call ffcrtb directly (rather than using fits_create_binary_tbl)
-    # so we can pass null pointers for tunit and extname
-    ttype = [pointer(name)]
-    tform = [pointer(tf)]
-    tunit = C_NULL
-    extname = C_NULL
     status = Cint[0]
     ccall(("ffcrtb", libcfitsio), Cint,
           (Ptr{Void}, Cint, Int64, Cint, Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}},
            Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Cint}),
-          f.fitsfile.ptr, 2, 0, 1,  # ptr, table type, nrows, ncols,
-          ttype, tform, tunit, extname, status)
+          f.fitsfile.ptr, 2, 0, ncols,  # ptr, table type, nrows, ncols,
+          ttype, tform, tunit, extname_ptr, status)
     fits_assert_ok(status[1])
+
+    # write tdim info
+    for (i, a) in enumerate(values(data))
+        fits_write_tdim(f.fitsfile, i, fits_tdim(a))
+    end
 
     if isa(header, FITSHeader)
         write_header(f.fitsfile, header, true)
     end
-    fits_write_col(f.fitsfile, 1, 1, 1, data)
+
+    for (i, a) in enumerate(values(data))
+        fits_write_col(f.fitsfile, i, 1, 1, a)
+    end
     nothing
 end

@@ -603,8 +603,9 @@ fits_tform{T}(A::Array{T}) = "$(prod(fits_tdim(A)))$(fits_tform_char(T))"
 # - ASCII tables
 # - units as array (every column would have units)
 
-function write(f::FITS, data::Dict{ASCIIString, Array};
-               units=nothing, header=nothing, hdutype=TableHDU, extname=nothing)
+function write{T}(f::FITS, data::Dict{ASCIIString, T};
+                  units=nothing, header=nothing, hdutype=TableHDU,
+                  extname=nothing)
     fits_assert_open(f.fitsfile)
 
     # TODO: ASCII-specific TFORM and check supported types

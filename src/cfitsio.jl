@@ -525,7 +525,7 @@ end
 # ASCII/binary table HDU functions
 
 # The three fields are: ttype, tform, tunit (CFITSIO's terminology)
-typealias ColumnDef (ASCIIString, ASCIIString, ASCIIString)
+typealias ColumnDef @compat Tuple{ASCIIString, ASCIIString, ASCIIString}
 
 for (a,b) in ((:fits_create_binary_tbl, 2),
               (:fits_create_ascii_tbl,  1))

@@ -543,7 +543,7 @@ function show(io::IO, hdu::TableHDU)
 end
 
 # Read a table column into an array of the "equivalent type"
-function read(hdu::TableHDU, colname::ASCIIString)
+function read(hdu::Union(TableHDU, ASCIITableHDU), colname::ASCIIString)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
@@ -590,30 +590,29 @@ function fits_tdim(A::Array{ASCIIString})
     tdim
 end
 
-# get fits tform string for given array
-fits_tform{T}(A::Array{T}) = "$(prod(fits_tdim(A)))$(fits_tform_char(T))"
+# get fits tform string for given table type and data array.
+fits_tform{T}(::Type{TableHDU}, A::Array{T}) = "$(prod(fits_tdim(A)))$(fits_tform_char(T))"
+fits_tform(::Type{ASCIITableHDU}, ::Vector{Int16}) = "I7"
+fits_tform(::Type{ASCIITableHDU}, ::Vector{Int32}) = "I12"
+fits_tform(::Type{ASCIITableHDU}, ::Vector{Float32}) = "E26.17"
+fits_tform(::Type{ASCIITableHDU}, ::Vector{Float64}) = "E26.17"
+fits_tform(::Type{ASCIITableHDU}, A::Vector{ASCIIString}) = "A$(maximum(length, A))"
+fits_tform(::Type{ASCIITableHDU}, A::Vector) = error("unsupported type: $(eltype(A))")
+fits_tform(::Type{ASCIITableHDU}, A::Array) = error("only 1-d arrays supported: dimensions are $(size(A))")
 
+table_type_code(::Type{ASCIITableHDU}) = convert(Cint, 1)
+table_type_code(::Type{TableHDU}) = convert(Cint, 2)
 
 # Add a new TableHDU to a FITS object
-#
-# TODO:
-# - separate method for Dict, (colnames, data)
-# - colnames option (for order)
-# - data as array of arrays (with colnames)
-# - ASCII tables
-# - units as array (every column would have units)
-
-function write{T}(f::FITS, data::Dict{ASCIIString, T};
-                  units=nothing, header=nothing, hdutype=TableHDU,
-                  extname=nothing)
+function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
+                    hdutype, extname, header, units)
     fits_assert_open(f.fitsfile)
 
-    # TODO: ASCII-specific TFORM and check supported types
-    hdutype == TableHDU || error("ASCII tables not yet supported")
+    # create an array of tform strings (which we will create pointers to)
+    tform_str = [fits_tform(hdutype, a) for a in coldata]
 
-    ncols = length(data)
-    ttype = [pointer(name) for name in keys(data)]
-    tform_str = [fits_tform(a) for a in values(data)]  # keep strings visible
+    ncols = length(coldata)
+    ttype = [pointer(name) for name in colnames]
     tform = [pointer(s) for s in tform_str]
 
     # get units
@@ -621,7 +620,7 @@ function write{T}(f::FITS, data::Dict{ASCIIString, T};
         tunit = C_NULL
     else
         tunit = Ptr{Uint8}[(haskey(units, name)? pointer(units[name]): C_NULL)
-                           for name in keys(data)]
+                           for name in colnames]
     end
     
     # extension name
@@ -632,12 +631,12 @@ function write{T}(f::FITS, data::Dict{ASCIIString, T};
     ccall(("ffcrtb", libcfitsio), Cint,
           (Ptr{Void}, Cint, Int64, Cint, Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}},
            Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Cint}),
-          f.fitsfile.ptr, 2, 0, ncols,  # ptr, table type, nrows, ncols,
+          f.fitsfile.ptr, table_type_code(hdutype), 0, ncols,  # 0 = nrows
           ttype, tform, tunit, extname_ptr, status)
     fits_assert_ok(status[1])
 
     # write tdim info
-    for (i, a) in enumerate(values(data))
+    for (i, a) in enumerate(coldata)
         fits_write_tdim(f.fitsfile, i, fits_tdim(a))
     end
 
@@ -645,8 +644,25 @@ function write{T}(f::FITS, data::Dict{ASCIIString, T};
         write_header(f.fitsfile, header, true)
     end
 
-    for (i, a) in enumerate(values(data))
+    for (i, a) in enumerate(coldata)
         fits_write_col(f.fitsfile, i, 1, 1, a)
     end
     nothing
+end
+
+function write(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector;
+               units=nothing, header=nothing, hdutype=TableHDU,
+               extname=nothing)
+    if length(colnames) != length(coldata)
+        error("length of colnames and length of coldata must match")
+    end
+    write_impl(f, colnames, coldata, hdutype, extname, header, units)
+end
+
+function write{T}(f::FITS, data::Dict{ASCIIString, T};
+                  units=nothing, header=nothing, hdutype=TableHDU,
+                  extname=nothing)
+    colnames = collect(keys(data))
+    coldata = collect(values(data))
+    write_impl(f, colnames, coldata, hdutype, extname, header, units)
 end

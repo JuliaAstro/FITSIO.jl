@@ -68,21 +68,36 @@ end
 fname = tempname() * ".fits"
 f = FITS(fname, "w")
 
-# Create some fake data
+# Binary Table data.
 indata = Dict{ASCIIString, Array}()
 for (i, T) in enumerate([Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
-                         Float32, Float64])
+                         Float32, Float64, Complex64, Complex128])
     indata["col$i"] = T[1:20;]
 end
 i = length(indata) + 1
 indata["col$i"] = [randstring(10) for j=1:20]
 i += 1
+indata["col$i"] = [true for i=1:20]
 
+# ASCII table data
+indata_ascii = Dict{ASCIIString, Array}()
+for (i, T) in enumerate([Int16, Int32, Float32, Float64])
+    indata["col$i"] = T[1:20;]
+end
+i = length(indata) + 1
+indata["col$i"] = [randstring(10) for j=1:20]
 
 write(f, indata)
+write(f, indata_ascii; hdutype=ASCIITableHDU)
 
 for (colname, incol) in indata
     outcol = read(f[2], colname)
+    @test outcol == incol
+    @test eltype(outcol) == eltype(incol)
+end
+
+for (colname, incol) in indata_ascii
+    outcol = read(f[3], colname)
     @test outcol == incol
     @test eltype(outcol) == eltype(incol)
 end

@@ -698,7 +698,7 @@ function fits_read_col{T}(f::FITSFile,
            Ptr{Void}, Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
           f.ptr, cfitsio_typecode(T), colnum,
           firstrow, firstelem, length(data),
-          0, data, anynull, status)
+          C_NULL, data, anynull, status)
     fits_assert_ok(status[1])
 end
 

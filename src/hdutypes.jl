@@ -492,13 +492,11 @@ end
 # be copied to the output image. The common WCS keywords will be
 # updated if necessary to correspond to the coordinates of the section.
 
-# TODO: Change Range types once v0.2 is no longer supported.
-
-range2fits_str(r::Range1) = @sprintf "%d:%d" first(r) last(r)
-range2fits_str(r::Range) = @sprintf "%d:%d:%d" first(r) last(r) step(r)
+range2fits_str(r::UnitRange) = @sprintf "%d:%d" first(r) last(r)
+range2fits_str(r::StepRange) = @sprintf "%d:%d:%d" first(r) last(r) step(r)
 fits_copy_image_section(fin::FITSFile, fout::FITSFile, r...) =
     fits_copy_image_section(fin, fout, join([range2str(ri) for ri in r], ','))
-function copy_section(hdu::ImageHDU, destination::FITS, r::Range...)
+function copy_section(hdu::ImageHDU, destination::FITS, r::Range{Int}...)
     fits_assert_open(hdu.fitsfile)
     fits_assert_open(destination.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)

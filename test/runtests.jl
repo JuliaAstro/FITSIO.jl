@@ -1,5 +1,6 @@
 using FITSIO
 using Base.Test
+using Compat
 
 # -----------------------------------------------------------------------------
 # Images
@@ -106,8 +107,9 @@ write(f, indata; hdutype=ASCIITableHDU)
 
 # For ASCII tables, the types don't round trip so we need to define the
 # expected output type for each input type.
-expected_type = [Int16=>Int32, Int32=>Int32, Float32=>Float64,
-                 Float64=>Float64, ASCIIString=>ASCIIString]
+expected_type = @compat Dict(Int16=>Int32, Int32=>Int32,
+                             Float32=>Float64, Float64=>Float64,
+                             ASCIIString=>ASCIIString)
 for (colname, incol) in indata
     outcol = read(f[3], colname)  # table is in extension 3
     @test outcol == incol

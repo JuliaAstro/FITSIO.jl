@@ -682,7 +682,7 @@ function fits_read_col(f::FITSFile,
                        firstelem::Integer,
                        data::Array{ASCIIString})
 
-    # get repcount: total number of characters in each row
+    # get width: number of characters in each string
     typecode, repcount, width = fits_get_eqcoltype(f, colnum)
 
     # ensure that data are strings, otherwise cfitsio will try to write
@@ -691,7 +691,7 @@ function fits_read_col(f::FITSFile,
     abs(typecode) == 16 || error("not a string column")
 
     # create an array of character buffers of the correct width
-    buffers = [Array(Uint8, repcount) for i in 1:length(data)]
+    buffers = [Array(Uint8, width) for i in 1:length(data)]
 
     # Call the CFITSIO function
     anynull = Cint[0]
@@ -703,7 +703,7 @@ function fits_read_col(f::FITSFile,
           "", buffers, anynull, status)
     fits_assert_ok(status[1])
 
-    # Create strings out of our buffers, terminating at null characters.
+    # Create strings out of the buffers, terminating at null characters.
     # Note that `ASCIIString(x)` does not copy the buffer x.
     for i in 1:length(data)
         zeropos = search(buffers[i], 0x00)

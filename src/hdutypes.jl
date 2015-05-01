@@ -542,6 +542,41 @@ function show(io::IO, hdu::TableHDU)
     end
 end
 
+function show(io::IO, hdu::ASCIITableHDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    ncols = fits_get_num_cols(hdu.fitsfile)
+
+    # allocate return arrays for column names & types
+    colnames_in = [Array(Uint8, 70) for i=1:ncols]
+    coltypes_in = [Array(Uint8, 70) for i=1:ncols]
+    nrows_in = Array(Int64, 1)
+    status = Cint[0]
+
+    # fits_read_atblhdrll (Can pass NULL for return fields not needed)
+    ccall(("ffghtbll", libcfitsio), Cint,
+          (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
+           Ptr{Int64}, Ptr{Int64}, Ptr{Cint},  # rowlen, nrows, tfields
+           Ptr{Ptr{Uint8}}, Ptr{Clong}, Ptr{Ptr{Uint8}},  # ttype, tbcol, tform
+           Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Cint}),  # tunit, extname, status
+          hdu.fitsfile.ptr, ncols,
+          C_NULL, nrows_in, C_NULL,
+          colnames_in, C_NULL, coltypes_in,
+          C_NULL, C_NULL, status)
+    fits_assert_ok(status[1])
+
+    # parse out results
+    nrows = nrows_in[1]
+    colnames = [bytestring(pointer(item)) for item in colnames_in]
+    coltypes = [bytestring(pointer(item)) for item in coltypes_in]
+
+    @printf io "file: %s\nextension: %d\ntype: ASCII TABLE\nrows: %d\ncolumns:" fits_file_name(hdu.fitsfile) hdu.ext nrows
+    for i in 1:ncols
+        @printf io "\n    %s (%s)" colnames[i] coltypes[i]
+    end
+    print(io, "\n")
+end
+
 # Read a table column into an array of the "equivalent type"
 function read(hdu::Union(TableHDU, ASCIITableHDU), colname::ASCIIString)
     fits_assert_open(hdu.fitsfile)
@@ -550,25 +585,43 @@ function read(hdu::Union(TableHDU, ASCIITableHDU), colname::ASCIIString)
     nrows = fits_get_num_rowsll(hdu.fitsfile)
     colnum = fits_get_colnum(hdu.fitsfile, colname)
 
-    # use 'eqcoltype' rather than 'coltype': do the conversion for
-    # SCALE/ZERO automatically.
+    # `eqcoltype`: do SCALE/ZERO conversion automatically
     typecode, repcnt, width = fits_get_eqcoltype(hdu.fitsfile, colnum)
-
-    # Get the dimension of each row
-    rowsize = fits_read_tdim(hdu.fitsfile, colnum)
-
-    # If string, first dimension is just number of characters, so remove it.
-    # If rowsize == [1], it isn't a vector column, so make it [].
-    if typecode == 16 || (length(rowsize) == 1 && rowsize[1] == 1)
-        rowsize = rowsize[2:end]
-    end
 
     # BitArrays not yet supported.
     (typecode == 1) && error("BitArray ('X') columns not yet supported")
 
-    # construct output array given length, shape and type
     T = CFITSIO_COLTYPE[typecode]
-    result = Array(T, rowsize..., nrows)
+
+    # ASCII tables can only have scalar columns
+    if isa(hdu, ASCIITableHDU)
+        result = Array(T, nrows)
+    else
+        if typecode == 16
+            # for strings, cfitsio only considers it to be a vector column if
+            # width != repcnt, even if tdim is multi-valued.
+            if repcnt == width
+                result = Array(T, nrows)
+            else
+                rowsize = fits_read_tdim(hdu.fitsfile, colnum)
+                # if rowsize isn't multi-valued, ignore it (we know it *is* a
+                # vector column). If it is mutli valued, prefer it to repcnt,
+                # width.
+                if length(rowsize) == 1
+                    result = Array(T, div(repcnt, width), nrows)
+                else
+                    result = Array(T, rowsize[2:end]..., nrows)
+                end
+            end
+        else
+            if repcnt == 1
+                result = Array(T, nrows)
+            else
+                rowsize = fits_read_tdim(hdu.fitsfile, colnum)
+                result = Array(T, rowsize..., nrows)
+            end
+        end
+    end
 
     # TODO: allow altering first row and first element.
     fits_read_col(hdu.fitsfile, colnum, 1, 1, result)
@@ -592,6 +645,12 @@ end
 
 # get fits tform string for given table type and data array.
 fits_tform{T}(::Type{TableHDU}, A::Array{T}) = "$(prod(fits_tdim(A)))$(fits_tform_char(T))"
+fits_tform(::Type{TableHDU}, A::Vector{ASCIIString}) = "$(maximum(length, A))A"
+
+# For string arrays with 2+ dimensions, write tform as rAw. Otherwise,
+# cfitsio doesn't recognize that multiple strings should be written to
+# a single row, even if TDIM is set to 2+ dimensions.
+fits_tform(::Type{TableHDU}, A::Array{ASCIIString}) = "$(prod(fits_tdim(A)))A$(maximum(length, A))"
 fits_tform(::Type{ASCIITableHDU}, ::Vector{Int16}) = "I7"
 fits_tform(::Type{ASCIITableHDU}, ::Vector{Int32}) = "I12"
 fits_tform(::Type{ASCIITableHDU}, ::Vector{Float32}) = "E26.17"
@@ -635,9 +694,11 @@ function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
           ttype, tform, tunit, extname_ptr, status)
     fits_assert_ok(status[1])
 
-    # write tdim info
-    for (i, a) in enumerate(coldata)
-        fits_write_tdim(f.fitsfile, i, fits_tdim(a))
+    # For binary tables, write tdim info
+    if hdutype === TableHDU
+        for (i, a) in enumerate(coldata)
+            fits_write_tdim(f.fitsfile, i, fits_tdim(a))
+        end
     end
 
     if isa(header, FITSHeader)

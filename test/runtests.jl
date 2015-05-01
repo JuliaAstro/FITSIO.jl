@@ -68,7 +68,7 @@ end
 fname = tempname() * ".fits"
 f = FITS(fname, "w")
 
-# Binary Table data.
+## Binary table
 indata = Dict{ASCIIString, Array}()
 for (i, T) in enumerate([Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
                          Float32, Float64, Complex64, Complex128])
@@ -79,27 +79,35 @@ indata["col$i"] = [randstring(10) for j=1:20]
 i += 1
 indata["col$i"] = [true for i=1:20]
 
-# ASCII table data
-indata_ascii = Dict{ASCIIString, Array}()
+write(f, indata)
+
+# test 
+for (colname, incol) in indata
+    outcol = read(f[2], colname)  # table is in extension 2 (1 = primary hdr)
+    @test outcol == incol
+    @test eltype(outcol) == eltype(incol)
+end
+
+
+## ASCII tables
+
+indata = Dict{ASCIIString, Array}()
 for (i, T) in enumerate([Int16, Int32, Float32, Float64])
     indata["col$i"] = T[1:20;]
 end
 i = length(indata) + 1
 indata["col$i"] = [randstring(10) for j=1:20]
 
-write(f, indata)
-write(f, indata_ascii; hdutype=ASCIITableHDU)
+write(f, indata; hdutype=ASCIITableHDU)
 
+# For ASCII tables, the types don't round trip so we need to define the
+# expected output type for each input type.
+expected_type = [Int16=>Int32, Int32=>Int32, Float32=>Float64,
+                 Float64=>Float64, ASCIIString=>ASCIIString]
 for (colname, incol) in indata
-    outcol = read(f[2], colname)
+    outcol = read(f[3], colname)  # table is in extension 3
     @test outcol == incol
-    @test eltype(outcol) == eltype(incol)
-end
-
-for (colname, incol) in indata_ascii
-    outcol = read(f[3], colname)
-    @test outcol == incol
-    @test eltype(outcol) == eltype(incol)
+    @test eltype(outcol) == expected_type[eltype(incol)]
 end
 close(f)
 isfile(fname) && rm(fname)

@@ -1,9 +1,6 @@
-========================
-High-level API reference
-========================
-
-This is currently an incomplete reference of methods for ``FITS``,
-``FITSHeader``, and ``ImageHDU`` types.
+=============
+API reference
+=============
 
 File operations
 ---------------
@@ -31,7 +28,7 @@ File operations
 Header operations
 -----------------
 
-.. function:: readheader(hdu::HDU)
+.. function:: readheader(hdu)
 
    Read the entire header from the given HDU and return a
    ``FITSHeader`` object. The value of each header record is parsed as
@@ -40,6 +37,30 @@ Header operations
    according to the FITS standard, the value is stored as the raw unparsed
    ``ASCIIString``.)
 
+.. function:: FITSHeader(keys, values, comments)
+
+   Create a ``FITSHeader`` from arrays of keywords, values and comments.
+   This type partially implements the Associative interface:
+
+   * ``length(hdr)``: number of records
+   * ``haskey(hdr)``: header keyword exists
+   * ``keys(hdr)``: array of keywords (not a copy)
+   * ``values(hdr)``: array of values (not a copy)
+   * ``hdr[key]``: get value based on keyword or index
+   * ``hdr[key] = value``: set value based on keyword or index
+
+   Additionally, there are functions to get and set comments:
+
+   * ``getcomment(hdr, key)``: get the comment based on keyword or index
+   * ``setcomment!(hdr, key, comment)``: set the comment baed on keyword or index
+
+.. function:: readkey(hdu, key)
+
+   Read just the specified key and return a tuple of ``(value,
+   comment)``.  The key can be either the number of the header record
+   (Integer) or the header keyword (ASCIIString).
+
+
 Image operations
 ----------------
 
@@ -47,7 +68,23 @@ Image operations
 
    Read the entire image from disk.
 
-.. function:: copy_section(hdu::ImageHDU, destination::FITS, r::Range...)
+.. function:: ndims(hdu::ImageHDU)
+
+   Get number of image dimensions, without reading the image into memory.
+
+.. function:: size(hdu::ImageHDU)
+
+   Get image dimensions, without reading the image into memory.
+
+.. function:: size(hdu::ImageHDU, i::Integer)
+
+   Get ``i``-th dimension.
+
+.. function:: length(hdu::ImageHDU)
+
+   Get total number of pixels in image (product of ``size(hdu)``).
+
+.. function:: copy_section(hdu::ImageHDU, dest::FITS, r::Range...)
 
    Copy a rectangular section of an image and write it to a new FITS
    primary image or image extension. The new image HDU is appended to
@@ -69,7 +106,7 @@ Image operations
 Table Operations
 ----------------
 
-.. function:: write(f::FITS, data::Dict)
+.. function:: write(f::FITS, data::Dict; hdutype=TableHDU, extname=nothing, header=nothing, units=nothing)
 
    Create a new table extension and write data to it. If the FITS file is
    currently empty then a dummy primary array will be created before
@@ -77,12 +114,30 @@ Table Operations
    with ASCIIString keys (giving the column names) and Array values
    (giving data to write to each column).
 
-.. function:: read(hdu::TableHDU, colname)
+   Optional inputs:
+   
+   - ``hdutype``: Type of table extension to create. Can be either
+     ``TableHDU`` (binary table) or ``ASCIITableHDU`` (ASCII table).
+   - ``extname``: Name of extension.
+   - ``header``: FITSHeader instance to write to new extension.
+   - ``units``: Dictionary mapping column name to units (as a string).
+
+.. function:: write(f::FITS, colnames, coldata; hdutype=TableHDU, extname=nothing, header=nothing, units=nothing)
+
+   Same as ``write(f::FITS, data::Dict; ...)`` but providing column
+   names and column data as a separate arrays. Column names must be
+   ``Array{ASCIIString}`` and column data must be an array of
+   arrays. Their lengths should match. This is useful for specifying
+   the order of the columns.
+
+.. function:: read(hdu, colname)
 
    Read a column as an array from the given table HDU.
 
-   The column name may contain wild card characters (*, ?, or #). The
-   `*' wild card character matches any sequence of characters
-   (including zero characters) and the `?' character matches any
-   single character. The # wildcard will match any consecutive string
-   of decimal digits (0-9). The string must match a unique column.
+   The column name may contain wild card characters (``*``, ``?``, or
+   ``#``). The ``*`` wild card character matches any sequence of
+   characters (including zero characters) and the ``?`` character
+   matches any single character. The ``#`` wildcard will match any
+   consecutive string of decimal digits (0-9). The string must match a
+   unique column.
+

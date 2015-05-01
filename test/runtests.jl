@@ -75,9 +75,13 @@ for (i, T) in enumerate([Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
     indata["col$i"] = T[1:20;]
 end
 i = length(indata) + 1
-indata["col$i"] = [randstring(10) for j=1:20]
+indata["col$i"] = [randstring(10) for j=1:20]  # ASCIIString column
 i += 1
-indata["col$i"] = [true for i=1:20]
+indata["col$i"] = [true for i=1:20]  # Bool column
+i += 1
+indata["col$i"] = reshape([1:40;], (2, 20))  # vector Int64 column
+i += 1
+indata["col$i"] = [randstring(5) for j=1:2, k=1:20]  # vector ASCIIString col
 
 write(f, indata)
 

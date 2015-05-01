@@ -62,7 +62,7 @@
 #     -------------------------------------------------
 #
 
-const bitpix_to_type = Dict{Cint, DataType}()
+const TYPE_FROM_BITPIX = Dict{Cint, DataType}()
 for (T, code) in ((UInt8,     8), # BYTE_IMG
                   (Int16,    16), # SHORT_IMG
                   (Int32,    32), # LONG_IMG
@@ -74,40 +74,9 @@ for (T, code) in ((UInt8,     8), # BYTE_IMG
                   (UInt32,   40)) # ULONG_IMG
     local value = convert(Cint, code)
     @eval begin
-        bitpix_to_type[$value] = $T
-        _cfitsio_bitpix(::Type{$T}) = $value
+        TYPE_FROM_BITPIX[$value] = $T
+        bitpix_from_type(::Type{$T}) = $value
     end
-end
-
-# Table type conversions
-# ----------------------
-# fits_tform_letter(::DataType) -> Char
-#     Given Julia array eltype, what FITS table letter code should be used
-#     when defining a table column? For example, to store an array of UInt32,
-#     use the TFORM letter 'V'.
-# CFITSIO_COLTYPE[::Int] -> DataType
-#     Given return code from fits_get_eqcoltype(), what type of Julia array
-#     should be constructed? For example, for 'V' columns,
-#     fits_get_eqcoltype() returns 40. This function maps that code back to
-#     UInt32. This also illustrates why we can't simply use the normal CFITSIO
-#     datatype mapping: 40 would map to Culong, which is a 64-bit unsigned
-#     integer on 64-bit UNIX platforms.
-const CFITSIO_COLTYPE = Dict{Int, DataType}()
-for (T, tform, code) in ((UInt8,       'B',  11),
-                         (Int8,        'S',  12),
-                         (Bool,        'L',  14),
-                         (ASCIIString, 'A',  16),
-                         (UInt16,      'U',  20),
-                         (Int16,       'I',  21),
-                         (UInt32,      'V',  40),
-                         (Int32,       'J',  41),
-                         (Int64,       'K',  81),
-                         (Float32,     'E',  42),
-                         (Float64,     'D',  82),
-                         (Complex64,   'C',  83),
-                         (Complex128,  'M', 163))
-    @eval fits_tform_char(::Type{$T}) = $tform
-    CFITSIO_COLTYPE[code] = T
 end
 
 # TODO: elimiate duplicates (Clong vs Int64 or Clong vs Cint) ?
@@ -126,8 +95,12 @@ for (T, code) in ((UInt8,       11),
                   (Float64,     82),
                   (Complex64,   83),
                   (Complex128, 163))
-    @eval _cfitsio_datatype(::Type{$T}) = convert(Cint, $code)
+    @eval cfitsio_typecode(::Type{$T}) = convert(Cint, $code)
 end
+
+
+# -----------------------------------------------------------------------------
+# FITSFile type
 
 type FITSFile
     ptr::Ptr{Void}
@@ -290,7 +263,7 @@ function fits_write_key(f::FITSFile, keyname::ASCIIString,
     status = Cint[0]
     ccall((:ffpky,libcfitsio), Cint,
         (Ptr{Void},Cint,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
-        f.ptr, _cfitsio_datatype(typeof(value)), bytestring(keyname),
+        f.ptr, cfitsio_typecode(typeof(value)), bytestring(keyname),
         cvalue, bytestring(comment), status)
     fits_assert_ok(status[1])
 end
@@ -471,11 +444,12 @@ function fits_get_img_size(f::FITSFile)
     naxes
 end
 
-function fits_create_img{S<:Integer}(f::FITSFile, t::Type, naxes::Vector{S})
+function fits_create_img{T, S<:Integer}(f::FITSFile, ::Type{T},
+                                        naxes::Vector{S})
     status = Cint[0]
     ccall((:ffcrimll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Ptr{Int64}, Ptr{Cint}),
-          f.ptr, _cfitsio_bitpix(t), length(naxes),
+          f.ptr, bitpix_from_type(T), length(naxes),
           convert(Vector{Int64}, naxes), status)
     fits_assert_ok(status[1])
 end
@@ -485,7 +459,7 @@ function fits_write_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     status = Cint[0]
     ccall((:ffppxll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, data, status)
     fits_assert_ok(status[1])
 end
@@ -502,7 +476,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     ccall((:ffgpxv, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Clong}, Int64, Ptr{Void}, Ptr{Void},
            Ptr{Cint}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, &nullval, data, anynull, status)
     fits_assert_ok(status[1])
     anynull[1]
@@ -515,7 +489,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     ccall((:ffgpxv, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Clong}, Int64, Ptr{Void}, Ptr{Void},
            Ptr{Cint}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, C_NULL, data, anynull, status)
     fits_assert_ok(status[1])
     anynull[1]
@@ -533,7 +507,7 @@ function fits_read_subset{S1<:Integer,S2<:Integer,S3<:Integer,T}(
     ccall((:ffgsv, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Ptr{Void},
            Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T),
+          f.ptr, cfitsio_typecode(T),
           convert(Vector{Clong}, fpixel),
           convert(Vector{Clong}, lpixel),
           convert(Vector{Clong}, inc),
@@ -722,7 +696,7 @@ function fits_read_col{T}(f::FITSFile,
     ccall((:ffgcv,libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
            Ptr{Void}, Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), colnum,
+          f.ptr, cfitsio_typecode(T), colnum,
           firstrow, firstelem, length(data),
           0, data, anynull, status)
     fits_assert_ok(status[1])
@@ -751,7 +725,7 @@ function fits_write_col{T}(f::FITSFile,
     ccall((:ffpcl, libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
            Ptr{Void}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), colnum,
+          f.ptr, cfitsio_typecode(T), colnum,
           firstrow, firstelem, length(data),
           data, status)
     fits_assert_ok(status[1])

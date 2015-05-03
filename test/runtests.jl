@@ -21,18 +21,18 @@ for T in [Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
     @test eltype(indata) == eltype(outdata)
 
     # test reading subsets of the array
-    @test f[end][:, :] == indata
-    @test f[end][4, 1:10] == indata[4, 1:10]  # 2-d array
-    @test f[end][:, 4] == indata[:, 4]  # 1-d array
-    @test f[end][2, 3] == indata[2, 3]  # scalar
-    @test f[end][:, 1:2:10] == indata[:, 1:2:10]
-    @test f[end][1:3, :] == indata[1:3, :]
+    @test read(f[end], :, :) == indata
+    @test read(f[end], 4, 1:10) == indata[4, 1:10]  # 2-d array
+    @test read(f[end], :, 4) == indata[:, 4]  # 1-d array
+    @test read(f[end], 2, 3) == indata[2, 3]  # scalar
+    @test read(f[end], :, 1:2:10) == indata[:, 1:2:10]
+    @test read(f[end], 1:3, :) == indata[1:3, :]
 
     # test expected errors
-    @test_throws DimensionMismatch f[end][:]
-    @test_throws DimensionMismatch f[end][:, :, 1]
-    @test_throws BoundsError f[end][1:6, :]
-    @test_throws BoundsError f[end][1, 0]
+    @test_throws DimensionMismatch read(f[end], :)
+    @test_throws DimensionMismatch read(f[end], :, :, 1)
+    @test_throws BoundsError read(f[end], 1:6, :)
+    @test_throws BoundsError read(f[end], 1, 0)
 
 end
 close(f)
@@ -135,23 +135,23 @@ inhdr = FITSHeader(["FLTKEY", "INTKEY", "BOOLKEY", "STRKEY", "COMMENT",
 
 inhdr["INTKEY"] = 2  # test setting by key
 inhdr[1] = 2.0  # test settting by index
-setcomment!(inhdr, "INTKEY", "integer keyword") # test setting a comment
+set_comment!(inhdr, "INTKEY", "integer keyword") # test setting a comment
 
 indata = reshape(Float32[1:100;], 5, 20)
 write(f, indata; header=inhdr)
-outhdr = readheader(f[1])
+outhdr = read_header(f[1])
 @test outhdr["FLTKEY"] === 2.0
 @test outhdr["INTKEY"] === 2
 @test outhdr["BOOLKEY"] === true
 @test outhdr["STRKEY"] == "string value"
-@test getcomment(outhdr, 13) == "this is a comment"
-@test getcomment(outhdr, 14) == "this is a history"
+@test get_comment(outhdr, 13) == "this is a comment"
+@test get_comment(outhdr, 14) == "this is a history"
 @test length(outhdr) == 14
 @test haskey(outhdr, "FLTKEY")
 
 # Read single keywords
-@test readkey(f[1], 9) == ("FLTKEY", 2.0, "floating point keyword")
-@test readkey(f[1], "FLTKEY") == (2.0, "floating point keyword")
+@test read_key(f[1], 9) == ("FLTKEY", 2.0, "floating point keyword")
+@test read_key(f[1], "FLTKEY") == (2.0, "floating point keyword")
 
 # Test that show() works and that the beginning of output is what we expect.
 io = IOBuffer()
@@ -213,7 +213,7 @@ create_test_file(fname, header)
 
 # check that we can read the header (and data).
 f = FITS(fname)
-hdr = readheader(f[1])
+hdr = read_header(f[1])
 data = read(f[1])
 close(f)
 

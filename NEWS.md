@@ -1,7 +1,21 @@
 v0.6.0 (unreleased)
 ===================
 
-## Deprecations in low-level c-style interface
+## New Features
+
+- Read and write table extensions (both ASCII and binary) in
+  high-level API.
+
+## Deprecations
+
+- `readkey` renamed to `read_key`
+- `readheader` renamed to `read_header`
+- `getcomment` renamed to `get_comment`
+- `setcomment!` renamed to `set_comment!`
+- `hdu[i:j, :]` replaced by `read(hdu, i:j, :)` for reading subsets
+  of image extensions.
+
+## Deprecations in low-level C-style interface
 
 - `fits_get_col_repeat` deprecated. Use `fits_get_coltype`, which
   returns the column typecode in addition to width and repeat values.
@@ -14,7 +28,3 @@ v0.6.0 (unreleased)
 
 - Cleanup and correction of type specifications (e.g., `Cint` in place
   of `Int32`, `ASCIIString` in place of `String`)
-
-- `AsciiTable` renamed to `ASCIITable` (correctly camel-cased). This
-  shouldn't affect anyone because the name was not exported and there
-  were no methods that operated specifically on this type.

@@ -16,7 +16,6 @@ export FITSFile,
        fits_delete_rows,
        fits_file_mode,
        fits_file_name,
-       fits_get_col_repeat,
        fits_get_hdrspace,
        fits_get_hdu_num,
        fits_get_hdu_type,
@@ -59,14 +58,14 @@ export FITS,
        TableHDU,
        ASCIITableHDU,
        FITSHeader,
-       readkey,
-       readheader,
-       getcomment,
-       setcomment!,
+       read_key,
+       read_header,
+       get_comment,
+       set_comment!,
        copy_section
 
 import Base: getindex, setindex!, length, show, read, write, close, ndims,
-             size, endof, haskey, keys, checkbounds, values
+             size, endof, haskey, keys, values
 
 if isfile(joinpath(dirname(@__FILE__),"..","deps","deps.jl"))
     include("../deps/deps.jl")

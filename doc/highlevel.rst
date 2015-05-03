@@ -28,7 +28,7 @@ File operations
 Header operations
 -----------------
 
-.. function:: readheader(hdu)
+.. function:: read_header(hdu)
 
    Read the entire header from the given HDU and return a
    ``FITSHeader`` object. The value of each header record is parsed as
@@ -51,13 +51,13 @@ Header operations
 
    Additionally, there are functions to get and set comments:
 
-   * ``getcomment(hdr, key)``: get the comment based on keyword or index
-   * ``setcomment!(hdr, key, comment)``: set the comment baed on keyword or index
+   * ``get_comment(hdr, key)``: get the comment based on keyword or index
+   * ``set_comment!(hdr, key, comment)``: set the comment baed on keyword or index
 
-.. function:: readkey(hdu, key)
+.. function:: read_key(hdu, key)
 
    Read just the specified key and return a tuple of ``(value,
-   comment)``.  The key can be either the number of the header record
+   comment)``.  The key can be either the index of the header record
    (Integer) or the header keyword (ASCIIString).
 
 
@@ -67,6 +67,10 @@ Image operations
 .. function:: read(hdu::ImageHDU)
 
    Read the entire image from disk.
+
+.. function:: read(hdu::ImageHDU, range...)
+
+   Read a subsection of the image from disk. E.g., ``read(hdu, 1:20, 1:2:20)``.
 
 .. function:: ndims(hdu::ImageHDU)
 

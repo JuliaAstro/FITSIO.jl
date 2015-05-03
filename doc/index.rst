@@ -63,7 +63,7 @@ Read an image from disk::
 
     julia> data = read(f[1]);  # read an image from disk
 
-    julia> data = f[1][:, 790:end];  # read just a subset of image
+    julia> data = read(f[1], :, 790:end);  # read just a subset of image
 
 Show info about a binary table::
 
@@ -82,7 +82,7 @@ Read a column from the table::
 
 Read the entire header into memory and get values from it::
 
-    julia> header = readheader(f[1]);  # read the entire header from disk
+    julia> header = read_header(f[1]);  # read the entire header from disk
 
     julia> length(header)  # total number of records in header
     17
@@ -96,22 +96,22 @@ Read the entire header into memory and get values from it::
     julia> header[4]  # get value by position
     800
 
-    julia> getcomment(header, "NAXIS")  # get comment for a given keyword
+    julia> get_comment(header, "NAXIS")  # get comment for a given keyword
     "length of data axis 1"
 
 Read just a single header record without reading the entire header::
 
-    julia> readkey(f[1], 4)  # by position
+    julia> read_key(f[1], 4)  # by position
     ("NAXIS1",800,"length of data axis 1")
 
-    julia> readkey(f[1], "NAXIS1")  # read by keyword
+    julia> read_key(f[1], "NAXIS1")  # read by keyword
     (800,"length of data axis 1")
 
 Manipulate a header in memory::
 
     julia> header["NEWKEY"] = 10  # change or add a keyword
 
-    julia> setcomment!(header, "NEWKEY", "this is a comment")
+    julia> set_comment!(header, "NEWKEY", "this is a comment")
 
 Close the file::
 

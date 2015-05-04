@@ -62,24 +62,25 @@
 #     -------------------------------------------------
 #
 
-const bitpix_to_type = Dict{Cint, DataType}()
-for (T, code) in ((Uint8,     8), # BYTE_IMG
+const TYPE_FROM_BITPIX = Dict{Cint, DataType}()
+for (T, code) in ((UInt8,     8), # BYTE_IMG
                   (Int16,    16), # SHORT_IMG
                   (Int32,    32), # LONG_IMG
                   (Int64,    64), # LONGLONG_IMG
                   (Float32, -32), # FLOAT_IMG
                   (Float64, -64), # DOUBLE_IMG
                   (Int8,     10), # SBYTE_IMG
-                  (Uint16,   20), # USHORT_IMG
-                  (Uint32,   40)) # ULONG_IMG
+                  (UInt16,   20), # USHORT_IMG
+                  (UInt32,   40)) # ULONG_IMG
     local value = convert(Cint, code)
     @eval begin
-        bitpix_to_type[$value] = $T
-        _cfitsio_bitpix(::Type{$T}) = $value
+        TYPE_FROM_BITPIX[$value] = $T
+        bitpix_from_type(::Type{$T}) = $value
     end
 end
 
-for (T, code) in ((Uint8,       11),
+# TODO: elimiate duplicates (Clong vs Int64 or Clong vs Cint) ?
+for (T, code) in ((UInt8,       11),
                   (Int8,        12),
                   (Bool,        14),
                   (ASCIIString, 16),
@@ -94,9 +95,12 @@ for (T, code) in ((Uint8,       11),
                   (Float64,     82),
                   (Complex64,   83),
                   (Complex128, 163))
-    @eval _cfitsio_datatype(::Type{$T}) = convert(Cint, $code)
+    @eval cfitsio_typecode(::Type{$T}) = convert(Cint, $code)
 end
 
+
+# -----------------------------------------------------------------------------
+# FITSFile type
 
 type FITSFile
     ptr::Ptr{Void}
@@ -259,7 +263,7 @@ function fits_write_key(f::FITSFile, keyname::ASCIIString,
     status = Cint[0]
     ccall((:ffpky,libcfitsio), Cint,
         (Ptr{Void},Cint,Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
-        f.ptr, _cfitsio_datatype(typeof(value)), bytestring(keyname),
+        f.ptr, cfitsio_typecode(typeof(value)), bytestring(keyname),
         cvalue, bytestring(comment), status)
     fits_assert_ok(status[1])
 end
@@ -440,11 +444,12 @@ function fits_get_img_size(f::FITSFile)
     naxes
 end
 
-function fits_create_img{S<:Integer}(f::FITSFile, t::Type, naxes::Vector{S})
+function fits_create_img{T, S<:Integer}(f::FITSFile, ::Type{T},
+                                        naxes::Vector{S})
     status = Cint[0]
     ccall((:ffcrimll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Ptr{Int64}, Ptr{Cint}),
-          f.ptr, _cfitsio_bitpix(t), length(naxes),
+          f.ptr, bitpix_from_type(T), length(naxes),
           convert(Vector{Int64}, naxes), status)
     fits_assert_ok(status[1])
 end
@@ -454,7 +459,7 @@ function fits_write_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     status = Cint[0]
     ccall((:ffppxll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, data, status)
     fits_assert_ok(status[1])
 end
@@ -471,7 +476,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     ccall((:ffgpxv, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Clong}, Int64, Ptr{Void}, Ptr{Void},
            Ptr{Cint}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, &nullval, data, anynull, status)
     fits_assert_ok(status[1])
     anynull[1]
@@ -484,7 +489,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     ccall((:ffgpxv, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Clong}, Int64, Ptr{Void}, Ptr{Void},
            Ptr{Cint}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, C_NULL, data, anynull, status)
     fits_assert_ok(status[1])
     anynull[1]
@@ -502,7 +507,7 @@ function fits_read_subset{S1<:Integer,S2<:Integer,S3<:Integer,T}(
     ccall((:ffgsv, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Ptr{Void},
            Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T),
+          f.ptr, cfitsio_typecode(T),
           convert(Vector{Clong}, fpixel),
           convert(Vector{Clong}, lpixel),
           convert(Vector{Clong}, inc),
@@ -533,10 +538,11 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
         function ($a)(f::FITSFile, numrows::Integer,
                       coldefs::Array{ColumnDef}, extname::ASCIIString)
 
+            # get length and convert coldefs to three arrays of Ptr{Uint8}
             ntype = length(coldefs)
-            ttype = map((x) -> pointer(x[1].data), coldefs)
-            tform = map((x) -> pointer(x[2].data), coldefs)
-            tunit = map((x) -> pointer(x[3].data), coldefs)
+            ttype = [pointer(x[1]) for x in coldefs]
+            tform = [pointer(x[2]) for x in coldefs]
+            tunit = [pointer(x[3]) for x in coldefs]
             status = Cint[0]
 
             ccall(("ffcrtb", libcfitsio), Cint,
@@ -569,6 +575,19 @@ for (a,b,T) in ((:fits_get_num_cols,  "ffgncl",  :Cint),
     end
 end
 
+function fits_get_colnum(f::FITSFile, tmplt::ASCIIString)
+    result = Cint[0]
+    status = Cint[0]
+
+    # Second argument is case-sensitivity of search: 0 = case-insensitive
+    #                                                1 = case-sensitive
+    ccall(("ffgcno", libcfitsio), Cint,
+          (Ptr{Void}, Cint, Ptr{Uint8}, Ptr{Cint}, Ptr{Cint}),
+          f.ptr, 0, tmplt, result, status)
+    fits_assert_ok(status[1])
+    return result[1]
+end
+
 # The function `fits_read_tdim()` returns the dimensions of a table column in a
 # binary table. Normally this information is given by the TDIMn keyword, but if
 # this keyword is not present then this routine returns `[r]` with `r` equals
@@ -577,11 +596,13 @@ let fn, T, ffgtdm, ffgtcl, ffeqty
     if  promote_type(Int, Clong) == Clong
         T = Clong
         ffgtdm = "ffgtdm"
+        ffptdm = "ffptdm"
         ffgtcl = "ffgtcl"
         ffeqty = "ffeqty"
     else
         T = Int64
         ffgtdm = "ffgtdmll"
+        ffptdm = "ffptdmll"
         ffgtcl = "ffgtclll"
         ffeqty = "ffeqtyll"
     end
@@ -618,6 +639,14 @@ let fn, T, ffgtdm, ffgtcl, ffeqty
             fits_assert_ok(status[1])
             return naxes[1:naxis[1]]
         end
+        function fits_write_tdim(ff::FITSFile, colnum::Integer,
+                                 naxes::Array{$T})
+            status = Cint[0]
+            ccall(($ffptdm, libcfitsio), Cint,
+                  (Ptr{Void}, Cint, Cint, Ptr{$T}, Ptr{Cint}),
+                  ff.ptr, colnum, length(naxes), naxes, status)
+            fits_assert_ok(status[1])
+        end
     end
 end
 
@@ -627,13 +656,16 @@ function fits_read_col(f::FITSFile,
                        firstelem::Integer,
                        data::Array{ASCIIString})
 
-    # Make sure there is enough room for each string
-    _, repcount, width = fits_get_coltype(f, colnum)
-    for i in 1:length(data)
-        # We need to call `repeat' N times in order to allocate N
-        # strings
-        data[i] = repeat(" ", repcount)
-    end
+    # get width: number of characters in each string
+    typecode, repcount, width = fits_get_eqcoltype(f, colnum)
+
+    # ensure that data are strings, otherwise cfitsio will try to write
+    # formatted strings, which have widths given by fits_get_col_display_width
+    # not by the repeat value from fits_get_coltype.
+    abs(typecode) == 16 || error("not a string column")
+
+    # create an array of character buffers of the correct width
+    buffers = [Array(Uint8, width) for i in 1:length(data)]
 
     # Call the CFITSIO function
     anynull = Cint[0]
@@ -642,15 +674,15 @@ function fits_read_col(f::FITSFile,
           (Ptr{Void}, Cint, Int64, Int64, Int64,
            Ptr{Uint8}, Ptr{Ptr{Uint8}}, Ptr{Cint}, Ptr{Cint}),
           f.ptr, colnum, firstrow, firstelem, length(data),
-          "", data, anynull, status)
+          "", buffers, anynull, status)
     fits_assert_ok(status[1])
 
-    # Truncate the strings to the first NULL character (if present)
-    for idx in 1:length(data)
-        zeropos = search(data[idx], '\0')
-        if zeropos >= 1
-            data[idx] = (data[idx])[1:(zeropos-1)]
-        end
+    # Create strings out of the buffers, terminating at null characters.
+    # Note that `ASCIIString(x)` does not copy the buffer x.
+    for i in 1:length(data)
+        zeropos = search(buffers[i], 0x00)
+        data[i] = (zeropos >= 1) ? ASCIIString(buffers[i][1:(zeropos-1)]) :
+                                   ASCIIString(buffers[i])
     end
 end
 
@@ -663,10 +695,10 @@ function fits_read_col{T}(f::FITSFile,
     status = Cint[0]
     ccall((:ffgcv,libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
-           Ptr{T}, Ptr{T}, Ptr{Cint}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), colnum,
+           Ptr{Void}, Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
+          f.ptr, cfitsio_typecode(T), colnum,
           firstrow, firstelem, length(data),
-          T[0], data, anynull, status)
+          C_NULL, data, anynull, status)
     fits_assert_ok(status[1])
 end
 
@@ -692,8 +724,8 @@ function fits_write_col{T}(f::FITSFile,
     status = Cint[0]
     ccall((:ffpcl, libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
-           Ptr{T}, Ptr{Cint}),
-          f.ptr, _cfitsio_datatype(T), colnum,
+           Ptr{Void}, Ptr{Cint}),
+          f.ptr, cfitsio_typecode(T), colnum,
           firstrow, firstelem, length(data),
           data, status)
     fits_assert_ok(status[1])

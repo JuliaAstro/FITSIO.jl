@@ -56,6 +56,8 @@ export FITSFile,
 export FITS,
        HDU,
        ImageHDU,
+       TableHDU,
+       ASCIITableHDU,
        FITSHeader,
        readkey,
        readheader,
@@ -64,7 +66,7 @@ export FITS,
        copy_section
 
 import Base: getindex, setindex!, length, show, read, write, close, ndims,
-             size, endof, haskey, keys
+             size, endof, haskey, keys, checkbounds, values
 
 if isfile(joinpath(dirname(@__FILE__),"..","deps","deps.jl"))
     include("../deps/deps.jl")

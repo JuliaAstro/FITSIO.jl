@@ -144,11 +144,11 @@ Write a table to the file::
     julia> write(f, data)  # write a new binary table to a new extension
 
 
-API Documentation
------------------
+Reference
+---------
 
 .. toctree::
    :maxdepth: 1
 
-   highlevel
-   lowlevel
+   api
+   cfitsio

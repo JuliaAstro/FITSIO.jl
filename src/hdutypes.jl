@@ -1,3 +1,13 @@
+using .Libcfitsio
+
+# There are a few direct `ccall`s to libcfitsio in this module. For this, we
+# need a few non-exported things from Libcfitsio: the shared library handle,
+# and a helper function for raising errors. TYPE_FROM_BITPIX is awkwardly
+# defined in Libcfitsio, even though it is not used there.
+import .Libcfitsio: libcfitsio,
+                    fits_assert_ok,
+                    TYPE_FROM_BITPIX
+
 # -----------------------------------------------------------------------------
 # Types
 
@@ -487,16 +497,16 @@ end
 # be copied to the output image. The common WCS keywords will be
 # updated if necessary to correspond to the coordinates of the section.
 
-range2fits_str(r::UnitRange) = @sprintf "%d:%d" first(r) last(r)
-range2fits_str(r::StepRange) = @sprintf "%d:%d:%d" first(r) last(r) step(r)
-fits_copy_image_section(fin::FITSFile, fout::FITSFile, r...) =
-    fits_copy_image_section(fin, fout, join([range2str(ri) for ri in r], ','))
-function copy_section(hdu::ImageHDU, destination::FITS, r::Range{Int}...)
+# convert a range to a string that cfitsio understands
+cfitsio_string(r::UnitRange) = @sprintf "%d:%d" first(r) last(r)
+cfitsio_string(r::StepRange) = @sprintf "%d:%d:%d" first(r) last(r) step(r)
+
+function copy_section(hdu::ImageHDU, dest::FITS, r::Range{Int}...)
     fits_assert_open(hdu.fitsfile)
-    fits_assert_open(destination.fitsfile)
+    fits_assert_open(dest.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    fits_copy_image_section(hdu.fitsfile, destination.fitsfile,
-                            join([range2fits_str(ri) for ri in r], ','))
+    fits_copy_image_section(hdu.fitsfile, dest.fitsfile,
+                            join([cfitsio_string(ri) for ri in r], ','))
 end
 
 

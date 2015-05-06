@@ -11,24 +11,26 @@ File operations
    (read-only), ``"r+"`` (read-write) or ``"w"`` (write). In "write"
    mode, any existing file of the same name is overwritten.
 
-.. function:: length(f::FITS)
+   A ``FITS`` object is a collection of "Header-Data Units" (HDUs) and
+   supports the following operations:
 
-   Return the number of HDUs in ``f``.
+   - ``length(f::FITS)`` The number of HDUs in ``f``.
+   - ``endof(f::FITS)`` Same as length.
+   - ``f[i]`` Return the ``i``-th HDU.
+   - ``f[name]`` or ``f[name, ver]`` Return the HDU containing the
+     given the given HDUNAME (EXTNAME) keyword (an ASCIIString), and
+     optionally the given HDUVER (EXTVER) number (an Integer).
 
-.. function:: getindex(f::FITS, i::Integer)
+.. function:: close(f::FITS)
 
-   Return the ``i``-th HDU. Same as ``f[i]``.
-
-.. function:: getindex(f::FITS, name::String, ver::Int=0)
-
-   Returns the HDU containing the given HDUNAME (EXTNAME) keyword,
-   and optionally the given HDUVER (EXTVER) keyword.
-   Same as ``f[name]`` or ``f[name, ver]``.
+   Close the file. Subsequent attempts to operate on ``f`` will result
+   in an error. ``FITS`` objects are also automatically closed when
+   they are garbage collected.
 
 Header operations
 -----------------
 
-.. function:: readheader(hdu)
+.. function:: read_header(hdu)
 
    Read the entire header from the given HDU and return a
    ``FITSHeader`` object. The value of each header record is parsed as
@@ -42,31 +44,44 @@ Header operations
    Create a ``FITSHeader`` from arrays of keywords, values and comments.
    This type partially implements the Associative interface:
 
-   * ``length(hdr)``: number of records
-   * ``haskey(hdr)``: header keyword exists
-   * ``keys(hdr)``: array of keywords (not a copy)
-   * ``values(hdr)``: array of values (not a copy)
-   * ``hdr[key]``: get value based on keyword or index
-   * ``hdr[key] = value``: set value based on keyword or index
+   * ``length(hdr)`` Number of records.
+   * ``haskey(hdr)`` Header keyword exists.
+   * ``keys(hdr)`` Array of keywords (not a copy).
+   * ``values(hdr)`` Array of values (not a copy).
+   * ``hdr[key]`` Get value based on keyword or index.
+   * ``hdr[key] = value`` Set value based on keyword or index.
 
    Additionally, there are functions to get and set comments:
 
-   * ``getcomment(hdr, key)``: get the comment based on keyword or index
-   * ``setcomment!(hdr, key, comment)``: set the comment baed on keyword or index
+   * ``get_comment(hdr, key)`` Get the comment based on keyword or index.
+   * ``set_comment!(hdr, key, comment)`` Set the comment baed on keyword
+     or index.
 
-.. function:: readkey(hdu, key)
+.. function:: read_key(hdu, key)
 
    Read just the specified key and return a tuple of ``(value,
-   comment)``.  The key can be either the number of the header record
+   comment)``.  The key can be either the index of the header record
    (Integer) or the header keyword (ASCIIString).
 
 
 Image operations
 ----------------
 
+.. function:: write(f::FITS, data::Array; header=nothing)
+
+   Add a new ImageHDU to the file. The following array element types
+   are supported: ``UInt8``, ``Int8``, ``UInt16``, ``Int16``,
+   ``UInt32``, ``Int32``, ``Int64``, ``Float32``, ``Float64``. If a
+   ``FITSHeader`` object is passed as the ``header`` keyword argument,
+   the header will be added to the new HDU.
+
 .. function:: read(hdu::ImageHDU)
 
    Read the entire image from disk.
+
+.. function:: read(hdu::ImageHDU, range...)
+
+   Read a subsection of the image from disk. E.g., ``read(hdu, 1:20, 1:2:20)``.
 
 .. function:: ndims(hdu::ImageHDU)
 
@@ -108,11 +123,15 @@ Table Operations
 
 .. function:: write(f::FITS, data::Dict; hdutype=TableHDU, extname=nothing, header=nothing, units=nothing)
 
-   Create a new table extension and write data to it. If the FITS file is
-   currently empty then a dummy primary array will be created before
-   appending the table extension to it. ``data`` should be a dictionary
-   with ASCIIString keys (giving the column names) and Array values
-   (giving data to write to each column).
+   Create a new table extension and write data to it. If the FITS file
+   is currently empty then a dummy primary array will be created
+   before appending the table extension to it. ``data`` should be a
+   dictionary with ASCIIString keys (giving the column names) and
+   Array values (giving data to write to each column). The following
+   types are supported in binary tables: ``Uint8``, ``Int8``,
+   ``Uint16``, ``Int16``, ``Uint32``, ``Int32``, ``Int64``,
+   ``Float32``, ``Float64``, ``Complex64``, ``Complex128``,
+   ``ASCIIString``, ``Bool``
 
    Optional inputs:
    

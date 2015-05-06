@@ -62,6 +62,71 @@
 #     -------------------------------------------------
 #
 
+module Libcfitsio
+
+using Compat
+
+export FITSFile,
+       fits_assert_open,
+       fits_clobber_file,
+       fits_close_file,
+       fits_copy_image_section,
+       fits_create_ascii_tbl,
+       fits_create_binary_tbl,
+       fits_create_file,
+       fits_create_img,
+       fits_delete_file,
+       fits_delete_key,
+       fits_delete_record,
+       fits_delete_rows,
+       fits_file_mode,
+       fits_file_name,
+       fits_get_hdrspace,
+       fits_get_hdu_num,
+       fits_get_hdu_type,
+       fits_get_img_dim,
+       fits_get_img_equivtype,
+       fits_get_img_size,
+       fits_get_img_type,
+       fits_get_num_cols,
+       fits_get_num_hdus,
+       fits_get_num_rows,
+       fits_get_num_rowsll,
+       fits_get_rowsize,
+       fits_get_colnum,
+       fits_get_coltype,
+       fits_get_eqcoltype,
+       fits_read_tdim,
+       fits_hdr2str,
+       fits_insert_rows,
+       fits_movabs_hdu,
+       fits_movrel_hdu,
+       fits_movnam_hdu,
+       fits_open_data,
+       fits_open_file,
+       fits_open_image,
+       fits_open_table,
+       fits_read_col,
+       fits_read_keyn,
+       fits_read_keyword,
+       fits_read_pix,
+       fits_read_record,
+       fits_read_subset,
+       fits_update_key,
+       fits_write_col,
+       fits_write_comment,
+       fits_write_history,
+       fits_write_key,
+       fits_write_pix,
+       fits_write_record,
+       fits_write_tdim
+
+if isfile(joinpath(dirname(@__FILE__),"..","deps","deps.jl"))
+    include("../deps/deps.jl")
+else
+    error("FITSIO not properly installed. Please run Pkg.build(\"FITSIO\")")
+end
+
 const TYPE_FROM_BITPIX = Dict{Cint, DataType}()
 for (T, code) in ((UInt8,     8), # BYTE_IMG
                   (Int16,    16), # SHORT_IMG
@@ -112,9 +177,8 @@ type FITSFile
     end
 end
 
-
 # -----------------------------------------------------------------------------
-# errors and assertions
+# error messaging
 
 function fits_assert_open(f::FITSFile)
     if f.ptr == C_NULL
@@ -133,7 +197,6 @@ function fits_assert_ok(status::Cint)
         error(fits_get_errstatus(status))
     end
 end
-
 
 # -----------------------------------------------------------------------------
 # file access & info functions
@@ -743,3 +806,18 @@ for (a,b) in ((:fits_insert_rows, "ffirow"),
         end
     end
 end
+
+# -----------------------------------------------------------------------------
+# deprecations
+
+import Base: @deprecate
+
+# Deprecated in v0.6
+
+@deprecate fits_get_col_repeat(f::FITSFile, colnum::Integer) fits_get_coltype(f, colnum)[2, 3]
+
+@deprecate fits_read_col{T}(f::FITSFile, ::Type{T}, colnum::Integer, firstrow::Integer, firstelem::Integer, data::Array{T}) fits_read_col(f, colnum, firstrow, firstelem, data)
+
+@deprecate fits_write_col{T}(f::FITSFile, ::Type{T}, colnum::Integer, firstrow::Integer, firstelem::Integer, data::Array{T}) fits_write_col(f, colnum, firstrow, firstelem, data)
+
+end # module

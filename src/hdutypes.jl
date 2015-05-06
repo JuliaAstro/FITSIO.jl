@@ -1,3 +1,13 @@
+using .Libcfitsio
+
+# There are a few direct `ccall`s to libcfitsio in this module. For this, we
+# need a few non-exported things from Libcfitsio: the shared library handle,
+# and a helper function for raising errors. TYPE_FROM_BITPIX is awkwardly
+# defined in Libcfitsio, even though it is not used there.
+import .Libcfitsio: libcfitsio,
+                    fits_assert_ok,
+                    TYPE_FROM_BITPIX
+
 # -----------------------------------------------------------------------------
 # Types
 
@@ -175,21 +185,21 @@ function parse_header_val(val::ASCIIString)
                 # standard. Give up and return the unparsed string.
 end
 
-function readkey(hdu::HDU, key::Integer)
+function read_key(hdu::HDU, key::Integer)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     keyout, value, comment = fits_read_keyn(hdu.fitsfile, key)
     keyout, parse_header_val(value), comment
 end
 
-function readkey(hdu::HDU, key::ASCIIString)
+function read_key(hdu::HDU, key::ASCIIString)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     value, comment = fits_read_keyword(hdu.fitsfile, key)
     parse_header_val(value), comment
 end
 
-function readheader(hdu::HDU)
+function read_header(hdu::HDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
@@ -241,12 +251,12 @@ function setindex!(hdr::FITSHeader, value::Any, i::Integer)
 end
 
 # Comments
-getcomment(hdr::FITSHeader, key::ASCIIString) = hdr.comments[hdr.map[key]]
-getcomment(hdr::FITSHeader, i::Integer) = hdr.comments[i]
-function setcomment!(hdr::FITSHeader, key::ASCIIString, comment::ASCIIString)
+get_comment(hdr::FITSHeader, key::ASCIIString) = hdr.comments[hdr.map[key]]
+get_comment(hdr::FITSHeader, i::Integer) = hdr.comments[i]
+function set_comment!(hdr::FITSHeader, key::ASCIIString, comment::ASCIIString)
     hdr.comments[hdr.map[key]] = comment
 end
-function setcomment!(hdr::FITSHeader, i::Integer, comment::ASCIIString)
+function set_comment!(hdr::FITSHeader, i::Integer, comment::ASCIIString)
     hdr.comments[i] = comment
 end
 
@@ -413,7 +423,7 @@ function read(hdu::ImageHDU)
     data
 end
 
-# `trailingsize` is used to compute last index in checkbounds.
+# `trailingsize` is used to compute last index for checkbounds.
 # sz: array size (tuple), n: starting index.
 # Same as Base.trailingsize but takes size tuple rather than array.
 function trailingsize(sz, n)
@@ -424,23 +434,8 @@ function trailingsize(sz, n)
     return s
 end
 
-# `checkbounds` method, used for ImageHDU. (ImageHDU is not a subtype
-# of AbstractArray, so we can't just use methods in Base.) Note that
-# this takes a size tuple whereas Methods in Base take array A and use
-# size(A,n). For ImageHDU, size(hdu,n) gets size(hdu) as in
-# intermediary, so it is better to just get that tuple once.
-function checkbounds(sz::NTuple, I::Union(Int, Range{Int})...)
-    n = length(I)
-    if n > 0
-        for dim = 1:(n-1)
-            checkbounds(sz[dim], I[dim])
-        end
-        checkbounds(trailingsize(sz,n), I[n])
-    end
-end
-
 # Read a subset of an ImageHDU
-function _getindex(hdu::ImageHDU, I::Union(Range{Int},Int)...)
+function _read(hdu::ImageHDU, I::Union(Range{Int},Int, Colon)...)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
@@ -449,27 +444,37 @@ function _getindex(hdu::ImageHDU, I::Union(Range{Int},Int)...)
     # It could be supported in the future with care taken in constructing
     # first, last, step arrays passed to cfitsio.
     sz = tuple(fits_get_img_size(hdu.fitsfile)...)
-    if length(I) != length(sz)
+    n = length(I)
+    if n != length(sz)
         throw(DimensionMismatch("number of indicies must match dimensions"))
     end
-    checkbounds(sz, I...)
+
+    # colon-expanded version of I
+    J = ntuple(n, i-> isa(I[i], Colon)? (1:sz[i]) : I[i])
+
+    if n > 0
+        for i = 1:(n-1)
+            Base.checkbounds(sz[i], J[i])
+        end
+        Base.checkbounds(trailingsize(sz,n), J[n])
+    end
 
     # construct first, last and step vectors
-    firsts = Clong[first(i) for i in I]
-    lasts = Clong[last(i) for i in I]
-    steps = Clong[isa(i, Int)? 1: step(i) for i in I]
+    firsts = Clong[first(idx) for idx in J]
+    lasts = Clong[last(idx) for idx in J]
+    steps = Clong[isa(idx, Range)? step(idx): 1 for idx in J]
 
     # construct output array
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    data = Array(TYPE_FROM_BITPIX[bitpix], Base.index_shape(I...))
+    data = Array(TYPE_FROM_BITPIX[bitpix], Base.index_shape(J...))
 
     fits_read_subset(hdu.fitsfile, firsts, lasts, steps, data)
     data
 end
 
 # general method and version that returns a single value rather than 0-d array
-getindex(hdu::ImageHDU, I::Union(Range{Int},Int)...) = _getindex(hdu, I...)
-getindex(hdu::ImageHDU, I::Int...) = _getindex(hdu, I...)[1]
+read(hdu::ImageHDU, I::Union(Range{Int}, Int, Colon)...) = _read(hdu, I...)
+read(hdu::ImageHDU, I::Int...) = _read(hdu, I...)[1]
 
 # Add a new ImageHDU to a FITS object
 # The following Julia data types are supported for writing images by cfitsio:
@@ -492,16 +497,16 @@ end
 # be copied to the output image. The common WCS keywords will be
 # updated if necessary to correspond to the coordinates of the section.
 
-range2fits_str(r::UnitRange) = @sprintf "%d:%d" first(r) last(r)
-range2fits_str(r::StepRange) = @sprintf "%d:%d:%d" first(r) last(r) step(r)
-fits_copy_image_section(fin::FITSFile, fout::FITSFile, r...) =
-    fits_copy_image_section(fin, fout, join([range2str(ri) for ri in r], ','))
-function copy_section(hdu::ImageHDU, destination::FITS, r::Range{Int}...)
+# convert a range to a string that cfitsio understands
+cfitsio_string(r::UnitRange) = @sprintf "%d:%d" first(r) last(r)
+cfitsio_string(r::StepRange) = @sprintf "%d:%d:%d" first(r) last(r) step(r)
+
+function copy_section(hdu::ImageHDU, dest::FITS, r::Range{Int}...)
     fits_assert_open(hdu.fitsfile)
-    fits_assert_open(destination.fitsfile)
+    fits_assert_open(dest.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    fits_copy_image_section(hdu.fitsfile, destination.fitsfile,
-                            join([range2fits_str(ri) for ri in r], ','))
+    fits_copy_image_section(hdu.fitsfile, dest.fitsfile,
+                            join([cfitsio_string(ri) for ri in r], ','))
 end
 
 

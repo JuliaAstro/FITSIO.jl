@@ -1,21 +1,27 @@
------------------------
-Low-level API reference
------------------------
+--------------------
+Libcfitsio submodule
+--------------------
 
-These methods operate on ``FITSFile`` objects. For the most part, they are
-thin wrappers around the CFITSIO_ routines of the same names. They:
+The ``Libcfitsio`` submodule provides an interface familiar to users of the
+CFITSIO_ C library. It can be used with
 
-* perform type conversion on inputs and outputs when necessary
-* check the returned ``status`` value and raise an appropriate exception if
+.. code-block:: julia
+
+   using FITSIO.Libcfitsio
+
+The functions exported by this module operate on ``FITSFile`` objects.
+For the most part, they are thin wrappers around the CFITSIO_ routines
+of the same names. Typically, they:
+
+* Convert from Julia types to C types as necessary.
+* Check the returned ``status`` value and raise an appropriate exception if
   non-zero.
-
-The high-level interface uses these methods.
 
 .. warning::
 
    Note that these functions do not check if the file is still open before
    trying to access it. A segmentation fault can result from trying to operate
-   on a closed file. (The high-level interface always checks if the file is
+   on a closed file. (The main FITSIO interface always checks if the file is
    open before any operation.)
 
 .. _CFITSIO: http://heasarc.gsfc.nasa.gov/fitsio/
@@ -201,7 +207,7 @@ This example creates a table with room for 10 entries, each of them
 describing the characteristics of a particle: its speed, its mass, and
 its name (codified as a 20-character string).
 
-.. function:: fits_create_ascii_table(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
+.. function:: fits_create_ascii_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
 
    Append a new HDU containing an ASCII table. The table will have
    `numrows` rows (this parameter can be set to zero), each
@@ -226,26 +232,26 @@ its name (codified as a 20-character string).
    to the types that can be used in an ASCII table column. Refer to
    the CFITSIO manual for further information.
 
-   See also :func:`fits_create_binary_table` for a similar function
+   See also :func:`fits_create_binary_tbl` for a similar function
    which creates binary tables.
 
-.. function:: fits_create_binary_table(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
+.. function:: fits_create_binary_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
 
    Append a new HDU containing a binary table. The meaning of the
    parameters is the same as in a call to
-   :func:`fits_create_ascii_table`.
+   :func:`fits_create_ascii_tbl`.
 
-.. function:: fits_get_col_repeat(f::FITSFile, colnum::Integer)
+.. function:: fits_get_coltype(f::FITSFile, colnum::Integer)
 
    Provided that the current HDU contains either an ASCII or binary
-   table, this function returns a tuple containing two elements:
+   table, return information about the column at position ``colnum``
+   (counting from 1). Return is a tuple containing
 
-   1. the repetition count for the column at position `colnum`
-      (starting from 1), and
-   2. the optimal number of characters needed to print the value of
-      any field contained in this column.
+   - ``typecode``: the CFITSIO integer type code of the column
+   - ``repcount``: the repetition count for the column
+   - ``width``: the width of an individual element
 
-.. function:: fits_insert_rows(f::FITSFile, firstrow::integer, nrows::Integer)
+.. function:: fits_insert_rows(f::FITSFile, firstrow::Integer, nrows::Integer)
 
    Insert a number of rows equal to `nrows` after the row number
    `firstrow`. The elements in each row are initialized to their
@@ -265,7 +271,7 @@ its name (codified as a 20-character string).
    See also :func:`fits_insert_rows`.
 
 
-.. function:: fits_read_col{T}(f::FITSFile, ::Type{T}, colnum::Int, firstrow::Int64, firstelem::Int64, data::Array{T})
+.. function:: fits_read_col(f::FITSFile, colnum::Integer, firstrow::Integer, firstelem::Integer, data::Array)
 
    Read data from one column of an ASCII/binary table and convert the
    data into the specified type `T`. The column number is specified by
@@ -277,7 +283,7 @@ its name (codified as a 20-character string).
    specified by the length of the array `data`, which at the end of
    the call will be filled with the elements read from the column.
 
-.. function:: fits_write_col{T}(f::FITSFile, ::Type{T}, colnum::Int, firstrow::Int64, firstelem::Int64, data::Array{T})
+.. function:: fits_write_col(f::FITSFile, colnum::Integer, firstrow::Integer, firstelem::Integer, data::Array)
 
    Write some data in one column of a ASCII/binary table. The column
    number is specified by *colnum* (the first column has

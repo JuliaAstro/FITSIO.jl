@@ -4,7 +4,6 @@
 import Base: @deprecate
 
 # Deprecated in v0.6
-export readkey, readheader, getcomment, setcomment!
 @deprecate readkey(hdu::HDU, key) read_key(hdu, key)
 @deprecate readheader(hdu::HDU) read_header(hdu::HDU)
 @deprecate getcomment(hdr::FITSHeader, key) get_comment(hdr, key)

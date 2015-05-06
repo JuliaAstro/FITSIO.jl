@@ -1,4 +1,6 @@
 using BinDeps
+using Compat
+
 @BinDeps.setup
 
 version = "3360"
@@ -25,4 +27,4 @@ provides(BuildProcess,
          end),
          libcfitsio)
 
-@BinDeps.install [:libcfitsio => :libcfitsio]
+@BinDeps.install @compat Dict(:libcfitsio => :libcfitsio)

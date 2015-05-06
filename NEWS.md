@@ -1,10 +1,21 @@
-v0.6.0 (unreleased)
+v0.6.0 (2015-05-06)
 ===================
 
 ## New Features
 
 - Read and write table extensions (both ASCII and binary) in
   high-level API.
+
+## Breaking changes
+
+The low-level API functions (starting with `fits_*`) have been moved to
+the `Libcfitsio` sumodule. If you are using these functions, simply add
+
+```julia
+using FITSIO.Libcfitsio
+```
+
+in place of, or in addition to, `using FITSIO`.
 
 ## Deprecations
 
@@ -15,7 +26,7 @@ v0.6.0 (unreleased)
 - `hdu[i:j, :]` replaced by `read(hdu, i:j, :)` for reading subsets
   of image extensions.
 
-## Deprecations in low-level C-style interface
+In the low-level interface (now in `Libcfitsio`):
 
 - `fits_get_col_repeat` deprecated. Use `fits_get_coltype`, which
   returns the column typecode in addition to width and repeat values.

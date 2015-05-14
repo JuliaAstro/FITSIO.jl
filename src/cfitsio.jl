@@ -479,6 +479,17 @@ function fits_get_hdu_type(f::FITSFile)
     hdu_int_to_type(hdutype[1])
 end
 
+function fits_read_descriptll(f::FITSFile, colnum::Integer, rownum::Integer)
+  repeat = Int64[0]
+  status = Cint[0]
+  offset = Int64[0]
+  ccall((:ffgdesll, libcfitsio), Cint,
+        (Ptr{Void}, Cint, Int64, Ptr{Int64}, Ptr{Int64}, Ptr{Cint}),
+         f.ptr, colnum, rownum, repeat, offset, status)
+  fits_assert_ok(status[1])
+  (repeat[1], offset[1])
+end
+
 
 # -----------------------------------------------------------------------------
 # image HDU functions

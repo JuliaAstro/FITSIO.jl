@@ -652,6 +652,9 @@ function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
                     hdutype, extname, header, units)
     fits_assert_open(f.fitsfile)
 
+    # move to last HDU; table will be added after the CHDU
+    fits_movabs_hdu(f.fitsfile, @compat(Int(fits_get_num_hdus(f.fitsfile))))
+
     # create an array of tform strings (which we will create pointers to)
     tform_str = [fits_tform(hdutype, a) for a in coldata]
 
@@ -705,9 +708,9 @@ function write(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector;
     write_impl(f, colnames, coldata, hdutype, extname, header, units)
 end
 
-function write{T}(f::FITS, data::Dict{ASCIIString, T};
-                  units=nothing, header=nothing, hdutype=TableHDU,
-                  extname=nothing)
+function write(f::FITS, data::Dict{ASCIIString};
+               units=nothing, header=nothing, hdutype=TableHDU,
+               extname=nothing)
     colnames = collect(keys(data))
     coldata = collect(values(data))
     write_impl(f, colnames, coldata, hdutype, extname, header, units)
@@ -733,7 +736,7 @@ function read(hdu::Union(TableHDU, ASCIITableHDU), colname::ASCIIString)
     if isa(hdu, ASCIITableHDU)
         result = Array(T, nrows)
     else
-        if typecode == 16
+        if abs(typecode) == 16
             # for strings, cfitsio only considers it to be a vector column if
             # width != repcnt, even if tdim is multi-valued.
             if repcnt == width
@@ -741,7 +744,7 @@ function read(hdu::Union(TableHDU, ASCIITableHDU), colname::ASCIIString)
             else
                 rowsize = fits_read_tdim(hdu.fitsfile, colnum)
                 # if rowsize isn't multi-valued, ignore it (we know it *is* a
-                # vector column). If it is mutli valued, prefer it to repcnt,
+                # vector column). If it is multi-valued, prefer it to repcnt,
                 # width.
                 if length(rowsize) == 1
                     result = Array(T, div(repcnt, width), nrows)

@@ -1,3 +1,12 @@
+v0.7.0 (unreleased)
+===================
+
+## Deprecations
+
+- `Libcfitsio.fits_read_num_rowsll` deprecated.
+  Use `Libcfitsio.fits_read_num_rows`.
+
+
 v0.6.0 (2015-05-06)
 ===================
 

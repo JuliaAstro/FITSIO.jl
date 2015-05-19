@@ -718,7 +718,7 @@ function read(hdu::Union(TableHDU, ASCIITableHDU), colname::ASCIIString)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
-    nrows = fits_get_num_rowsll(hdu.fitsfile)
+    nrows = fits_get_num_rows(hdu.fitsfile)
     colnum = fits_get_colnum(hdu.fitsfile, colname)
 
     # `eqcoltype`: do SCALE/ZERO conversion automatically

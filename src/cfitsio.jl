@@ -91,7 +91,6 @@ export FITSFile,
        fits_get_num_cols,
        fits_get_num_hdus,
        fits_get_num_rows,
-       fits_get_num_rowsll,
        fits_get_rowsize,
        fits_get_colnum,
        fits_get_coltype,
@@ -107,6 +106,7 @@ export FITSFile,
        fits_open_image,
        fits_open_table,
        fits_read_col,
+       fits_read_descript,
        fits_read_keyn,
        fits_read_keyword,
        fits_read_pix,
@@ -479,7 +479,6 @@ function fits_get_hdu_type(f::FITSFile)
     hdu_int_to_type(hdutype[1])
 end
 
-
 # -----------------------------------------------------------------------------
 # image HDU functions
 
@@ -622,8 +621,6 @@ end
 
 for (a,b,T) in ((:fits_get_num_cols,  "ffgncl",  :Cint),
                 (:fits_get_num_hdus,  "ffthdu",  :Cint),
-                (:fits_get_num_rows,  "ffgnrw",  :Clong),
-                (:fits_get_num_rowsll,"ffgnrwll",:Int64),
                 (:fits_get_rowsize,   "ffgrsz",  :Clong))
     @eval begin
         function ($a)(f::FITSFile)
@@ -651,65 +648,95 @@ function fits_get_colnum(f::FITSFile, tmplt::ASCIIString)
     return result[1]
 end
 
-# The function `fits_read_tdim()` returns the dimensions of a table column in a
-# binary table. Normally this information is given by the TDIMn keyword, but if
-# this keyword is not present then this routine returns `[r]` with `r` equals
-# to the repeat count in the TFORM keyword.
-let fn, T, ffgtdm, ffgtcl, ffeqty
-    if  promote_type(Int, Clong) == Clong
-        T = Clong
-        ffgtdm = "ffgtdm"
-        ffptdm = "ffptdm"
-        ffgtcl = "ffgtcl"
-        ffeqty = "ffeqty"
-    else
-        T = Int64
-        ffgtdm = "ffgtdmll"
-        ffptdm = "ffptdmll"
-        ffgtcl = "ffgtclll"
-        ffeqty = "ffeqtyll"
+# The following block are all functions that have separate variants for Clong
+# and 64-bit integers in cfitsio. Rather than providing both of these, we
+# provide only one according to the native integer type on the platform.
+if  promote_type(Int, Clong) == Clong
+    T = Clong
+    ffgtdm = "ffgtdm"
+    ffgnrw = "ffgnrw"
+    ffptdm = "ffptdm"
+    ffgtcl = "ffgtcl"
+    ffeqty = "ffeqty"
+    ffgdes = "ffgdes"
+else
+    T = Int64
+    ffgtdm = "ffgtdmll"
+    ffgnrw = "ffgnrwll"
+    ffptdm = "ffptdmll"
+    ffgtcl = "ffgtclll"
+    ffeqty = "ffeqtyll"
+    ffgdes = "ffgdesll"
+end
+@eval begin
+    function fits_get_coltype(ff::FITSFile, colnum::Integer)
+        typecode = Cint[0]
+        repcnt = $T[0]
+        width = $T[0]
+        status = Cint[0]
+        ccall(($ffgtcl,libcfitsio), Cint,
+              (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
+              ff.ptr, colnum, typecode, repcnt, width, status)
+        fits_assert_ok(status[1])
+        return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
     end
-    @eval begin
-        function fits_get_coltype(ff::FITSFile, colnum::Integer)
-            typecode = Cint[0]
-            repcnt = $T[0]
-            width = $T[0]
-            status = Cint[0]
-            ccall(($ffgtcl,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, typecode, repcnt, width, status)
-            fits_assert_ok(status[1])
-            return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
-        end
-        function fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
-            typecode = Cint[0]
-            repcnt = $T[0]
-            width = $T[0]
-            status = Cint[0]
-            ccall(($ffeqty,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, typecode, repcnt, width, status)
-            fits_assert_ok(status[1])
-            return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
-        end
-        function fits_read_tdim(ff::FITSFile, colnum::Integer)
-            naxes = Array($T, 99) # 99 is the maximum allowed number of axes
-            naxis = Cint[0]
-            status = Cint[0]
-            ccall(($ffgtdm,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Cint, Ptr{Cint}, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, length(naxes), naxis, naxes, status)
-            fits_assert_ok(status[1])
-            return naxes[1:naxis[1]]
-        end
-        function fits_write_tdim(ff::FITSFile, colnum::Integer,
+
+    function fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
+        typecode = Cint[0]
+        repcnt = $T[0]
+        width = $T[0]
+        status = Cint[0]
+        ccall(($ffeqty,libcfitsio), Cint,
+              (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
+              ff.ptr, colnum, typecode, repcnt, width, status)
+        fits_assert_ok(status[1])
+        return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
+    end
+
+    function fits_get_num_rows(f::FITSFile)
+        result = $T[0]
+        status = Cint[0]
+        ccall(($ffgnrw, libcfitsio), Cint,
+              (Ptr{Void}, Ptr{$T}, Ptr{Cint}),
+              f.ptr, result, status)
+        fits_assert_ok(status[1])
+        return @compat Int(result[1])
+    end
+
+    # `fits_read_tdim` returns the dimensions of a table column in a
+    # binary table. Normally this information is given by the TDIMn
+    # keyword, but if this keyword is not present then this routine
+    # returns `[r]` with `r` equals to the repeat count in the TFORM
+    # keyword.
+    function fits_read_tdim(ff::FITSFile, colnum::Integer)
+        naxes = Array($T, 99)  # 99 is the maximum allowed number of axes
+        naxis = Cint[0]
+        status = Cint[0]
+        ccall(($ffgtdm,libcfitsio), Cint,
+              (Ptr{Void}, Cint, Cint, Ptr{Cint}, Ptr{$T}, Ptr{Cint}),
+              ff.ptr, colnum, length(naxes), naxis, naxes, status)
+        fits_assert_ok(status[1])
+        return naxes[1:naxis[1]]
+    end
+
+    function fits_write_tdim(ff::FITSFile, colnum::Integer,
                                  naxes::Array{$T})
-            status = Cint[0]
-            ccall(($ffptdm, libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Cint, Ptr{$T}, Ptr{Cint}),
-                  ff.ptr, colnum, length(naxes), naxes, status)
-            fits_assert_ok(status[1])
-        end
+        status = Cint[0]
+        ccall(($ffptdm, libcfitsio), Cint,
+              (Ptr{Void}, Cint, Cint, Ptr{$T}, Ptr{Cint}),
+              ff.ptr, colnum, length(naxes), naxes, status)
+        fits_assert_ok(status[1])
+    end
+
+    function fits_read_descript(f::FITSFile, colnum::Integer, rownum::Integer)
+        repeat = $T[0]
+        offset = $T[0]
+        status = Cint[0]
+        ccall(($ffgdes, libcfitsio), Cint,
+              (Ptr{Void}, Cint, Int64, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
+              f.ptr, colnum, rownum, repeat, offset, status)
+        fits_assert_ok(status[1])
+        return @compat Int(repeat[1]), Int(offset[1])
     end
 end
 
@@ -811,6 +838,10 @@ end
 # deprecations
 
 import Base: @deprecate
+
+# Deprecated in v0.7
+
+@deprecate fits_get_num_rowsll fits_get_num_rows
 
 # Deprecated in v0.6
 

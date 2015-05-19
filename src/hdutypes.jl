@@ -542,6 +542,7 @@ for (T, tform, code) in ((UInt8,       'B',  11),
                          (Complex128,  'M', 163))
     @eval fits_tform_char(::Type{$T}) = $tform
     CFITSIO_COLTYPE[code] = T
+    CFITSIO_COLTYPE[-code] = T  # variable length arrays
 end
 
 ## Helper functions for writing a table
@@ -717,14 +718,14 @@ function read(hdu::Union(TableHDU, ASCIITableHDU), colname::ASCIIString)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
-    nrows = fits_get_num_rowsll(hdu.fitsfile)
+    nrows = fits_get_num_rows(hdu.fitsfile)
     colnum = fits_get_colnum(hdu.fitsfile, colname)
 
     # `eqcoltype`: do SCALE/ZERO conversion automatically
     typecode, repcnt, width = fits_get_eqcoltype(hdu.fitsfile, colnum)
 
     # BitArrays not yet supported.
-    (typecode == 1) && error("BitArray ('X') columns not yet supported")
+    (abs(typecode) == 1) && error("BitArray ('X') columns not yet supported")
 
     T = CFITSIO_COLTYPE[typecode]
 

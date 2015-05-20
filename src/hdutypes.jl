@@ -542,7 +542,6 @@ for (T, tform, code) in ((UInt8,       'B',  11),
                          (Complex128,  'M', 163))
     @eval fits_tform_char(::Type{$T}) = $tform
     CFITSIO_COLTYPE[code] = T
-    CFITSIO_COLTYPE[-code] = T  # variable length arrays
 end
 
 ## Helper functions for writing a table
@@ -716,8 +715,41 @@ function write(f::FITS, data::Dict{ASCIIString};
     write_impl(f, colnames, coldata, hdutype, extname, header, units)
 end
 
-# Read a table column into an array of the "equivalent type"
-function read(hdu::Union(TableHDU, ASCIITableHDU), colname::ASCIIString)
+# Read a variable length array column of numbers
+# (separate implementation from normal fits_read_col function because
+# the length of each vector must be determined for each row.
+function _read_var_col{T}(f::FITSFile, colnum::Integer, data::Vector{Vector{T}})
+    nrows = length(data)
+    for i=1:nrows
+        repeat, offset = fits_read_descript(f, colnum, i)
+        data[i] = Array(T, repeat)
+        fits_read_col(f, colnum, i, 1, data[i])
+    end
+end
+
+# Read a variable length array column of strings
+# (Must be separate implementation from normal fits_read_col function because
+# the length of each string must be determined for each row.)
+function _read_var_col(f::FITSFile, colnum::Integer, data::Vector{ASCIIString})
+    status = Cint[0]
+    for i=1:length(data)
+        repeat, offset = fits_read_descript(f, colnum, i)
+        buffer = Array(UInt8, repeat)
+        ccall((:ffgcvs, libcfitsio), Cint,
+              (Ptr{Void}, Cint, Int64, Int64, Int64,
+               Ptr{Uint8}, Ptr{Ptr{Uint8}}, Ptr{Cint}, Ptr{Cint}),
+              f.ptr, colnum, i, 1, repeat, " ", buffer, C_NULL, status)
+        fits_assert_ok(status[1])
+
+        # Create string out of the buffer, terminating at null characters
+        zeropos = search(buffer, 0x00)
+        data[i] = (zeropos >= 1) ? ASCIIString(buffer[1:(zeropos-1)]) :
+                                   ASCIIString(buffer)
+    end
+end
+
+# Read a table column
+function read(hdu::ASCIITableHDU, colname::ASCIIString)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
@@ -727,16 +759,36 @@ function read(hdu::Union(TableHDU, ASCIITableHDU), colname::ASCIIString)
     # `eqcoltype`: do SCALE/ZERO conversion automatically
     typecode, repcnt, width = fits_get_eqcoltype(hdu.fitsfile, colnum)
 
-    # BitArrays not yet supported.
-    (abs(typecode) == 1) && error("BitArray ('X') columns not yet supported")
+    T = CFITSIO_COLTYPE[typecode]
+    result = Array(T, nrows)
+    fits_read_col(hdu.fitsfile, colnum, 1, 1, result)
+
+    return result
+end
+
+function read(hdu::TableHDU, colname::ASCIIString)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+
+    nrows = fits_get_num_rows(hdu.fitsfile)
+    colnum = fits_get_colnum(hdu.fitsfile, colname)
+
+    # `eqcoltype`: do SCALE/ZERO conversion automatically
+    typecode, repcnt, width = fits_get_eqcoltype(hdu.fitsfile, colnum)
+
+    isvariable = typecode < 0  # Is it a variable-length array column?
+    typecode = abs(typecode)
+
+    (typecode == 1) && error("BitArray ('X') columns not yet supported")
 
     T = CFITSIO_COLTYPE[typecode]
 
-    # ASCII tables can only have scalar columns
-    if isa(hdu, ASCIITableHDU)
-        result = Array(T, nrows)
+    # variable columns can only be 1-d, so this is simpler.
+    if isvariable
+        result = T === ASCIIString ? Array(T, nrows) : Array(Vector{T}, nrows)
+        _read_var_col(hdu.fitsfile, colnum, result)
     else
-        if abs(typecode) == 16
+        if T === ASCIIString
             # for strings, cfitsio only considers it to be a vector column if
             # width != repcnt, even if tdim is multi-valued.
             if repcnt == width
@@ -760,10 +812,9 @@ function read(hdu::Union(TableHDU, ASCIITableHDU), colname::ASCIIString)
                 result = Array(T, rowsize..., nrows)
             end
         end
-    end
 
-    # TODO: allow altering first row and first element.
-    fits_read_col(hdu.fitsfile, colnum, 1, 1, result)
+        fits_read_col(hdu.fitsfile, colnum, 1, 1, result)
+    end
 
     return result
 end

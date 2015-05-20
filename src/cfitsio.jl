@@ -764,7 +764,7 @@ function fits_read_col(f::FITSFile,
           (Ptr{Void}, Cint, Int64, Int64, Int64,
            Ptr{Uint8}, Ptr{Ptr{Uint8}}, Ptr{Cint}, Ptr{Cint}),
           f.ptr, colnum, firstrow, firstelem, length(data),
-          "", buffers, anynull, status)
+          " ", buffers, anynull, status)
     fits_assert_ok(status[1])
 
     # Create strings out of the buffers, terminating at null characters.

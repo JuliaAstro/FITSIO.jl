@@ -78,15 +78,18 @@ end
 i = length(indata) + 1
 indata["col$i"] = [randstring(10) for j=1:20]  # ASCIIString column
 i += 1
-indata["col$i"] = [true for i=1:20]  # Bool column
+indata["col$i"] = ones(Bool, 20)  # Bool column
 i += 1
 indata["col$i"] = reshape([1:40;], (2, 20))  # vector Int64 column
 i += 1
 indata["col$i"] = [randstring(5) for j=1:2, k=1:20]  # vector ASCIIString col
+indata["vcol1"] = [randstring(j) for j=1:20]  # variable length column
+indata["vcol2"] = [collect(1.:j) for j=1.:20.] # variable length
 
-write(f, indata)
+# test writing
+write(f, indata; varcols=["vcol1", "vcol2"])
 
-# test 
+# test reading
 for (colname, incol) in indata
     outcol = read(f[2], colname)  # table is in extension 2 (1 = primary hdr)
     @test outcol == incol

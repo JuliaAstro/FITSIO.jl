@@ -95,6 +95,7 @@ export FITSFile,
        fits_get_colnum,
        fits_get_coltype,
        fits_get_eqcoltype,
+       fits_get_version,
        fits_read_tdim,
        fits_hdr2str,
        fits_insert_rows,
@@ -198,6 +199,11 @@ function fits_assert_ok(status::Cint)
     end
 end
 
+function fits_get_version()
+    version = Array(Cfloat, 1)
+    ccall((:ffvers, libcfitsio), Cfloat, (Ptr{Cfloat},), version)
+    return version[1]
+end
 # -----------------------------------------------------------------------------
 # file access & info functions
 

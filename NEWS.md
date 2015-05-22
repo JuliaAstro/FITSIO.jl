@@ -1,6 +1,10 @@
 v0.7.0 (unreleased)
 ===================
 
+## New Features
+
+- Read and write variable length columns in binary tables.
+
 ## Deprecations
 
 - `Libcfitsio.fits_read_num_rowsll` deprecated.

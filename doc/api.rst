@@ -121,7 +121,7 @@ Image operations
 Table Operations
 ----------------
 
-.. function:: write(f::FITS, data::Dict; hdutype=TableHDU, extname=nothing, header=nothing, units=nothing, varcols=nothing)
+.. function:: write(f::FITS, data::Dict; hdutype=TableHDU, hduname=nothing, hduver=nothing, header=nothing, units=nothing, varcols=nothing)
 
    Create a new table extension and write data to it. If the FITS file
    is currently empty then a dummy primary array will be created
@@ -137,7 +137,8 @@ Table Operations
    
    - ``hdutype``: Type of table extension to create. Can be either
      ``TableHDU`` (binary table) or ``ASCIITableHDU`` (ASCII table).
-   - ``extname``: Name of extension.
+   - ``hduname``: Name of extension.
+   - ``hduver``: Version of extension (Int)
    - ``header``: FITSHeader instance to write to new extension.
    - ``units``: Dictionary mapping column name to units (as a string).
    - ``varcols``: An array giving the column names or column indicies to
@@ -157,7 +158,7 @@ Table Operations
       potentially non-uniform element types (which would not be
       writable as a FITS table column).
 
-.. function:: write(f::FITS, colnames, coldata; hdutype=TableHDU, extname=nothing, header=nothing, units=nothing, varcols=nothing)
+.. function:: write(f::FITS, colnames, coldata; hdutype=TableHDU, hduname=nothing, hduver=nothing, header=nothing, units=nothing, varcols=nothing)
 
    Same as ``write(f::FITS, data::Dict; ...)`` but providing column
    names and column data as a separate arrays. This is useful for

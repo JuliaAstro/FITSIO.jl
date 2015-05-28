@@ -8,6 +8,16 @@ import .Libcfitsio: libcfitsio,
                     fits_assert_ok,
                     TYPE_FROM_BITPIX
 
+function libcfitsio_version()
+    # fits_get_version returns a float. e.g., 3.341f0. We parse that
+    # into a proper version number. E.g., 3.341 -> v"3.34.1"
+    v = convert(Int, round(1000 * fits_get_version()))
+    x = div(v, 1000)
+    y = div(rem(v, 1000), 10)
+    z = rem(v, 10)
+    VersionNumber(x, y, z)
+end
+
 # -----------------------------------------------------------------------------
 # Types
 
@@ -86,22 +96,38 @@ endof(f::FITS) = length(f)
 function show(io::IO, f::FITS)
     fits_assert_open(f.fitsfile)
 
-    print(io, "file: ", f.filename, "\n")
-    print(io, "mode: ", f.mode, "\n")
-    print(io, "extnum exttype         extname\n")
+    # Get name and type of all HDUs.
+    nhdu = length(f)
+    names = Array(ASCIIString, nhdu)
+    vers = Array(ASCIIString, nhdu)
+    types = Array(ASCIIString, nhdu)
+    for i = 1:nhdu
+        t = fits_movabs_hdu(f.fitsfile, i)
+        types[i] = (t == :image_hdu ? "Image" :
+                    t == :binary_table ? "Table" :
+                    t == :ascii_table ? "ASCIITable" :
+                    error("unknown HDU type"))
+        nname = _try_read_key(f.fitsfile, ASCIIString, ("EXTNAME", "HDUNAME"))
+        names[i] = get(nname, "")
+        nver = _try_read_key(f.fitsfile, Int, ("EXTVER", "HDUVER"))
+        vers[i] = isnull(nver) ? "" : string(get(nver))
+    end
 
-    for i = 1:length(f)
-        hdutype = fits_movabs_hdu(f.fitsfile, i)
-        extname = ""
-        try
-            extname = fits_read_keyword(f.fitsfile, "EXTNAME")[1]
-        catch
-            try
-                extname = fits_read_keyword(f.fitsfile, "HDUNAME")[1]
-            catch
-            end
-        end
-        @printf io "%-6d %-15s %s\n" i hdutype extname
+    namelen = max(maximum(length, names), 4) + 2
+    verlen = maximum(length, vers)
+    if verlen > 0
+        verlen = max(verlen, 3) + 2
+        namehead = string(rpad("Name", namelen), rpad("Ver", verlen))
+    else
+        namehead = rpad("Name", namelen)
+    end
+
+    print(io, """File: $(f.filename)
+    Mode: \"$(f.mode)\"
+    HDUs: Num   $(namehead)Type
+    """)
+    for i in 1:nhdu
+        @printf io "      %-5d %s%s%s\n" i rpad(names[i], namelen) rpad(vers[i], verlen) types[i]
     end
 end
 
@@ -155,6 +181,37 @@ end
 # -----------------------------------------------------------------------------
 # Header methods
 
+# modified version of Base.rstrip that returns " " rather than "" if the
+# string is all spaces. This is necessary because trailing whitespace is
+# not significant in FITS header keywords, but *leading* whitespace is.
+# See CFITSIO manual section 4.5 for details.
+function _rstrip_fits(s::ASCIIString)
+
+    # return input string if length is 0 or 1 or last char is not space.
+    if length(s) == 0 || length(s) == 1 || s[end] != ' '
+        return s
+    end
+
+    i = endof(s) - 1
+    while i > 1
+        if s[i] != ' '
+            return s[1:i]
+        end
+        i -= 1
+    end
+    return s[1:1]
+end
+
+# parse FITS header value as an ASCIIString.
+function parse_header_val(::Type{ASCIIString}, val::ASCIIString)
+    if length(val) < 2 || val[1] != '\'' || val[end] != '\''
+        throw(ArgumentError("ASCIIString header values must begin and end with ' character"))
+    end
+    return _rstrip_fits(val[2:end-1])
+end
+
+parse_header_val(::Type{Int}, val::ASCIIString) = parse(Int, val)
+
 # returns one of: ASCIIString, Bool, Int, Float64, nothing
 function parse_header_val(val::ASCIIString)
     len = length(val)
@@ -170,19 +227,23 @@ function parse_header_val(val::ASCIIString)
         # This is a character string; according to FITS standard, trailing
         # spaces are insignificant, thus we remove them as well as the
         # surrounding quotes.
-        return rstrip(val[2:end-1])
+        return _rstrip_fits(val[2:end-1])
     else
+        # TODO: change this block to `tryparse` once support for
+        # tryparse(Int, x) is in Compat or v0.3 is no longer supported.
         try
-            return @compat parse(Int, val)
+            return parse(Int, val)
         catch
-            try
-                return @compat parse(Float64, val)
-            catch
-            end
         end
+
+        fval = tryparse(Float64, val)
+        isnull(fval) || return get(fval)
     end
-    return val  # The value (probably) doesn't comply with the FITS
-                # standard. Give up and return the unparsed string.
+
+    # The value (probably) doesn't comply with the FITS standard.
+    # Give up and return the unparsed string.
+    return val
+
 end
 
 function read_key(hdu::HDU, key::Integer)
@@ -197,6 +258,27 @@ function read_key(hdu::HDU, key::ASCIIString)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     value, comment = fits_read_keyword(hdu.fitsfile, key)
     parse_header_val(value), comment
+end
+
+# Try to read the raw keys in order given; returns Nullable{ASCIIString}.
+# (null if key doesn't exist.)
+function _try_read_key{T}(f::FITSFile, ::Type{T}, names)
+    status = Cint[0]
+    value = Array(Uint8, 71)
+    for name in names
+        ccall((:ffgkey, libcfitsio), Cint,
+              (Ptr{Void},Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
+              f.ptr, bytestring(name), value, C_NULL, status)
+
+        # If the key is found, return it. If there was some other error
+        # besides key not found, throw an error.
+        if status[1] == 0
+            return Nullable(parse_header_val(T, bytestring(pointer(value))))
+        elseif status[1] != 202
+            error(fits_get_errstatus(status[1]))
+        end
+    end
+    return Nullable{ASCIIString}()
 end
 
 function read_header(hdu::HDU)
@@ -376,13 +458,40 @@ end
 # -----------------------------------------------------------------------------
 # ImageHDU methods
 
+# helper function for show(::HDU) - gets string with HDU number, name, version.
+# assumes file is open or and on correct current hdu.
+function _get_hdu_info_string(hdu::HDU)
+    hduname = _try_read_key(hdu.fitsfile, ASCIIString, ("EXTNAME", "HDUNAME"))
+    hduver = _try_read_key(hdu.fitsfile, Int, ("EXTVER", "HDUVER"))
+    if !isnull(hduname) && !isnull(hduver)
+        return "$(hdu.ext) (name=$(repr(get(hduname))), ver=$(get(hduver)))"
+    elseif !isnull(hduname)
+        return "$(hdu.ext) (name=$(repr(get(hduname))))"
+    end
+    return string(hdu.ext)
+end
+
 # Display the image datatype and dimensions
 function show(io::IO, hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    bitpix = fits_get_img_equivtype(hdu.fitsfile)
+    bitpix = fits_get_img_type(hdu.fitsfile)
+    equivbitpix = fits_get_img_equivtype(hdu.fitsfile)
     sz = fits_get_img_size(hdu.fitsfile)
-    @printf io "file: %s\nextension: %d\ntype: IMAGE\nimage info:\n  bitpix: %d\n  size: %s" fits_file_name(hdu.fitsfile) hdu.ext bitpix tuple(sz...)
+
+    if bitpix == equivbitpix
+        datainfo = string(TYPE_FROM_BITPIX[equivbitpix])
+    else
+        datainfo = @sprintf "%s (physical: %s)" TYPE_FROM_BITPIX[equivbitpix] TYPE_FROM_BITPIX[bitpix]
+    end
+    
+    print(io, """
+    File: $(fits_file_name(hdu.fitsfile))
+    HDU: $(_get_hdu_info_string(hdu))
+    Type: Image
+    Datatype: $datainfo
+    Datasize: $(tuple(sz...))
+    """)
 end
 
 # Get image dimensions
@@ -480,12 +589,20 @@ read(hdu::ImageHDU, I::Int...) = _read(hdu, I...)[1]
 # The following Julia data types are supported for writing images by cfitsio:
 # Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64, Float32, Float64
 function write{T}(f::FITS, data::Array{T};
-                  header::Union(Nothing, FITSHeader)=nothing)
+                  header::Union(Nothing, FITSHeader)=nothing,
+                  hduname::Union(Nothing, ASCIIString)=nothing,
+                  hduver::Union(Nothing, Integer)=nothing)
     fits_assert_open(f.fitsfile)
     s = size(data)
     fits_create_img(f.fitsfile, T, [s...])
     if isa(header, FITSHeader)
         write_header(f.fitsfile, header, true)
+    end
+    if isa(hduname, ASCIIString)
+        fits_update_key(f.fitsfile, "EXTNAME", hduname)
+    end
+    if isa(hduver, Integer)
+        fits_update_key(f.fitsfile, "EXTVER", hduver)
     end
     fits_write_pix(f.fitsfile, ones(Int, length(s)), length(data), data)
     nothing
@@ -547,9 +664,52 @@ typealias FITSTableScalar Union(UInt8, Int8, Bool, UInt16, Int16, Uint32,
                                 Int32, Int64, Float32, Float64, Complex64,
                                 Complex128)
 
-## Helper functions for writing a table
+# Helper function for reading information about a (binary) table column
+# Returns: (eltype, rowsize, isvariable)
+function _get_col_info(f::FITSFile, colnum::Integer)
+    eqtypecode, repeat, width = fits_get_eqcoltype(f, colnum)
+    isvariable = eqtypecode < 0
+    eqtypecode = abs(eqtypecode)
 
-# get fits tdim shape for given array
+    (eqtypecode == 1) && error("BitArray ('X') columns not yet supported")
+
+    T = CFITSIO_COLTYPE[eqtypecode]
+
+    if isvariable
+        if T !== ASCIIString
+            T = Vector{T}
+        end
+        rowsize = Int[]
+    else
+        if T === ASCIIString
+            # for strings, cfitsio only considers it to be a vector column if
+            # width != repeat, even if tdim is multi-valued.
+            if repeat == width
+                rowsize = Int[]
+            else
+                tdim = fits_read_tdim(f, colnum)
+                # if tdim isn't multi-valued, ignore it (we know it *is* a
+                # vector column). If it is multi-valued, prefer it to repeat
+                # width.
+                if length(tdim) == 1
+                    rowsize = [div(repeat, width)]
+                else
+                    rowsize = tdim[2:end]
+                end
+            end
+        else
+            if repeat == 1
+                rowsize = Int[]
+            else
+                rowsize = fits_read_tdim(f, colnum)
+            end
+        end
+    end
+
+    return T, rowsize, isvariable
+end
+
+# Helper function for getting fits tdim shape for given array
 fits_tdim(A::Array) = (ndims(A) == 1)? [1]: [size(A, i) for i=1:ndims(A)-1]
 function fits_tdim(A::Array{ASCIIString})
     n = ndims(A)
@@ -561,7 +721,8 @@ function fits_tdim(A::Array{ASCIIString})
     tdim
 end
 
-# get fits tform string for given table type and data array.
+# Helper function for getting fits tform string for given table type
+# and data array.
 fits_tform{T}(::Type{TableHDU}, A::Array{T}) = "$(prod(fits_tdim(A)))$(fits_tform_char(T))"
 
 # For string arrays with 2+ dimensions, write tform as rAw. Otherwise,
@@ -598,7 +759,7 @@ function show(io::IO, hdu::TableHDU)
     # allocate return arrays for column names & types
     colnames_in = [Array(Uint8, 70) for i=1:ncols]
     coltypes_in = [Array(Uint8, 70) for i=1:ncols]
-    nrows_in = Array(Int64, 1)
+    nrows = Array(Int64, 1)
     status = Cint[0]
 
     # fits_read_btblhdrll (Can pass NULL for return fields not needed.)
@@ -607,18 +768,34 @@ function show(io::IO, hdu::TableHDU)
            Ptr{Int64}, Ptr{Cint}, Ptr{Ptr{Uint8}},  # nrows, tfields, ttype
            Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}}, Ptr{Uint8},  # tform,tunit,extname
            Ptr{Clong}, Ptr{Cint}),  # pcount, status
-          hdu.fitsfile.ptr, ncols, nrows_in, C_NULL, colnames_in, coltypes_in,
+          hdu.fitsfile.ptr, ncols, nrows, C_NULL, colnames_in, coltypes_in,
           C_NULL, C_NULL, C_NULL, status)
     fits_assert_ok(status[1])
 
     # parse out results
-    nrows = nrows_in[1]
     colnames = [bytestring(pointer(item)) for item in colnames_in]
     coltypes = [bytestring(pointer(item)) for item in coltypes_in]
 
-    @printf io "file: %s\nextension: %d\ntype: BINARY TABLE\nrows: %d\ncolumns:" fits_file_name(hdu.fitsfile) hdu.ext nrows
+    maxlen = maximum(length, colnames)
+
+    print(io, """
+    File: $(fits_file_name(hdu.fitsfile))
+    HDU: $(_get_hdu_info_string(hdu))
+    Type: Table
+    Rows: $(nrows[1])
+    Columns: """)
+    print(io, rpad("Name", maxlen), "  Type\n")
     for i in 1:ncols
-        @printf io "\n    %s (%s)" colnames[i] coltypes[i]
+        T, rowsize, isvariable = _get_col_info(hdu.fitsfile, i)
+
+        print(io, "         $(rpad(colnames[i], maxlen))  $T")
+        if length(rowsize) > 0
+            print(io, "  $(tuple(rowsize...))")
+        end
+        if isvariable
+            print(io, "  [Var]")
+        end
+        print(io, "\n")
     end
 end
 
@@ -630,7 +807,7 @@ function show(io::IO, hdu::ASCIITableHDU)
     # allocate return arrays for column names & types
     colnames_in = [Array(Uint8, 70) for i=1:ncols]
     coltypes_in = [Array(Uint8, 70) for i=1:ncols]
-    nrows_in = Array(Int64, 1)
+    nrows = Array(Int64, 1)
     status = Cint[0]
 
     # fits_read_atblhdrll (Can pass NULL for return fields not needed)
@@ -640,21 +817,25 @@ function show(io::IO, hdu::ASCIITableHDU)
            Ptr{Ptr{Uint8}}, Ptr{Clong}, Ptr{Ptr{Uint8}},  # ttype, tbcol, tform
            Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Cint}),  # tunit, extname, status
           hdu.fitsfile.ptr, ncols,
-          C_NULL, nrows_in, C_NULL,
+          C_NULL, nrows, C_NULL,
           colnames_in, C_NULL, coltypes_in,
           C_NULL, C_NULL, status)
     fits_assert_ok(status[1])
 
     # parse out results
-    nrows = nrows_in[1]
     colnames = [bytestring(pointer(item)) for item in colnames_in]
     coltypes = [bytestring(pointer(item)) for item in coltypes_in]
 
-    @printf io "file: %s\nextension: %d\ntype: ASCII TABLE\nrows: %d\ncolumns:" fits_file_name(hdu.fitsfile) hdu.ext nrows
+    print(io, """
+    File: $(fits_file_name(hdu.fitsfile))
+    HDU: $(_get_hdu_info_string(hdu))
+    Type: ASCII TABLE
+    Rows: $(nrows[1])
+    Columns:
+    """)
     for i in 1:ncols
-        @printf io "\n    %s (%s)" colnames[i] coltypes[i]
+        @printf io "    %s  (%s)\n" colnames[i] coltypes[i]
     end
-    print(io, "\n")
 end
 
 # Write a variable length array column of numbers
@@ -689,7 +870,7 @@ end
 
 # Add a new TableHDU to a FITS object
 function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
-                    hdutype, extname, header, units, varcols)
+                    hdutype, hduname, hduver, header, units, varcols)
     fits_assert_open(f.fitsfile)
 
     # move to last HDU; table will be added after the CHDU
@@ -727,15 +908,15 @@ function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
     end
 
     # extension name
-    extname_ptr = (isa(extname, Nothing) ? convert(Ptr{Uint8}, C_NULL) :
-                   pointer(extname))
+    hduname_ptr = (isa(hduname, Nothing) ? convert(Ptr{Uint8}, C_NULL) :
+                   pointer(hduname))
 
     status = Cint[0]
     ccall(("ffcrtb", libcfitsio), Cint,
           (Ptr{Void}, Cint, Int64, Cint, Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}},
            Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Cint}),
           f.fitsfile.ptr, table_type_code(hdutype), 0, ncols,  # 0 = nrows
-          ttype, tform, tunit, extname_ptr, status)
+          ttype, tform, tunit, hduname_ptr, status)
     fits_assert_ok(status[1])
 
     # For binary tables, write tdim info
@@ -747,6 +928,9 @@ function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
 
     if isa(header, FITSHeader)
         write_header(f.fitsfile, header, true)
+    end
+    if isa(hduver, Integer)
+        fits_update_key(f.fitsfile, "EXTVER", hduver)
     end
 
     for (i, a) in enumerate(coldata)
@@ -761,19 +945,21 @@ end
 
 function write(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector;
                units=nothing, header=nothing, hdutype=TableHDU,
-               extname=nothing, varcols=nothing)
+               hduname=nothing, hduver=nothing, varcols=nothing)
     if length(colnames) != length(coldata)
         error("length of colnames and length of coldata must match")
     end
-    write_impl(f, colnames, coldata, hdutype, extname, header, units, varcols)
+    write_impl(f, colnames, coldata, hdutype, hduname, hduver, header,
+               units, varcols)
 end
 
 function write(f::FITS, data::Dict{ASCIIString};
                units=nothing, header=nothing, hdutype=TableHDU,
-               extname=nothing, varcols=nothing)
+               hduname=nothing, hduver=nothing, varcols=nothing)
     colnames = collect(keys(data))
     coldata = collect(values(data))
-    write_impl(f, colnames, coldata, hdutype, extname, header, units, varcols)
+    write_impl(f, colnames, coldata, hdutype, hduname, hduver, header,
+               units, varcols)
 end
 
 # Read a variable length array column of numbers
@@ -836,46 +1022,13 @@ function read(hdu::TableHDU, colname::ASCIIString)
     nrows = fits_get_num_rows(hdu.fitsfile)
     colnum = fits_get_colnum(hdu.fitsfile, colname)
 
-    # `eqcoltype`: do SCALE/ZERO conversion automatically
-    typecode, repcnt, width = fits_get_eqcoltype(hdu.fitsfile, colnum)
+    T, rowsize, isvariable = _get_col_info(hdu.fitsfile, colnum)
 
-    isvariable = typecode < 0  # Is it a variable-length array column?
-    typecode = abs(typecode)
+    result = Array(T, rowsize..., nrows)
 
-    (typecode == 1) && error("BitArray ('X') columns not yet supported")
-
-    T = CFITSIO_COLTYPE[typecode]
-
-    # variable columns can only be 1-d, so this is simpler.
     if isvariable
-        result = T === ASCIIString ? Array(T, nrows) : Array(Vector{T}, nrows)
         _read_var_col(hdu.fitsfile, colnum, result)
     else
-        if T === ASCIIString
-            # for strings, cfitsio only considers it to be a vector column if
-            # width != repcnt, even if tdim is multi-valued.
-            if repcnt == width
-                result = Array(T, nrows)
-            else
-                rowsize = fits_read_tdim(hdu.fitsfile, colnum)
-                # if rowsize isn't multi-valued, ignore it (we know it *is* a
-                # vector column). If it is multi-valued, prefer it to repcnt,
-                # width.
-                if length(rowsize) == 1
-                    result = Array(T, div(repcnt, width), nrows)
-                else
-                    result = Array(T, rowsize[2:end]..., nrows)
-                end
-            end
-        else
-            if repcnt == 1
-                result = Array(T, nrows)
-            else
-                rowsize = fits_read_tdim(hdu.fitsfile, colnum)
-                result = Array(T, rowsize..., nrows)
-            end
-        end
-
         fits_read_col(hdu.fitsfile, colnum, 1, 1, result)
     end
 

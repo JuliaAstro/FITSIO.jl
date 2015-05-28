@@ -199,11 +199,8 @@ function fits_assert_ok(status::Cint)
     end
 end
 
-function fits_get_version()
-    version = Array(Cfloat, 1)
-    ccall((:ffvers, libcfitsio), Cfloat, (Ptr{Cfloat},), version)
-    return version[1]
-end
+fits_get_version() = ccall((:ffvers, libcfitsio), Cfloat, (Ptr{Cfloat},), &0.)
+
 # -----------------------------------------------------------------------------
 # file access & info functions
 

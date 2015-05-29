@@ -36,7 +36,7 @@ typealias FITSTableScalar Union(UInt8, Int8, Bool, UInt16, Int16, Uint32,
 
 # Helper function for reading information about a (binary) table column
 # Returns: (eltype, rowsize, isvariable)
-function _get_col_info(f::FITSFile, colnum::Integer)
+function fits_get_col_info(f::FITSFile, colnum::Integer)
     eqtypecode, repeat, width = fits_get_eqcoltype(f, colnum)
     isvariable = eqtypecode < 0
     eqtypecode = abs(eqtypecode)
@@ -77,6 +77,19 @@ function _get_col_info(f::FITSFile, colnum::Integer)
     end
 
     return T, rowsize, isvariable
+end
+
+# Parse max length from tform for a variable column
+function var_col_maxlen(tform::ASCIIString)
+    maxlen = -1
+    i = search(tform, '(')
+    if i > 0
+        j = search(tform, ')', i)
+        if j > 0
+            try maxlen = parseint(tform[i+1:j-1]) end
+        end
+    end
+    return maxlen
 end
 
 # Helper function for getting fits tdim shape for given array
@@ -128,7 +141,7 @@ function show(io::IO, hdu::TableHDU)
 
     # allocate return arrays for column names & types
     colnames_in = [Array(Uint8, 70) for i=1:ncols]
-    coltypes_in = [Array(Uint8, 70) for i=1:ncols]
+    coltforms_in = [Array(Uint8, 70) for i=1:ncols]
     nrows = Array(Int64, 1)
     status = Cint[0]
 
@@ -138,34 +151,40 @@ function show(io::IO, hdu::TableHDU)
            Ptr{Int64}, Ptr{Cint}, Ptr{Ptr{Uint8}},  # nrows, tfields, ttype
            Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}}, Ptr{Uint8},  # tform,tunit,extname
            Ptr{Clong}, Ptr{Cint}),  # pcount, status
-          hdu.fitsfile.ptr, ncols, nrows, C_NULL, colnames_in, coltypes_in,
+          hdu.fitsfile.ptr, ncols, nrows, C_NULL, colnames_in, coltforms_in,
           C_NULL, C_NULL, C_NULL, status)
     fits_assert_ok(status[1])
 
     # parse out results
     colnames = [bytestring(pointer(item)) for item in colnames_in]
-    coltypes = [bytestring(pointer(item)) for item in coltypes_in]
+    coltforms = [bytestring(pointer(item)) for item in coltforms_in]
 
-    maxlen = maximum(length, colnames)
+    # get some more information for all the columns
+    coltypes = Array(ASCIIString, ncols)
+    colrowsizes = Array(ASCIIString, ncols)
+    showlegend = false
+    for i in 1:ncols
+        T, rowsize, isvariable = fits_get_col_info(hdu.fitsfile, i)
+        coltypes[i] = repr(T)
+        colrowsizes[i] = length(rowsize) > 0 ? repr(tuple(rowsize...)) : ""
+        if isvariable
+            coltypes[i] *= "*"
+            showlegend = true
+        end
+    end
 
     print(io, """
     File: $(fits_file_name(hdu.fitsfile))
-    HDU: $(_get_hdu_info_string(hdu))
+    HDU: $(hdu.ext)$(fits_get_ext_info_string(hdu.fitsfile))
     Type: Table
     Rows: $(nrows[1])
     Columns: """)
-    print(io, rpad("Name", maxlen), "  Type\n")
-    for i in 1:ncols
-        T, rowsize, isvariable = _get_col_info(hdu.fitsfile, i)
-
-        print(io, "         $(rpad(colnames[i], maxlen))  $T")
-        if length(rowsize) > 0
-            print(io, "  $(tuple(rowsize...))")
-        end
-        if isvariable
-            print(io, "  [Var]")
-        end
-        print(io, "\n")
+    show_ascii_table(
+        io, ["Name", "Size", "Type", "TFORM"],
+        Vector{ASCIIString}[colnames, colrowsizes, coltypes, coltforms],
+        2, 9)
+    if showlegend
+        print(io, "\n         (*) = variable-length column\n")
     end
 end
 
@@ -176,7 +195,7 @@ function show(io::IO, hdu::ASCIITableHDU)
 
     # allocate return arrays for column names & types
     colnames_in = [Array(Uint8, 70) for i=1:ncols]
-    coltypes_in = [Array(Uint8, 70) for i=1:ncols]
+    coltforms_in = [Array(Uint8, 70) for i=1:ncols]
     nrows = Array(Int64, 1)
     status = Cint[0]
 
@@ -188,38 +207,44 @@ function show(io::IO, hdu::ASCIITableHDU)
            Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Cint}),  # tunit, extname, status
           hdu.fitsfile.ptr, ncols,
           C_NULL, nrows, C_NULL,
-          colnames_in, C_NULL, coltypes_in,
+          colnames_in, C_NULL, coltforms_in,
           C_NULL, C_NULL, status)
     fits_assert_ok(status[1])
 
     # parse out results
     colnames = [bytestring(pointer(item)) for item in colnames_in]
-    coltypes = [bytestring(pointer(item)) for item in coltypes_in]
+    coltforms = [bytestring(pointer(item)) for item in coltforms_in]
+
+    # Get additional info
+    coltypes = Array(ASCIIString, ncols)
+    for i in 1:ncols
+        eqtypecode, repeat, width = fits_get_eqcoltype(hdu.fitsfile, i)
+        T = CFITSIO_COLTYPE[eqtypecode]
+        coltypes[i] = repr(T)        
+    end
 
     print(io, """
     File: $(fits_file_name(hdu.fitsfile))
-    HDU: $(_get_hdu_info_string(hdu))
-    Type: ASCII TABLE
+    HDU: $(hdu.ext)$(fits_get_ext_info_string(hdu.fitsfile))
+    Type: ASCIITable
     Rows: $(nrows[1])
-    Columns:
-    """)
-    for i in 1:ncols
-        @printf io "    %s  (%s)\n" colnames[i] coltypes[i]
-    end
+    Columns: """)
+    show_ascii_table(io, ["Name", "Type", "TFORM"],
+                     Vector{ASCIIString}[colnames, coltypes, coltforms], 2, 9)
 end
 
 # Write a variable length array column of numbers
 # (separate implementation from normal fits_write_col function because
 #  we must make separate calls to `fits_write_col` for each row.)
-function _write_var_col{T}(f::FITSFile, colnum::Integer,
-                           data::Vector{Vector{T}})
+function fits_write_var_col{T}(f::FITSFile, colnum::Integer,
+                               data::Vector{Vector{T}})
     for i=1:length(data)
         fits_write_col(f, colnum, i, 1, data[i])
     end
 end
 
-function _write_var_col(f::FITSFile, colnum::Integer,
-                        data::Vector{ASCIIString})
+function fits_write_var_col(f::FITSFile, colnum::Integer,
+                            data::Vector{ASCIIString})
     status = Cint[0]
     buffer = Array(Ptr{UInt8}, 1)  # holds the address of the current row
     for i=1:length(data)
@@ -297,7 +322,7 @@ function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
     end
 
     if isa(header, FITSHeader)
-        write_header(f.fitsfile, header, true)
+        fits_write_header(f.fitsfile, header, true)
     end
     if isa(hduver, Integer)
         fits_update_key(f.fitsfile, "EXTVER", hduver)
@@ -305,7 +330,7 @@ function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
 
     for (i, a) in enumerate(coldata)
         if isvarcol[i]
-            _write_var_col(f.fitsfile, i, a)
+            fits_write_var_col(f.fitsfile, i, a)
         else
             fits_write_col(f.fitsfile, i, 1, 1, a)
         end
@@ -335,7 +360,8 @@ end
 # Read a variable length array column of numbers
 # (separate implementation from normal fits_read_col function because
 # the length of each vector must be determined for each row.
-function _read_var_col{T}(f::FITSFile, colnum::Integer, data::Vector{Vector{T}})
+function fits_read_var_col{T}(f::FITSFile, colnum::Integer,
+                              data::Vector{Vector{T}})
     nrows = length(data)
     for i=1:nrows
         repeat, offset = fits_read_descript(f, colnum, i)
@@ -347,7 +373,7 @@ end
 # Read a variable length array column of strings
 # (Must be separate implementation from normal fits_read_col function because
 # the length of each string must be determined for each row.)
-function _read_var_col(f::FITSFile, colnum::Integer, data::Vector{ASCIIString})
+function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{ASCIIString})
     status = Cint[0]
     bufptr = Array(Ptr{UInt8}, 1)  # holds a pointer to the current row buffer
     for i=1:length(data)
@@ -375,10 +401,9 @@ function read(hdu::ASCIITableHDU, colname::ASCIIString)
     nrows = fits_get_num_rows(hdu.fitsfile)
     colnum = fits_get_colnum(hdu.fitsfile, colname)
 
-    # `eqcoltype`: do SCALE/ZERO conversion automatically
     typecode, repcnt, width = fits_get_eqcoltype(hdu.fitsfile, colnum)
-
     T = CFITSIO_COLTYPE[typecode]
+
     result = Array(T, nrows)
     fits_read_col(hdu.fitsfile, colnum, 1, 1, result)
 
@@ -392,12 +417,12 @@ function read(hdu::TableHDU, colname::ASCIIString)
     nrows = fits_get_num_rows(hdu.fitsfile)
     colnum = fits_get_colnum(hdu.fitsfile, colname)
 
-    T, rowsize, isvariable = _get_col_info(hdu.fitsfile, colnum)
+    T, rowsize, isvariable = fits_get_col_info(hdu.fitsfile, colnum)
 
     result = Array(T, rowsize..., nrows)
 
     if isvariable
-        _read_var_col(hdu.fitsfile, colnum, result)
+        fits_read_var_col(hdu.fitsfile, colnum, result)
     else
         fits_read_col(hdu.fitsfile, colnum, 1, 1, result)
     end

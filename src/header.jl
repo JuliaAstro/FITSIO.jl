@@ -1,69 +1,204 @@
 # FITSHeader methods
 
-# modified version of Base.rstrip that returns " " rather than "" if the
-# string is all spaces. This is necessary because trailing whitespace is
-# not significant in FITS header keywords, but *leading* whitespace is.
-# See CFITSIO manual section 4.5 for details.
-function _rstrip_fits(s::ASCIIString)
+# -----------------------------------------------------------------------------
+# Helper functions
+#
+# Used here and in other files. Functions that operate on FITSFile
+# start with `fits_`.
 
-    # return input string if length is 0 or 1 or last char is not space.
-    if length(s) == 0 || length(s) == 1 || s[end] != ' '
-        return s
+function try_parse_hdrval(::Type{Bool}, s::ASCIIString)
+    if length(s) == 1
+        if s[1] == 'T'
+            return Nullable(true)
+        elseif s[1] == 'F'
+            return Nullable(false)
+        end
+    end
+    return Nullable{Bool}()
+end
+
+# Note that trailing whitespace is not significant in FITS header
+# keywords, but *leading* whitespace is, so "'    '" parses as " " (a
+# single space).  See CFITSIO manual section 4.5 for details.
+#
+# TODO: parse '' within the string as a single '.
+function try_parse_hdrval(::Type{ASCIIString}, s::ASCIIString)
+    if length(s) < 2 || s[1] != '\'' || s[end] != '\''
+        return Nullable{ASCIIString}()
     end
 
     i = endof(s) - 1
-    while i > 1
+    while i > 2
         if s[i] != ' '
-            return s[1:i]
+            return Nullable(s[2:i])
         end
         i -= 1
     end
-    return s[1:1]
+    return Nullable(s[2:i])
 end
 
-# parse FITS header value as an ASCIIString.
-function parse_header_val(::Type{ASCIIString}, val::ASCIIString)
-    if length(val) < 2 || val[1] != '\'' || val[end] != '\''
-        throw(ArgumentError("ASCIIString header values must begin and end with ' character"))
+try_parse_hdrval(::Type{Float64}, s::ASCIIString) = tryparse(Float64, s)
+
+# hack for integers in Julia v0.3: tryparse(Int, s) not available in Compat.
+if VERSION > v"0.4.0-dev+3864"
+    try_parse_hdrval(::Type{Int}, s::ASCIIString) = tryparse(Int, s)
+else
+    try_parse_hdrval(::Type{Int}, s::ASCIIString) = try
+        Nullable(parseint(s))
+    catch e
+        Nullable{Int}()
     end
-    return _rstrip_fits(val[2:end-1])
 end
 
-parse_header_val(::Type{Int}, val::ASCIIString) = parse(Int, val)
+# Try to parse the header value as any type
+function try_parse_hdrval(s::ASCIIString)
+    length(s) == 0 && return Nullable(nothing)
+
+    nb = try_parse_hdrval(Bool, s)
+    isnull(nb) || return nb
+
+    ns = try_parse_hdrval(ASCIIString, s)
+    isnull(ns) || return ns
+
+    ni = try_parse_hdrval(Int, s)
+    isnull(ni) || return ni
+
+    nf = try_parse_hdrval(Float64, s)
+    isnull(nf) || return nf
+
+    return Nullable{Any}()
+end
+
+# functions for displaying header values in show(io, header)
+hdrval_repr(v::Bool) = v ? "T" : "F"
+hdrval_repr(v::ASCIIString) = @sprintf "'%s'" v
+hdrval_repr(v::Union(FloatingPoint, Integer)) = string(v)
 
 # returns one of: ASCIIString, Bool, Int, Float64, nothing
-function parse_header_val(val::ASCIIString)
-    len = length(val)
-    if len < 1
-        return nothing
-    end
-    c = val[1]
-    if len == 1 && c == 'T'
-        return true
-    elseif len == 1 && c == 'F'
-        return false
-    elseif len >= 2 && c == '\'' && val[end] == '\''
-        # This is a character string; according to FITS standard, trailing
-        # spaces are insignificant, thus we remove them as well as the
-        # surrounding quotes.
-        return _rstrip_fits(val[2:end-1])
-    else
-        # TODO: change this block to `tryparse` once support for
-        # tryparse(Int, x) is in Compat or v0.3 is no longer supported.
-        try
-            return parse(Int, val)
-        catch
+# (never error)
+parse_header_val(s::ASCIIString) = get(try_parse_hdrval(s), s)
+
+# Try to read the raw keys in order given; returns Nullable.
+# (null if no key exists or if parsing an existing key is unsuccessful.)
+function fits_try_read_keys{T}(f::FITSFile, ::Type{T}, keys)
+    status = Cint[0]
+    value = Array(Uint8, 71)
+    for key in keys
+        ccall((:ffgkey, libcfitsio), Cint,
+              (Ptr{Void},Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
+              f.ptr, bytestring(key), value, C_NULL, status)
+
+        # If the key is found, return it. If there was some other error
+        # besides key not found, throw an error.
+        if status[1] == 0
+            return try_parse_hdrval(T, bytestring(pointer(value)))
+        elseif status[1] != 202
+            error(fits_get_errstatus(status[1]))
         end
+    end
+    return Nullable{T}()
+end
 
-        fval = tryparse(Float64, val)
-        isnull(fval) || return get(fval)
+# Build a string with extension keywords, if present.
+# This is a helper function for show(::HDU).
+const EXTNAME_KEYS = ["EXTNAME", "HDUNAME"]
+const EXTVER_KEYS = ["EXTVER", "HDUVER"]
+fits_try_read_extname(f::FITSFile) =
+    fits_try_read_keys(f, ASCIIString, EXTNAME_KEYS)
+fits_try_read_extver(f::FITSFile) = fits_try_read_keys(f, Int, EXTVER_KEYS)
+
+function fits_get_ext_info_string(f::FITSFile)
+    extname = fits_try_read_extname(f)
+    extver = fits_try_read_extver(f)
+    if !isnull(extname) && !isnull(extver)
+        return " (name=$(repr(get(extname))), ver=$(get(extver)))"
+    elseif !isnull(extname)
+        return " (name=$(repr(get(extname))))"
+    end
+    return ""
+end
+
+
+# Return indicies of reserved keys in a header.
+# This is more complex than you would think because some reserved keys
+# are only reserved when other keys are present. Also, in general a key
+# may appear more than once in a header.
+const RESERVED_KEYS = ["SIMPLE","EXTEND","XTENSION","BITPIX","PCOUNT","GCOUNT",
+                       "THEAP","EXTNAME","BUNIT","BSCALE","BZERO","BLANK",
+                       "ZQUANTIZ","ZDITHER0","ZIMAGE","ZCMPTYPE","ZSIMPLE",
+                       "ZTENSION","ZPCOUNT","ZGCOUNT","ZBITPIX","ZEXTEND",
+                       "CHECKSUM","DATASUM"]
+function reserved_key_indicies(hdr::FITSHeader)
+    nhdr = length(hdr)
+    indicies = Int[]
+    for i=1:nhdr
+        if in(hdr.keys[i], RESERVED_KEYS)
+            push!(indicies, i)
+        end
     end
 
-    # The value (probably) doesn't comply with the FITS standard.
-    # Give up and return the unparsed string.
-    return val
+    # Note that this removes anything matching NAXIS\d regardless of # of axes.
+    if in("NAXIS", hdr.keys)
+        for i=1:nhdr
+            if ismatch(r"^NAXIS\d*$", hdr.keys[i])
+                push!(indicies, i)
+            end
+        end
+    end
 
+    if in("ZNAXIS", hdr.keys)
+        for i=1:nhdr
+            if (ismatch(r"^ZNAXIS\d*$", hdr.keys[i]) ||
+                ismatch(r"^ZTILE\d*$", hdr.keys[i]) ||
+                ismatch(r"^ZNAME\d*$", hdr.keys[i]) ||
+                ismatch(r"^ZVAL\d*$", hdr.keys[i]))
+                push!(indicies, i)
+            end
+        end
+    end
+
+    if in("TFIELDS", hdr.keys)
+        for i=1:nhdr
+            for re in [r"^TFORM\d*$", r"^TTYPE\d*$", r"^TDIM\d*$",
+                       r"^TUNIT\d*$", r"^TSCAL\d*$", r"^TZERO\d*$",
+                       r"^TNULL\d*$", r"^TDISP\d*$", r"^TDMIN\d*$",
+                       r"^TDMAX\d*$", r"^TDESC\d*$", r"^TROTA\d*$",
+                       r"^TRPIX\d*$", r"^TRVAL\d*$", r"^TDELT\d*$",
+                       r"^TCUNI\d*$", r"^TFIELDS$"]
+                if ismatch(re, hdr.keys[i])
+                    push!(indicies, i)
+                end
+            end
+        end
+    end
+
+    return indicies
 end
+
+
+# Write header to CHDU.
+# If `clean` is true, skip writing reserved header keywords.
+function fits_write_header(f::FITSFile, hdr::FITSHeader, clean::Bool=true)
+    indicies = clean? reserved_key_indicies(hdr): Int[]
+    for i=1:length(hdr)
+        if clean && in(i, indicies)
+            continue
+        end
+        if hdr.keys[i] == "COMMENT"
+            fits_write_comment(f, hdr.comments[i])
+        elseif hdr.keys[i] == "HISTORY"
+            fits_write_history(f, hdr.comments[i])
+        elseif hdr.comments[i] == ""
+            fits_update_key(f, hdr.keys[i], hdr.values[i])
+        else
+            fits_update_key(f, hdr.keys[i], hdr.values[i], hdr.comments[i])
+        end
+    end
+end
+
+
+# -----------------------------------------------------------------------------
+# Public API
 
 function read_key(hdu::HDU, key::Integer)
     fits_assert_open(hdu.fitsfile)
@@ -77,27 +212,6 @@ function read_key(hdu::HDU, key::ASCIIString)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     value, comment = fits_read_keyword(hdu.fitsfile, key)
     parse_header_val(value), comment
-end
-
-# Try to read the raw keys in order given; returns Nullable{ASCIIString}.
-# (null if key doesn't exist.)
-function _try_read_key{T}(f::FITSFile, ::Type{T}, names)
-    status = Cint[0]
-    value = Array(Uint8, 71)
-    for name in names
-        ccall((:ffgkey, libcfitsio), Cint,
-              (Ptr{Void},Ptr{Uint8},Ptr{Uint8},Ptr{Uint8},Ptr{Cint}),
-              f.ptr, bytestring(name), value, C_NULL, status)
-
-        # If the key is found, return it. If there was some other error
-        # besides key not found, throw an error.
-        if status[1] == 0
-            return Nullable(parse_header_val(T, bytestring(pointer(value))))
-        elseif status[1] != 202
-            error(fits_get_errstatus(status[1]))
-        end
-    end
-    return Nullable{ASCIIString}()
 end
 
 function read_header(hdu::HDU)
@@ -162,9 +276,6 @@ function set_comment!(hdr::FITSHeader, i::Integer, comment::ASCIIString)
 end
 
 # Display the header
-hdrval_to_str(val::Bool) = val ? "T" : "F"
-hdrval_to_str(val::ASCIIString) = @sprintf "'%s'" val
-hdrval_to_str(val::Union(FloatingPoint, Integer)) = string(val)
 function show(io::IO, hdr::FITSHeader)
     for i=1:length(hdr)
         cl = length(hdr.comments[i])
@@ -180,7 +291,7 @@ function show(io::IO, hdr::FITSHeader)
                 print(io, "                      ")
                 rc = 50  # remaining characters on line
             else
-                val = hdrval_to_str(hdr.values[i])
+                val = hdrval_repr(hdr.values[i])
                 @printf io "= %20s" val
                 rc = length(val) <= 20 ? 50 : 70 - length(val)
             end
@@ -193,83 +304,6 @@ function show(io::IO, hdr::FITSHeader)
                 end
             end
             print(io, "\n")
-        end
-    end
-end
-
-const RESERVED_KEYS = ["SIMPLE","EXTEND","XTENSION","BITPIX","PCOUNT","GCOUNT",
-                       "THEAP","EXTNAME","BUNIT","BSCALE","BZERO","BLANK",
-                       "ZQUANTIZ","ZDITHER0","ZIMAGE","ZCMPTYPE","ZSIMPLE",
-                       "ZTENSION","ZPCOUNT","ZGCOUNT","ZBITPIX","ZEXTEND",
-                       "CHECKSUM","DATASUM"]
-
-# This is more complex than you would think because some reserved keys
-# are only reserved when other keys are present. Also, in general a key
-# may appear more than once in a header.
-function reserved_key_indicies(hdr::FITSHeader)
-    nhdr = length(hdr)
-    indicies = Int[]
-    for i=1:nhdr
-        if in(hdr.keys[i], RESERVED_KEYS)
-            push!(indicies, i)
-        end
-    end
-
-    # Note that this removes anything matching NAXIS\d regardless of # of axes.
-    if in("NAXIS", hdr.keys)
-        for i=1:nhdr
-            if ismatch(r"^NAXIS\d*$", hdr.keys[i])
-                push!(indicies, i)
-            end
-        end
-    end
-
-    if in("ZNAXIS", hdr.keys)
-        for i=1:nhdr
-            if (ismatch(r"^ZNAXIS\d*$", hdr.keys[i]) ||
-                ismatch(r"^ZTILE\d*$", hdr.keys[i]) ||
-                ismatch(r"^ZNAME\d*$", hdr.keys[i]) ||
-                ismatch(r"^ZVAL\d*$", hdr.keys[i]))
-                push!(indicies, i)
-            end
-        end
-    end
-
-    if in("TFIELDS", hdr.keys)
-        for i=1:nhdr
-            for re in [r"^TFORM\d*$", r"^TTYPE\d*$", r"^TDIM\d*$",
-                       r"^TUNIT\d*$", r"^TSCAL\d*$", r"^TZERO\d*$",
-                       r"^TNULL\d*$", r"^TDISP\d*$", r"^TDMIN\d*$",
-                       r"^TDMAX\d*$", r"^TDESC\d*$", r"^TROTA\d*$",
-                       r"^TRPIX\d*$", r"^TRVAL\d*$", r"^TDELT\d*$",
-                       r"^TCUNI\d*$", r"^TFIELDS$"]
-                if ismatch(re, hdr.keys[i])
-                    push!(indicies, i)
-                end
-            end
-        end
-    end
-
-    return indicies
-end
-
-
-# Header writing: "low-level" (works directly on FITSFile)
-# if `clean` is true, skip writing reserved header keywords
-function write_header(f::FITSFile, hdr::FITSHeader, clean::Bool=true)
-    indicies = clean? reserved_key_indicies(hdr): Int[]
-    for i=1:length(hdr)
-        if clean && in(i, indicies)
-            continue
-        end
-        if hdr.keys[i] == "COMMENT"
-            fits_write_comment(f, hdr.comments[i])
-        elseif hdr.keys[i] == "HISTORY"
-            fits_write_history(f, hdr.comments[i])
-        elseif hdr.comments[i] == ""
-            fits_update_key(f, hdr.keys[i], hdr.values[i])
-        else
-            fits_update_key(f, hdr.keys[i], hdr.values[i], hdr.comments[i])
         end
     end
 end

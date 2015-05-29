@@ -1,5 +1,34 @@
 # FITS methods
 
+const VERBOSE_MODE = @compat Dict("r"=>"read-only",
+                                  "w"=>"read-write",
+                                  "r+"=>"append")
+
+# helper function for show()
+function show_ascii_table(io, names, cols, spaces=2, indent=0)
+    ncols = length(cols)
+    ncols >= 1 || error("No columns")
+    nrows = length(cols[1])
+    length(names) == ncols || error("length of cols and names must match")
+    for i=1:ncols
+        length(cols[i]) == nrows || error("column length mismatch")
+    end
+
+    lengths = [max(maximum(length, cols[i]), length(names[i])) + spaces
+               for i=1:ncols]
+    for i = 1:ncols
+        print(io, rpad(names[i], lengths[i]))
+    end
+    print(io, "\n")
+    for j = 1:nrows
+        print(io, " "^indent)
+        for i=1:ncols
+            print(io, rpad(cols[i][j], lengths[i]))
+        end
+        print(io, "\n")
+    end
+end
+
 function length(f::FITS)
     fits_assert_open(f.fitsfile)
     @compat Int(fits_get_num_hdus(f.fitsfile))
@@ -21,28 +50,27 @@ function show(io::IO, f::FITS)
                     t == :binary_table ? "Table" :
                     t == :ascii_table ? "ASCIITable" :
                     error("unknown HDU type"))
-        nname = _try_read_key(f.fitsfile, ASCIIString, ("EXTNAME", "HDUNAME"))
+        nname = fits_try_read_extname(f.fitsfile)
         names[i] = get(nname, "")
-        nver = _try_read_key(f.fitsfile, Int, ("EXTVER", "HDUVER"))
+        nver = fits_try_read_extver(f.fitsfile)
         vers[i] = isnull(nver) ? "" : string(get(nver))
     end
 
-    namelen = max(maximum(length, names), 4) + 2
-    verlen = maximum(length, vers)
-    if verlen > 0
-        verlen = max(verlen, 3) + 2
-        namehead = string(rpad("Name", namelen), rpad("Ver", verlen))
+    nums = [string(i) for i=1:nhdu]
+
+    # only display version info if present
+    if maximum(length, vers) > 0
+        dispnames = ["Num", "Name", "Ver", "Type"]
+        dispcols = Vector{ASCIIString}[nums, names, vers, types]
     else
-        namehead = rpad("Name", namelen)
+        dispnames = ["Num", "Name", "Type"]
+        dispcols = Vector{ASCIIString}[nums, names, types]
     end
 
     print(io, """File: $(f.filename)
-    Mode: \"$(f.mode)\"
-    HDUs: Num   $(namehead)Type
-    """)
-    for i in 1:nhdu
-        @printf io "      %-5d %s%s%s\n" i rpad(names[i], namelen) rpad(vers[i], verlen) types[i]
-    end
+    Mode: $(repr(f.mode)) ($(VERBOSE_MODE[f.mode]))
+    HDUs: """)
+    show_ascii_table(io, dispnames, dispcols, 2, 6)
 end
 
 # Returns HDU object based on extension number

@@ -1,18 +1,5 @@
 # ImageHDU methods
 
-# helper function for show(::HDU) - gets string with HDU number, name, version.
-# assumes file is open or and on correct current hdu.
-function _get_hdu_info_string(hdu::HDU)
-    hduname = _try_read_key(hdu.fitsfile, ASCIIString, ("EXTNAME", "HDUNAME"))
-    hduver = _try_read_key(hdu.fitsfile, Int, ("EXTVER", "HDUVER"))
-    if !isnull(hduname) && !isnull(hduver)
-        return "$(hdu.ext) (name=$(repr(get(hduname))), ver=$(get(hduver)))"
-    elseif !isnull(hduname)
-        return "$(hdu.ext) (name=$(repr(get(hduname))))"
-    end
-    return string(hdu.ext)
-end
-
 # Display the image datatype and dimensions
 function show(io::IO, hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
@@ -24,12 +11,14 @@ function show(io::IO, hdu::ImageHDU)
     if bitpix == equivbitpix
         datainfo = string(TYPE_FROM_BITPIX[equivbitpix])
     else
-        datainfo = @sprintf "%s (physical: %s)" TYPE_FROM_BITPIX[equivbitpix] TYPE_FROM_BITPIX[bitpix]
+        datainfo = @sprintf("%s (physical: %s)",
+                            TYPE_FROM_BITPIX[equivbitpix],
+                            TYPE_FROM_BITPIX[bitpix])
     end
     
     print(io, """
     File: $(fits_file_name(hdu.fitsfile))
-    HDU: $(_get_hdu_info_string(hdu))
+    HDU: $(hdu.ext)$(fits_get_ext_info_string(hdu.fitsfile))
     Type: Image
     Datatype: $datainfo
     Datasize: $(tuple(sz...))
@@ -86,7 +75,7 @@ function trailingsize(sz, n)
 end
 
 # Read a subset of an ImageHDU
-function _read(hdu::ImageHDU, I::Union(Range{Int},Int, Colon)...)
+function read_internal(hdu::ImageHDU, I::Union(Range{Int},Int, Colon)...)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
@@ -124,8 +113,9 @@ function _read(hdu::ImageHDU, I::Union(Range{Int},Int, Colon)...)
 end
 
 # general method and version that returns a single value rather than 0-d array
-read(hdu::ImageHDU, I::Union(Range{Int}, Int, Colon)...) = _read(hdu, I...)
-read(hdu::ImageHDU, I::Int...) = _read(hdu, I...)[1]
+read(hdu::ImageHDU, I::Union(Range{Int}, Int, Colon)...) =
+    read_internal(hdu, I...)
+read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 
 # Add a new ImageHDU to a FITS object
 # The following Julia data types are supported for writing images by cfitsio:
@@ -138,7 +128,7 @@ function write{T}(f::FITS, data::Array{T};
     s = size(data)
     fits_create_img(f.fitsfile, T, [s...])
     if isa(header, FITSHeader)
-        write_header(f.fitsfile, header, true)
+        fits_write_header(f.fitsfile, header, true)
     end
     if isa(hduname, ASCIIString)
         fits_update_key(f.fitsfile, "EXTNAME", hduname)
@@ -157,13 +147,14 @@ end
 # updated if necessary to correspond to the coordinates of the section.
 
 # convert a range to a string that cfitsio understands
-cfitsio_string(r::UnitRange) = @sprintf "%d:%d" first(r) last(r)
-cfitsio_string(r::StepRange) = @sprintf "%d:%d:%d" first(r) last(r) step(r)
+cfitsio_range_string(r::UnitRange) = @sprintf "%d:%d" first(r) last(r)
+cfitsio_range_string(r::StepRange) =
+    @sprintf "%d:%d:%d" first(r) last(r) step(r)
 
 function copy_section(hdu::ImageHDU, dest::FITS, r::Range{Int}...)
     fits_assert_open(hdu.fitsfile)
     fits_assert_open(dest.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     fits_copy_image_section(hdu.fitsfile, dest.fitsfile,
-                            join([cfitsio_string(ri) for ri in r], ','))
+                            join([cfitsio_range_string(ri) for ri in r], ','))
 end

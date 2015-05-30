@@ -264,8 +264,9 @@ function fits_write_var_col(f::FITSFile, colnum::Integer,
 end
 
 # Add a new TableHDU to a FITS object
-function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
-                    hdutype, hduname, hduver, header, units, varcols)
+function write_internal(f::FITS, colnames::Vector{ASCIIString},
+                        coldata::Vector, hdutype, name, ver, header, units,
+                        varcols)
     fits_assert_open(f.fitsfile)
 
     # move to last HDU; table will be added after the CHDU
@@ -298,20 +299,20 @@ function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
     if isa(units, Nothing)
         tunit = C_NULL
     else
-        tunit = Ptr{Uint8}[(haskey(units, name)? pointer(units[name]): C_NULL)
-                           for name in colnames]
+        tunit = Ptr{Uint8}[(haskey(units, n)? pointer(units[n]): C_NULL)
+                           for n in colnames]
     end
 
     # extension name
-    hduname_ptr = (isa(hduname, Nothing) ? convert(Ptr{Uint8}, C_NULL) :
-                   pointer(hduname))
+    name_ptr = (isa(name, Nothing) ? convert(Ptr{Uint8}, C_NULL) :
+                   pointer(name))
 
     status = Cint[0]
     ccall(("ffcrtb", libcfitsio), Cint,
           (Ptr{Void}, Cint, Int64, Cint, Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}},
            Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Cint}),
           f.fitsfile.ptr, table_type_code(hdutype), 0, ncols,  # 0 = nrows
-          ttype, tform, tunit, hduname_ptr, status)
+          ttype, tform, tunit, name_ptr, status)
     fits_assert_ok(status[1])
 
     # For binary tables, write tdim info
@@ -324,8 +325,8 @@ function write_impl(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector,
     if isa(header, FITSHeader)
         fits_write_header(f.fitsfile, header, true)
     end
-    if isa(hduver, Integer)
-        fits_update_key(f.fitsfile, "EXTVER", hduver)
+    if isa(ver, Integer)
+        fits_update_key(f.fitsfile, "EXTVER", ver)
     end
 
     for (i, a) in enumerate(coldata)
@@ -340,21 +341,21 @@ end
 
 function write(f::FITS, colnames::Vector{ASCIIString}, coldata::Vector;
                units=nothing, header=nothing, hdutype=TableHDU,
-               hduname=nothing, hduver=nothing, varcols=nothing)
+               name=nothing, ver=nothing, varcols=nothing)
     if length(colnames) != length(coldata)
         error("length of colnames and length of coldata must match")
     end
-    write_impl(f, colnames, coldata, hdutype, hduname, hduver, header,
-               units, varcols)
+    write_internal(f, colnames, coldata, hdutype, name, ver, header,
+                   units, varcols)
 end
 
 function write(f::FITS, data::Dict{ASCIIString};
                units=nothing, header=nothing, hdutype=TableHDU,
-               hduname=nothing, hduver=nothing, varcols=nothing)
+               name=nothing, ver=nothing, varcols=nothing)
     colnames = collect(keys(data))
     coldata = collect(values(data))
-    write_impl(f, colnames, coldata, hdutype, hduname, hduver, header,
-               units, varcols)
+    write_internal(f, colnames, coldata, hdutype, name, ver, header,
+                   units, varcols)
 end
 
 # Read a variable length array column of numbers

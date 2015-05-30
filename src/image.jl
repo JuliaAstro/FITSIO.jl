@@ -122,19 +122,19 @@ read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 # Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64, Float32, Float64
 function write{T}(f::FITS, data::Array{T};
                   header::Union(Nothing, FITSHeader)=nothing,
-                  hduname::Union(Nothing, ASCIIString)=nothing,
-                  hduver::Union(Nothing, Integer)=nothing)
+                  name::Union(Nothing, ASCIIString)=nothing,
+                  ver::Union(Nothing, Integer)=nothing)
     fits_assert_open(f.fitsfile)
     s = size(data)
     fits_create_img(f.fitsfile, T, [s...])
     if isa(header, FITSHeader)
         fits_write_header(f.fitsfile, header, true)
     end
-    if isa(hduname, ASCIIString)
-        fits_update_key(f.fitsfile, "EXTNAME", hduname)
+    if isa(name, ASCIIString)
+        fits_update_key(f.fitsfile, "EXTNAME", name)
     end
-    if isa(hduver, Integer)
-        fits_update_key(f.fitsfile, "EXTVER", hduver)
+    if isa(ver, Integer)
+        fits_update_key(f.fitsfile, "EXTVER", ver)
     end
     fits_write_pix(f.fitsfile, ones(Int, length(s)), length(data), data)
     nothing

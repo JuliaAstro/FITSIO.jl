@@ -18,8 +18,8 @@ File operations
    - ``endof(f::FITS)`` Same as length.
    - ``f[i]`` Return the ``i``-th HDU.
    - ``f[name]`` or ``f[name, ver]`` Return the HDU containing the
-     given the given HDUNAME (EXTNAME) keyword (an ASCIIString), and
-     optionally the given HDUVER (EXTVER) number (an Integer).
+     given the given EXTNAME (or HDUNAME) keyword (an ASCIIString), and
+     optionally the given EXTVER (or HDUVER) number (an Integer).
 
 .. function:: close(f::FITS)
 
@@ -67,7 +67,7 @@ Header operations
 Image operations
 ----------------
 
-.. function:: write(f::FITS, data::Array; header=nothing)
+.. function:: write(f::FITS, data::Array; header=nothing, name=nothing, ver=nothing)
 
    Add a new ImageHDU to the file. The following array element types
    are supported: ``UInt8``, ``Int8``, ``UInt16``, ``Int16``,
@@ -121,7 +121,7 @@ Image operations
 Table Operations
 ----------------
 
-.. function:: write(f::FITS, data::Dict; hdutype=TableHDU, hduname=nothing, hduver=nothing, header=nothing, units=nothing, varcols=nothing)
+.. function:: write(f::FITS, data::Dict; hdutype=TableHDU, name=nothing, ver=nothing, header=nothing, units=nothing, varcols=nothing)
 
    Create a new table extension and write data to it. If the FITS file
    is currently empty then a dummy primary array will be created
@@ -137,8 +137,8 @@ Table Operations
    
    - ``hdutype``: Type of table extension to create. Can be either
      ``TableHDU`` (binary table) or ``ASCIITableHDU`` (ASCII table).
-   - ``hduname``: Name of extension.
-   - ``hduver``: Version of extension (Int)
+   - ``name``: Name of extension.
+   - ``ver``: Version of extension (Int).
    - ``header``: FITSHeader instance to write to new extension.
    - ``units``: Dictionary mapping column name to units (as a string).
    - ``varcols``: An array giving the column names or column indicies to
@@ -158,7 +158,7 @@ Table Operations
       potentially non-uniform element types (which would not be
       writable as a FITS table column).
 
-.. function:: write(f::FITS, colnames, coldata; hdutype=TableHDU, hduname=nothing, hduver=nothing, header=nothing, units=nothing, varcols=nothing)
+.. function:: write(f::FITS, colnames, coldata; hdutype=TableHDU, name=nothing, ver=nothing, header=nothing, units=nothing, varcols=nothing)
 
    Same as ``write(f::FITS, data::Dict; ...)`` but providing column
    names and column data as a separate arrays. This is useful for

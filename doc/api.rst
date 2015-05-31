@@ -183,3 +183,10 @@ Table Operations
    consecutive string of decimal digits (0-9). The string must match a
    unique column.
 
+
+Miscellaneous
+-------------
+
+.. function:: FITSIO.libcfitsio_version() -> VersionNumber
+
+   Return the version of the underlying CFITSIO library. E.g., ``v"3.34.0"``.

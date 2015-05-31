@@ -4,12 +4,13 @@ v0.7.0 (unreleased)
 ## New Features & Improvements
 
 - Read and write variable length columns in binary tables.
+- Iterate over HDUs in a file with `for hdu in f; ...; end`
+- Improved `show()` methods give more and better information
+  for `FITS` and `HDU` types.
+- Write name and version of HDU when creating a new HDU with `name` and
+  `ver` keywords.
 - New function `FITSIO.libcfitsio_version()` (unexported) returns CFITSIO
   library version.
-- Improved `show` methods give more and better information
-  for `FITS` and `HDU` types.
-- Write name and version of HDU when creating a new HDU with `hduname` and
-  `hduver` keywords.
 
 ## Deprecations
 

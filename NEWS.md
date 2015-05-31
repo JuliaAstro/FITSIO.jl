@@ -1,4 +1,4 @@
-v0.7.0 (unreleased)
+v0.7.0 (2015-05-31)
 ===================
 
 ## New Features & Improvements

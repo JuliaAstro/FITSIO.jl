@@ -160,7 +160,7 @@ outhdr = read_header(f[1])
 io = IOBuffer()
 show(io, f)
 s = takebuf_string(io)
-@test s[1:6] == "file: "
+@test s[1:6] == "File: "
 
 # Clean up from last test.
 close(f)

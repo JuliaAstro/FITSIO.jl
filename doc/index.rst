@@ -38,7 +38,11 @@ Open an existing file for reading::
 
 (At the REPL, information about the file contents is shown.)
 
-Get information about the first header-data unit (HDU)::
+A FITS file consists of one or more header-data units (HDUs), concatenated one
+after the other. The ``FITS`` object therefore is represented as a collection
+of these HDUs.
+
+Get information about the first HDU::
 
     julia> f[1]  # get the first extension
     file: file.fits
@@ -48,7 +52,15 @@ Get information about the first header-data unit (HDU)::
       bitpix: -64
       size: (800,800)
 
-For image extensions, get the size of the image without reading it::
+Iterate over HDUs in the file::
+
+    julia> for hdu in f; println(typeof(hdu)); end
+    ImageHDU
+    TableHDU
+
+Each HDU can contain image data, or table data (either binary or
+ASCII-formatted). For image extensions, get the size of the image
+without reading it::
 
     julia> ndims(f[1])
     2

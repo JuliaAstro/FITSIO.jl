@@ -35,6 +35,11 @@ for T in [Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64,
     @test_throws BoundsError read(f[end], 1, 0)
 
 end
+
+# test iteration
+for hdu in f
+    @test size(hdu) == (5, 20)
+end
 close(f)
 if isfile(fname)
     rm(fname)

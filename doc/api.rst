@@ -14,12 +14,19 @@ File operations
    A ``FITS`` object is a collection of "Header-Data Units" (HDUs) and
    supports the following operations:
 
-   - ``length(f::FITS)`` The number of HDUs in ``f``.
-   - ``endof(f::FITS)`` Same as length.
    - ``f[i]`` Return the ``i``-th HDU.
    - ``f[name]`` or ``f[name, ver]`` Return the HDU containing the
      given the given EXTNAME (or HDUNAME) keyword (an ASCIIString), and
      optionally the given EXTVER (or HDUVER) number (an Integer).
+   - Iteration::
+     
+         for hdu in f
+             ...
+         end
+
+.. function:: length(f::FITS)
+
+   Number of HDUs in the file.
 
 .. function:: close(f::FITS)
 

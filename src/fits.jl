@@ -36,6 +36,11 @@ end
 
 endof(f::FITS) = length(f)
 
+# Iteration
+start(f::FITS) = 1
+next(f::FITS, state) = (f[state], state + 1)
+done(f::FITS, state) = state > length(f)
+
 function show(io::IO, f::FITS)
     fits_assert_open(f.fitsfile)
 

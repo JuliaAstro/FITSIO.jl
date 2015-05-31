@@ -26,7 +26,10 @@ import Base: getindex,
              endof,
              haskey,
              keys,
-             values
+             values,
+             start,
+             next,
+             done
 
 # Libcfitsio submodule
 include("libcfitsio.jl")

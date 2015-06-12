@@ -15,7 +15,7 @@ function show(io::IO, hdu::ImageHDU)
                             TYPE_FROM_BITPIX[equivbitpix],
                             TYPE_FROM_BITPIX[bitpix])
     end
-    
+
     print(io, """
     File: $(fits_file_name(hdu.fitsfile))
     HDU: $(hdu.ext)$(fits_get_ext_info_string(hdu.fitsfile))
@@ -63,50 +63,58 @@ function read(hdu::ImageHDU)
     data
 end
 
-# `trailingsize` is used to compute last index for checkbounds.
-# sz: array size (tuple), n: starting index.
-# Same as Base.trailingsize but takes size tuple rather than array.
-function trailingsize(sz, n)
-    s = 1
-    for i=n:length(sz)
-        s *= sz[i]
-    end
-    return s
-end
+# _checkbounds methods copied from Julia v0.4 Base.
+_checkbounds(sz, i::Integer) = 1 <= i <= sz
+_checkbounds(sz, i::Colon) = true
+_checkbounds(sz, r::Range{Int}) =
+    (isempty(r) || (minimum(r) >= 1 && maximum(r) <= sz))
+
+# helper functions for constructing cfitsio indexing vectors in read(hdu, ...)
+_first(i::Union(Integer, Range)) = first(i)
+_first(::Colon) = 1
+_last(sz, i::Union(Integer, Range)) = last(i)
+_last(sz, ::Colon) = sz
+_step(r::Range) = step(r)
+_step(::Union(Integer, Colon)) = 1
+
+# Shape of array to create for read(hdu, ...), dropping trailing
+# scalars. This is simpler than in Base because we are guaranteed that
+# length(I) == length(sz).
+@inline _index_shape(sz, I...) = _index_shape_dim(sz, 1, I...)
+_index_shape_dim(sz, dim, I::Integer...) = ()
+_index_shape_dim(sz, dim, ::Colon) = (sz[dim],)
+_index_shape_dim(sz, dim, r::Range) = (length(r),)
+@inline _index_shape_dim(sz, dim, ::Colon, I...) =
+    tuple(sz[dim], _index_shape_dim(sz, dim+1, I...)...)
+@inline _index_shape_dim(sz, dim, ::Integer, I...) =
+    tuple(1, _index_shape_dim(sz, dim+1, I...)...)
+@inline _index_shape_dim(sz, dim, r::Range, I...) =
+    tuple(length(r), _index_shape_dim(sz, dim+1, I...)...)
 
 # Read a subset of an ImageHDU
-function read_internal(hdu::ImageHDU, I::Union(Range{Int},Int, Colon)...)
+function read_internal(hdu::ImageHDU, I::Union(Range{Int}, Integer, Colon)...)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    sz = fits_get_img_size(hdu.fitsfile)
 
-    # check number of indicies and bounds.
-    # Note that N_indicies != ndim is not supported, differing from Array.
-    # It could be supported in the future with care taken in constructing
-    # first, last, step arrays passed to cfitsio.
-    sz = tuple(fits_get_img_size(hdu.fitsfile)...)
-    n = length(I)
-    if n != length(sz)
+    # check number of indicies and bounds. Note that number of indicies and
+    # array dimension must match, unlike in Arrays. Array-like behavior could
+    # be supported in the future with care taken in constructing first, last,
+    if length(I) != length(sz)
         throw(DimensionMismatch("number of indicies must match dimensions"))
     end
-
-    # colon-expanded version of I
-    J = ntuple(n, i-> isa(I[i], Colon)? (1:sz[i]) : I[i])
-
-    if n > 0
-        for i = 1:(n-1)
-            Base.checkbounds(sz[i], J[i])
-        end
-        Base.checkbounds(trailingsize(sz,n), J[n])
+    for i=1:length(sz)
+        _checkbounds(sz[i], I[i]) || throw(BoundsError())
     end
 
     # construct first, last and step vectors
-    firsts = Clong[first(idx) for idx in J]
-    lasts = Clong[last(idx) for idx in J]
-    steps = Clong[isa(idx, Range)? step(idx): 1 for idx in J]
+    firsts = Clong[_first(idx) for idx in I]
+    lasts = Clong[_last(sz[i], I[i]) for i=1:length(sz)]
+    steps = Clong[_step(idx) for idx in I]
 
     # construct output array
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    data = Array(TYPE_FROM_BITPIX[bitpix], Base.index_shape(J...))
+    data = Array(TYPE_FROM_BITPIX[bitpix], _index_shape(sz, I...))
 
     fits_read_subset(hdu.fitsfile, firsts, lasts, steps, data)
     data

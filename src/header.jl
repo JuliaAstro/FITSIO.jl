@@ -243,6 +243,11 @@ function read_header(hdu::HDU)
     FITSHeader(keys, values, comments)
 end
 
+function read_header(hdu::HDU, ::Type{ASCIIString})
+    # Return the header as a raw string.
+    fits_hdr2str(hdu.fitsfile)
+end
+
 length(hdr::FITSHeader) = length(hdr.keys)
 haskey(hdr::FITSHeader, key::ASCIIString) = in(key, hdr.keys)
 keys(hdr::FITSHeader) = hdr.keys

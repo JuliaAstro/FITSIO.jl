@@ -1,6 +1,10 @@
 v0.8.0 (unreleased)
 ===================
 
+## New Features
+
+- New method `read_header(hdu, ASCIIString)` returns entire header as
+  a single string.
 
 v0.7.0 (2015-05-31)
 ===================

@@ -157,6 +157,11 @@ outhdr = read_header(f[1])
 @test length(outhdr) == 14
 @test haskey(outhdr, "FLTKEY")
 
+# Read entire header as a single string
+s = read_header(f[1], ASCIIString)
+@test s[1:9] == "SIMPLE  ="  # all headers should start with this.
+@test length(s) == (9 + length(inhdr)) * 80  # 9 lines = 8 default + "END"
+
 # Read single keywords
 @test read_key(f[1], 9) == ("FLTKEY", 2.0, "floating point keyword")
 @test read_key(f[1], "FLTKEY") == (2.0, "floating point keyword")

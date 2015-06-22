@@ -46,6 +46,10 @@ Header operations
    according to the FITS standard, the value is stored as the raw unparsed
    ``ASCIIString``.)
 
+.. function:: read_header(hdu, ASCIIString)
+
+   Read the entire header from the given HDU as a single string.
+
 .. function:: FITSHeader(keys, values, comments)
 
    Create a ``FITSHeader`` from arrays of keywords, values and comments.

@@ -147,6 +147,12 @@ set_comment!(inhdr, "INTKEY", "integer keyword") # test setting a comment
 
 indata = reshape(Float32[1:100;], 5, 20)
 write(f, indata; header=inhdr)
+
+# Write a second block.
+inhdr2 = deepcopy(inhdr)
+inhdr2["INTKEY"] = 3 # Set it to a different value.
+write(f, indata; header=inhdr2)
+
 outhdr = read_header(f[1])
 @test outhdr["FLTKEY"] === 2.0
 @test outhdr["INTKEY"] === 2
@@ -161,6 +167,12 @@ outhdr = read_header(f[1])
 s = read_header(f[1], ASCIIString)
 @test s[1:9] == "SIMPLE  ="  # all headers should start with this.
 @test length(s) == (9 + length(inhdr)) * 80  # 9 lines = 8 default + "END"
+
+# Test to check that read_header gets the right block even after reading another.
+s_reread = read_header(f[1])
+s_reread = read_header(f[2])
+s_reread = read_header(f[1], ASCIIString)
+@assert s == s_reread
 
 # Read single keywords
 @test read_key(f[1], 9) == ("FLTKEY", 2.0, "floating point keyword")

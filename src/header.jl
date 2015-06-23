@@ -245,6 +245,10 @@ end
 
 function read_header(hdu::HDU, ::Type{ASCIIString})
     # Return the header as a raw string.
+
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+
     fits_hdr2str(hdu.fitsfile)
 end
 

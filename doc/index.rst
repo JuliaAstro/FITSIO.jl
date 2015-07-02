@@ -3,12 +3,12 @@ FITSIO.jl
 =========
 
 A Julia_ package for reading and writing Flexible Image Transport
-System (FITS) files, based on the CFITSIO_ library.
+System (FITS) files, based on the cfitsio_ library.
 
 The interface is inspired by Erin Sheldon's fitsio_ Python package.
 
 .. _Julia: http://julialang.org
-.. _CFITSIO: http://heasarc.gsfc.nasa.gov/fitsio/
+.. _cfitsio: http://heasarc.gsfc.nasa.gov/fitsio/
 .. _fitsio: https://github.com/esheldon/fitsio
 
 Install
@@ -18,9 +18,12 @@ Install
 
     julia> Pkg.add("FITSIO")
 
-If it isn't already installed on your system, the cfitsio library is
-automatically downloaded and compiled (in your Julia packages directory).
+On linux or OS X, if it isn't already installed on your system,
+the cfitsio library is automatically downloaded and compiled
+(in your Julia packages directory).
 
+On Windows, a compiled dll will be downloaded (in your Julia
+packages directory).
 
 Usage
 -----

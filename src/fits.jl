@@ -44,38 +44,45 @@ done(f::FITS, state) = state > length(f)
 function show(io::IO, f::FITS)
     fits_assert_open(f.fitsfile)
 
-    # Get name and type of all HDUs.
-    nhdu = length(f)
-    names = Array(ASCIIString, nhdu)
-    vers = Array(ASCIIString, nhdu)
-    types = Array(ASCIIString, nhdu)
-    for i = 1:nhdu
-        t = fits_movabs_hdu(f.fitsfile, i)
-        types[i] = (t == :image_hdu ? "Image" :
-                    t == :binary_table ? "Table" :
-                    t == :ascii_table ? "ASCIITable" :
-                    error("unknown HDU type"))
-        nname = fits_try_read_extname(f.fitsfile)
-        names[i] = get(nname, "")
-        nver = fits_try_read_extver(f.fitsfile)
-        vers[i] = isnull(nver) ? "" : string(get(nver))
-    end
-
-    nums = [string(i) for i=1:nhdu]
-
-    # only display version info if present
-    if maximum(length, vers) > 0
-        dispnames = ["Num", "Name", "Ver", "Type"]
-        dispcols = Vector{ASCIIString}[nums, names, vers, types]
-    else
-        dispnames = ["Num", "Name", "Type"]
-        dispcols = Vector{ASCIIString}[nums, names, types]
-    end
-
     print(io, """File: $(f.filename)
     Mode: $(repr(f.mode)) ($(VERBOSE_MODE[f.mode]))
-    HDUs: """)
-    show_ascii_table(io, dispnames, dispcols, 2, 6)
+    """)
+
+    nhdu = length(f)
+    
+    if nhdu == 0
+        print(io, "No HDUs.")
+    else
+        print(io, "HDUs: ")
+
+        names = Array(ASCIIString, nhdu)
+        vers = Array(ASCIIString, nhdu)
+        types = Array(ASCIIString, nhdu)
+        for i = 1:nhdu
+            t = fits_movabs_hdu(f.fitsfile, i)
+            types[i] = (t == :image_hdu ? "Image" :
+                        t == :binary_table ? "Table" :
+                        t == :ascii_table ? "ASCIITable" :
+                        error("unknown HDU type"))
+            nname = fits_try_read_extname(f.fitsfile)
+            names[i] = get(nname, "")
+            nver = fits_try_read_extver(f.fitsfile)
+            vers[i] = isnull(nver) ? "" : string(get(nver))
+        end
+        
+        nums = [string(i) for i=1:nhdu]
+
+        # only display version info if present
+        if maximum(length, vers) > 0
+            dispnames = ["Num", "Name", "Ver", "Type"]
+            dispcols = Vector{ASCIIString}[nums, names, vers, types]
+        else
+            dispnames = ["Num", "Name", "Type"]
+            dispcols = Vector{ASCIIString}[nums, names, types]
+        end
+
+        show_ascii_table(io, dispnames, dispcols, 2, 6)
+    end
 end
 
 # Returns HDU object based on extension number

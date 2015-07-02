@@ -1,22 +1,16 @@
-language: c
-compiler:
-  - clang
+language: julia
+os:
+    - linux
+julia:
+    - release
+    - nightly
 notifications:
-  email: false
-env:
-  matrix: 
-    - JULIAVERSION="juliareleases" 
-    - JULIAVERSION="julianightlies" 
+    email: false
 before_install:
-  - sudo add-apt-repository ppa:staticfloat/julia-deps -y
-  - sudo add-apt-repository ppa:staticfloat/${JULIAVERSION} -y
-  - sudo apt-get update -qq -y
-  - sudo apt-get install libpcre3-dev julia -y
-  - sudo apt-get install libcfitsio3 -y
-  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+    - sudo apt-get update -qq -y
+    - sudo apt-get install libcfitsio3 -y
 script:
-  - julia -e 'Pkg.init(); Pkg.clone(pwd())'
-  - julia -e 'Pkg.build("FITSIO")'
-  - julia -e 'Pkg.test("FITSIO"; coverage=true)'
+    - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+    - julia -e 'Pkg.clone(pwd()); Pkg.build("FITSIO"); Pkg.test("FITSIO"; coverage=true)';
 after_success:
-  - julia -e 'cd(Pkg.dir("FITSIO")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+    - julia -e 'cd(Pkg.dir("FITSIO")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())';

@@ -76,7 +76,10 @@ hdrval_repr(v::Union(FloatingPoint, Integer)) = string(v)
 
 # returns one of: ASCIIString, Bool, Int, Float64, nothing
 # (never error)
-parse_header_val(s::ASCIIString) = get(try_parse_hdrval(s), s)
+function parse_header_val(s::ASCIIString)
+    nval = try_parse_hdrval(s)
+    return isnull(nval) ? s : get(nval)
+end
 
 # Try to read the raw keys in order given; returns Nullable.
 # (null if no key exists or if parsing an existing key is unsuccessful.)

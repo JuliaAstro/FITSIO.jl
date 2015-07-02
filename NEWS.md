@@ -1,10 +1,17 @@
 v0.8.0 (unreleased)
 ===================
 
-## New Features
+## New features
 
+- Windows support (32-bit & 64-bit), thanks to help from Tony Kelman
 - New method `read_header(hdu, ASCIIString)` returns entire header as
   a single string.
+- bump cfitsio version from 3.360 to 3.370
+
+## Bug fixes
+
+- fix `show()` for an empty FITS file.
+- fix several issues with `Clong` on 64-bit Windows.
 
 v0.7.0 (2015-05-31)
 ===================

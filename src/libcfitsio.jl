@@ -498,17 +498,6 @@ for (a, b) in ((:fits_get_img_type,      "ffgidt"),
     end
 end
 
-function fits_get_img_size(f::FITSFile)
-    ndim = fits_get_img_dim(f)
-    naxes = Array(Clong, ndim)
-    status = Cint[0]
-    ccall((:ffgisz, libcfitsio), Cint,
-        (Ptr{Void}, Cint, Ptr{Clong}, Ptr{Cint}),
-        f.ptr, ndim, naxes, status)
-    fits_assert_ok(status[1])
-    naxes
-end
-
 function fits_create_img{T, S<:Integer}(f::FITSFile, ::Type{T},
                                         naxes::Vector{S})
     status = Cint[0]
@@ -538,8 +527,8 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
                                      data::Array{T})
     anynull = Cint[0]
     status = Cint[0]
-    ccall((:ffgpxv, libcfitsio), Cint,
-          (Ptr{Void}, Cint, Ptr{Clong}, Int64, Ptr{Void}, Ptr{Void},
+    ccall((:ffgpxvll, libcfitsio), Cint,
+          (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Void},
            Ptr{Cint}, Ptr{Cint}),
           f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, &nullval, data, anynull, status)
@@ -551,8 +540,8 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
                                      nelements::Int, data::Array{T})
     anynull = Cint[0]
     status = Cint[0]
-    ccall((:ffgpxv, libcfitsio), Cint,
-          (Ptr{Void}, Cint, Ptr{Clong}, Int64, Ptr{Void}, Ptr{Void},
+    ccall((:ffgpxvll, libcfitsio), Cint,
+          (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Void},
            Ptr{Cint}, Ptr{Cint}),
           f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, C_NULL, data, anynull, status)
@@ -662,6 +651,7 @@ if  promote_type(Int, Clong) == Clong
     ffgtcl = "ffgtcl"
     ffeqty = "ffeqty"
     ffgdes = "ffgdes"
+    ffgisz = "ffgisz"
 else
     T = Int64
     ffgtdm = "ffgtdmll"
@@ -670,6 +660,7 @@ else
     ffgtcl = "ffgtclll"
     ffeqty = "ffeqtyll"
     ffgdes = "ffgdesll"
+    ffgisz = "ffgiszll"
 end
 @eval begin
     function fits_get_coltype(ff::FITSFile, colnum::Integer)
@@ -694,6 +685,17 @@ end
               ff.ptr, colnum, typecode, repcnt, width, status)
         fits_assert_ok(status[1])
         return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
+    end
+
+    function fits_get_img_size(f::FITSFile)
+        ndim = fits_get_img_dim(f)
+        naxes = Array($T, ndim)
+        status = Cint[0]
+        ccall(($ffgisz, libcfitsio), Cint,
+              (Ptr{Void}, Cint, Ptr{$T}, Ptr{Cint}),
+              f.ptr, ndim, naxes, status)
+        fits_assert_ok(status[1])
+        naxes
     end
 
     function fits_get_num_rows(f::FITSFile)

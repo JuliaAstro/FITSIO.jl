@@ -131,6 +131,15 @@ isfile(fname) && rm(fname)
 
 fname = tempname() * ".fits"
 f = FITS(fname, "w")
+
+# test that show() works on an empty file and that the beginning and end
+# arre what we expect.
+io = IOBuffer()
+show(io, f)
+s = takebuf_string(io)
+@test s[1:6] == "File: "
+@test s[end-7:end] == "No HDUs."
+
 inhdr = FITSHeader(["FLTKEY", "INTKEY", "BOOLKEY", "STRKEY", "COMMENT",
                     "HISTORY"],
                    [1.0, 1, true, "string value", nothing, nothing],

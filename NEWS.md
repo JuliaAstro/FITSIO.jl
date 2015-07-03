@@ -1,9 +1,10 @@
-v0.8.0 (2015-07-01)
+v0.8.0 (2015-07-03)
 ===================
 
 ## New features
 
 - Windows support (32-bit & 64-bit), thanks to help from Tony Kelman
+  (requires master of BinDeps)
 - New method `read_header(hdu, ASCIIString)` returns entire header as
   a single string.
 - bump cfitsio version from 3.360 to 3.370

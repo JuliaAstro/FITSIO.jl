@@ -22,8 +22,18 @@ On linux or OS X, if it isn't already installed on your system,
 the cfitsio library is automatically downloaded and compiled
 (in your Julia packages directory).
 
-On Windows, a compiled dll will be downloaded (in your Julia
-packages directory).
+.. note:: **Windows support**
+
+   On Windows, a compiled dll will be downloaded (in your Julia
+   packages directory). At the moment, the latest master
+   version of BinDeps is required. To get it, do::
+
+       julia> Pkg.add("BinDeps")
+       julia> Pkg.checkout("BinDeps")
+
+   then do the usual::
+
+       julia> Pkg.add("FITSIO")
 
 Usage
 -----

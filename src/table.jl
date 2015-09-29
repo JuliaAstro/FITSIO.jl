@@ -30,9 +30,9 @@ for (T, tform, code) in ((UInt8,       'B',  11),
     @eval fits_tform_char(::Type{$T}) = $tform
     CFITSIO_COLTYPE[code] = T
 end
-typealias FITSTableScalar Union(UInt8, Int8, Bool, UInt16, Int16, Uint32,
+typealias FITSTableScalar @compat(Union{UInt8, Int8, Bool, UInt16, Int16, @compat(UInt32),
                                 Int32, Int64, Float32, Float64, Complex64,
-                                Complex128)
+                                Complex128})
 
 # Helper function for reading information about a (binary) table column
 # Returns: (eltype, rowsize, isvariable)
@@ -140,16 +140,16 @@ function show(io::IO, hdu::TableHDU)
     ncols = fits_get_num_cols(hdu.fitsfile)
 
     # allocate return arrays for column names & types
-    colnames_in = [Array(Uint8, 70) for i=1:ncols]
-    coltforms_in = [Array(Uint8, 70) for i=1:ncols]
+    colnames_in = [Array(@compat(UInt8), 70) for i=1:ncols]
+    coltforms_in = [Array(@compat(UInt8), 70) for i=1:ncols]
     nrows = Array(Int64, 1)
     status = Cint[0]
 
     # fits_read_btblhdrll (Can pass NULL for return fields not needed.)
     ccall(("ffghbnll", libcfitsio), Cint,
           (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
-           Ptr{Int64}, Ptr{Cint}, Ptr{Ptr{Uint8}},  # nrows, tfields, ttype
-           Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}}, Ptr{Uint8},  # tform,tunit,extname
+           Ptr{Int64}, Ptr{Cint}, Ptr{Ptr{@compat(UInt8)}},  # nrows, tfields, ttype
+           Ptr{Ptr{@compat(UInt8)}}, Ptr{Ptr{@compat(UInt8)}}, Ptr{@compat(UInt8)},  # tform,tunit,extname
            Ptr{Clong}, Ptr{Cint}),  # pcount, status
           hdu.fitsfile.ptr, ncols, nrows, C_NULL, colnames_in, coltforms_in,
           C_NULL, C_NULL, C_NULL, status)
@@ -194,8 +194,8 @@ function show(io::IO, hdu::ASCIITableHDU)
     ncols = fits_get_num_cols(hdu.fitsfile)
 
     # allocate return arrays for column names & types
-    colnames_in = [Array(Uint8, 70) for i=1:ncols]
-    coltforms_in = [Array(Uint8, 70) for i=1:ncols]
+    colnames_in = [Array(@compat(UInt8), 70) for i=1:ncols]
+    coltforms_in = [Array(@compat(UInt8), 70) for i=1:ncols]
     nrows = Array(Int64, 1)
     status = Cint[0]
 
@@ -203,8 +203,8 @@ function show(io::IO, hdu::ASCIITableHDU)
     ccall(("ffghtbll", libcfitsio), Cint,
           (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
            Ptr{Int64}, Ptr{Int64}, Ptr{Cint},  # rowlen, nrows, tfields
-           Ptr{Ptr{Uint8}}, Ptr{Clong}, Ptr{Ptr{Uint8}},  # ttype, tbcol, tform
-           Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Cint}),  # tunit, extname, status
+           Ptr{Ptr{@compat(UInt8)}}, Ptr{Clong}, Ptr{Ptr{@compat(UInt8)}},  # ttype, tbcol, tform
+           Ptr{Ptr{@compat(UInt8)}}, Ptr{@compat(UInt8)}, Ptr{Cint}),  # tunit, extname, status
           hdu.fitsfile.ptr, ncols,
           C_NULL, nrows, C_NULL,
           colnames_in, C_NULL, coltforms_in,
@@ -256,7 +256,7 @@ function fits_write_var_col(f::FITSFile, colnum::Integer,
         # characters to write is simply determined by the length of
         # the input null-terminated character string.
         ccall((:ffpcls, libcfitsio), Cint,
-              (Ptr{Void}, Cint, Int64, Int64, Int64, Ptr{Ptr{Uint8}},
+              (Ptr{Void}, Cint, Int64, Int64, Int64, Ptr{Ptr{@compat(UInt8)}},
                Ptr{Cint}),
               f.ptr, colnum, i, 1, length(data[i]), buffer, status)
         fits_assert_ok(status[1])
@@ -299,18 +299,18 @@ function write_internal(f::FITS, colnames::Vector{ASCIIString},
     if isa(units, Nothing)
         tunit = C_NULL
     else
-        tunit = Ptr{Uint8}[(haskey(units, n)? pointer(units[n]): C_NULL)
+        tunit = Ptr{@compat(UInt8)}[(haskey(units, n)? pointer(units[n]): C_NULL)
                            for n in colnames]
     end
 
     # extension name
-    name_ptr = (isa(name, Nothing) ? convert(Ptr{Uint8}, C_NULL) :
+    name_ptr = (isa(name, Nothing) ? convert(Ptr{@compat(UInt8)}, C_NULL) :
                    pointer(name))
 
     status = Cint[0]
     ccall(("ffcrtb", libcfitsio), Cint,
-          (Ptr{Void}, Cint, Int64, Cint, Ptr{Ptr{Uint8}}, Ptr{Ptr{Uint8}},
-           Ptr{Ptr{Uint8}}, Ptr{Uint8}, Ptr{Cint}),
+          (Ptr{Void}, Cint, Int64, Cint, Ptr{Ptr{@compat(UInt8)}}, Ptr{Ptr{@compat(UInt8)}},
+           Ptr{Ptr{@compat(UInt8)}}, Ptr{@compat(UInt8)}, Ptr{Cint}),
           f.fitsfile.ptr, table_type_code(hdutype), 0, ncols,  # 0 = nrows
           ttype, tform, tunit, name_ptr, status)
     fits_assert_ok(status[1])
@@ -383,7 +383,7 @@ function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{ASCIIStrin
         bufptr[1] = pointer(buffer)
         ccall((:ffgcvs, libcfitsio), Cint,
               (Ptr{Void}, Cint, Int64, Int64, Int64,
-               Ptr{Uint8}, Ptr{Ptr{Uint8}}, Ptr{Cint}, Ptr{Cint}),
+               Ptr{@compat(UInt8)}, Ptr{Ptr{@compat(UInt8)}}, Ptr{Cint}, Ptr{Cint}),
               f.ptr, colnum, i, 1, repeat, " ", bufptr, C_NULL, status)
         fits_assert_ok(status[1])
 

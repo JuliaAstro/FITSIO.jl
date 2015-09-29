@@ -70,12 +70,12 @@ _checkbounds(sz, r::Range{Int}) =
     (isempty(r) || (minimum(r) >= 1 && maximum(r) <= sz))
 
 # helper functions for constructing cfitsio indexing vectors in read(hdu, ...)
-_first(i::Union(Integer, Range)) = first(i)
+_first(i::@compat(Union{Integer, Range})) = first(i)
 _first(::Colon) = 1
-_last(sz, i::Union(Integer, Range)) = last(i)
+_last(sz, i::@compat(Union{Integer, Range})) = last(i)
 _last(sz, ::Colon) = sz
 _step(r::Range) = step(r)
-_step(::Union(Integer, Colon)) = 1
+_step(::@compat(Union{Integer, Colon})) = 1
 
 # Shape of array to create for read(hdu, ...), dropping trailing
 # scalars. This is simpler than in Base because we are guaranteed that
@@ -92,7 +92,7 @@ _index_shape_dim(sz, dim, r::Range) = (length(r),)
     tuple(length(r), _index_shape_dim(sz, dim+1, I...)...)
 
 # Read a subset of an ImageHDU
-function read_internal(hdu::ImageHDU, I::Union(Range{Int}, Integer, Colon)...)
+function read_internal(hdu::ImageHDU, I::@compat(Union{Range{Int}, Integer, Colon})...)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
@@ -121,7 +121,7 @@ function read_internal(hdu::ImageHDU, I::Union(Range{Int}, Integer, Colon)...)
 end
 
 # general method and version that returns a single value rather than 0-d array
-read(hdu::ImageHDU, I::Union(Range{Int}, Int, Colon)...) =
+read(hdu::ImageHDU, I::@compat(Union{Range{Int}, Int, Colon})...) =
     read_internal(hdu, I...)
 read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 
@@ -129,9 +129,9 @@ read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 # The following Julia data types are supported for writing images by cfitsio:
 # Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64, Float32, Float64
 function write{T}(f::FITS, data::Array{T};
-                  header::Union(Nothing, FITSHeader)=nothing,
-                  name::Union(Nothing, ASCIIString)=nothing,
-                  ver::Union(Nothing, Integer)=nothing)
+                  header::@compat(Union{Nothing, FITSHeader})=nothing,
+                  name::@compat(Union{Nothing, ASCIIString})=nothing,
+                  ver::@compat(Union{Nothing, Integer})=nothing)
     fits_assert_open(f.fitsfile)
     s = size(data)
     fits_create_img(f.fitsfile, T, [s...])

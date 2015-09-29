@@ -8,7 +8,7 @@ using Compat
 # Create a FITS instance and loop over supported types.
 fname = tempname() * ".fits"
 f = FITS(fname, "w")
-for T in [@compat(UInt8), Int8, @compat(UInt16), Int16, @compat(UInt32), Int32, Int64,
+for T in [UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
           Float32, Float64]
     indata = reshape(T[1:100;], 5, 20)
 
@@ -76,7 +76,7 @@ f = FITS(fname, "w")
 
 ## Binary table
 indata = Dict{ASCIIString, Array}()
-for (i, T) in enumerate([@compat(UInt8), Int8, @compat(UInt16), Int16, @compat(UInt32), Int32, Int64,
+for (i, T) in enumerate([UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
                          Float32, Float64, Complex64, Complex128])
     indata["col$i"] = T[1:20;]
 end
@@ -115,9 +115,9 @@ write(f, indata; hdutype=ASCIITableHDU)
 
 # For ASCII tables, the types don't round trip so we need to define the
 # expected output type for each input type.
-expected_type = @compat Dict(Int16=>Int32, Int32=>Int32,
-                             Float32=>Float64, Float64=>Float64,
-                             ASCIIString=>ASCIIString)
+expected_type = @compat(Dict(Int16=>Int32, Int32=>Int32,
+                     Float32=>Float64, Float64=>Float64,
+                     ASCIIString=>ASCIIString))
 for (colname, incol) in indata
     outcol = read(f[3], colname)  # table is in extension 3
     @test outcol == incol

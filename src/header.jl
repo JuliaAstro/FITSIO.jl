@@ -85,10 +85,10 @@ end
 # (null if no key exists or if parsing an existing key is unsuccessful.)
 function fits_try_read_keys{T}(f::FITSFile, ::Type{T}, keys)
     status = Cint[0]
-    value = Array(@compat(UInt8), 71)
+    value = Array(UInt8, 71)
     for key in keys
         ccall((:ffgkey, libcfitsio), Cint,
-              (Ptr{Void},Ptr{@compat(UInt8)},Ptr{@compat(UInt8)},Ptr{@compat(UInt8)},Ptr{Cint}),
+              (Ptr{Void},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
               f.ptr, bytestring(key), value, C_NULL, status)
 
         # If the key is found, return it. If there was some other error
@@ -223,9 +223,9 @@ function read_header(hdu::HDU)
 
     # Below, we use a direct call to ffgkyn so that we can keep reusing the
     # same buffers.
-    key = Array(@compat(UInt8), 81)
-    value = Array(@compat(UInt8), 81)
-    comment = Array(@compat(UInt8), 81)
+    key = Array(UInt8, 81)
+    value = Array(UInt8, 81)
+    comment = Array(UInt8, 81)
     status = Cint[0]
 
     nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
@@ -236,7 +236,7 @@ function read_header(hdu::HDU)
     comments = Array(ASCIIString, nkeys)
     for i=1:nkeys
         ccall((:ffgkyn,libcfitsio), Cint,
-              (Ptr{Void},Cint,Ptr{@compat(UInt8)},Ptr{@compat(UInt8)},Ptr{@compat(UInt8)},Ptr{Cint}),
+              (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
               hdu.fitsfile.ptr, i, key, value, comment, status)
         keys[i] = bytestring(pointer(key))
         values[i] = parse_header_val(bytestring(pointer(value)))

@@ -14,8 +14,6 @@
 #   `@compat Vector{T}(x)` once syntax support is in Compat.
 # - `convert(Cint, x)` can be changed to `Cint(x)` once v0.3 is not supported
 #   or `@compat Cint(x)` once syntax support is in Compat.
-# - Once v0.3 is no longer supported, the type `Nothing` should be changed to
-#   `Void` (this is the type of `nothing`).
 #
 # The following table gives the correspondances between CFITSIO "types",
 # the BITPIX keyword and Julia types.
@@ -204,7 +202,7 @@ fits_get_version() = ccall((:ffvers, libcfitsio), Cfloat, (Ptr{Cfloat},), &0.)
 # -----------------------------------------------------------------------------
 # file access & info functions
 
-function fits_create_file(filename::String)
+function fits_create_file(filename::AbstractString)
     ptr = Array(Ptr{Void}, 1)
     status = Cint[0]
     ccall((:ffinit,libcfitsio), Cint, (Ptr{Ptr{Void}},Ptr{@compat(UInt8)},Ptr{Cint}),
@@ -213,14 +211,14 @@ function fits_create_file(filename::String)
     FITSFile(ptr[1])
 end
 
-fits_clobber_file(filename::String) = fits_create_file("!"*filename)
+fits_clobber_file(filename::AbstractString) = fits_create_file("!"*filename)
 
 for (a,b) in ((:fits_open_data, "ffdopn"),
               (:fits_open_file, "ffopen"),
               (:fits_open_image,"ffiopn"),
               (:fits_open_table,"fftopn"))
     @eval begin
-        function ($a)(filename::String, mode::Integer=0)
+        function ($a)(filename::AbstractString, mode::Integer=0)
             ptr = Array(Ptr{Void}, 1)
             status = Cint[0]
             ccall(($b,libcfitsio), Cint,
@@ -373,7 +371,7 @@ function fits_update_key(f::FITSFile, key::ASCIIString, value::FloatingPoint,
     fits_assert_ok(status[1])
 end
 
-function fits_update_key(f::FITSFile, key::ASCIIString, value::Nothing,
+function fits_update_key(f::FITSFile, key::ASCIIString, value::@compat(Void),
                          comment::@compat(Union{ASCIIString, Ptr{Void}})=C_NULL)
     status = Cint[0]
     ccall(("ffukyu", libcfitsio), Cint,

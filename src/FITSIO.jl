@@ -74,11 +74,11 @@ end
 # in the HDU object.
 type FITS
     fitsfile::FITSFile
-    filename::String
-    mode::String
+    filename::AbstractString
+    mode::AbstractString
     hdus::Dict{Int, HDU}
 
-    function FITS(filename::String, mode::String="r")
+    function FITS(filename::AbstractString, mode::AbstractString="r")
         f = (mode == "r"                     ? fits_open_file(filename, 0)   :
              mode == "r+" && isfile(filename)? fits_open_file(filename, 1)   :
              mode == "r+"                    ? fits_create_file(filename)    :

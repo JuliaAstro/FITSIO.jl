@@ -129,9 +129,9 @@ read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 # The following Julia data types are supported for writing images by cfitsio:
 # Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64, Float32, Float64
 function write{T}(f::FITS, data::Array{T};
-                  header::@compat(Union{Nothing, FITSHeader})=nothing,
-                  name::@compat(Union{Nothing, ASCIIString})=nothing,
-                  ver::@compat(Union{Nothing, Integer})=nothing)
+                  header::@compat(Union{@compat(Void), FITSHeader})=nothing,
+                  name::@compat(Union{@compat(Void), ASCIIString})=nothing,
+                  ver::@compat(Union{@compat(Void), Integer})=nothing)
     fits_assert_open(f.fitsfile)
     s = size(data)
     fits_create_img(f.fitsfile, T, [s...])

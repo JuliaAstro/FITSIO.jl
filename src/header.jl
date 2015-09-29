@@ -72,7 +72,7 @@ end
 # functions for displaying header values in show(io, header)
 hdrval_repr(v::Bool) = v ? "T" : "F"
 hdrval_repr(v::ASCIIString) = @sprintf "'%s'" v
-hdrval_repr(v::@compat(Union{FloatingPoint, Integer})) = string(v)
+hdrval_repr(v::@compat(Union{AbstractFloat, Integer})) = string(v)
 
 # returns one of: ASCIIString, Bool, Int, Float64, nothing
 # (never error)

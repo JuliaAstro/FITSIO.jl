@@ -320,7 +320,7 @@ function fits_read_keyn(f::FITSFile, keynum::Integer)
 end
 
 function fits_write_key(f::FITSFile, keyname::ASCIIString,
-                        value::@compat(Union{FloatingPoint,ASCIIString}),
+                        value::@compat(Union{AbstractFloat,ASCIIString}),
                         comment::ASCIIString)
     cvalue = isa(value,ASCIIString) ?  bytestring(value) :
              isa(value,Bool) ? Cint[value] : [value]
@@ -362,7 +362,7 @@ for (a,T,S) in (("ffukys", :ASCIIString, :(Ptr{@compat(UInt8)})),
     end
 end
 
-function fits_update_key(f::FITSFile, key::ASCIIString, value::FloatingPoint,
+function fits_update_key(f::FITSFile, key::ASCIIString, value::AbstractFloat,
                          comment::@compat(Union{ASCIIString, Ptr{Void}})=C_NULL)
     status = Cint[0]
     ccall(("ffukyd", libcfitsio), Cint,

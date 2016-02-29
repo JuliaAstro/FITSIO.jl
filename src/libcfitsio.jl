@@ -60,6 +60,8 @@
 #     -------------------------------------------------
 #
 
+isdefined(Base, :__precompile__) && __precompile__()
+
 module Libcfitsio
 
 using Compat

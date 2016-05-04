@@ -127,7 +127,7 @@ end
 # are only reserved when other keys are present. Also, in general a key
 # may appear more than once in a header.
 const RESERVED_KEYS = ["SIMPLE","EXTEND","XTENSION","BITPIX","PCOUNT","GCOUNT",
-                       "THEAP","EXTNAME","BUNIT","BSCALE","BZERO","BLANK",
+                       "THEAP","EXTNAME","BSCALE","BZERO","BLANK",
                        "ZQUANTIZ","ZDITHER0","ZIMAGE","ZCMPTYPE","ZSIMPLE",
                        "ZTENSION","ZPCOUNT","ZGCOUNT","ZBITPIX","ZEXTEND",
                        "CHECKSUM","DATASUM"]

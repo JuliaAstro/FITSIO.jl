@@ -135,7 +135,7 @@ read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 # Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64, Float32, Float64
 function write{T}(f::FITS, data::Array{T};
                   header::@compat(Union{Void, FITSHeader})=nothing,
-                  name::@compat(Union{Void, ASCIIString})=nothing,
+                  name::@compat(Union{Void, Compat.ASCIIString})=nothing,
                   ver::@compat(Union{Void, Integer})=nothing)
     fits_assert_open(f.fitsfile)
     s = size(data)
@@ -143,7 +143,7 @@ function write{T}(f::FITS, data::Array{T};
     if isa(header, FITSHeader)
         fits_write_header(f.fitsfile, header, true)
     end
-    if isa(name, ASCIIString)
+    if isa(name, Compat.ASCIIString)
         fits_update_key(f.fitsfile, "EXTNAME", name)
     end
     if isa(ver, Integer)

@@ -6,7 +6,7 @@
 # Used here and in other files. Functions that operate on FITSFile
 # start with `fits_`.
 
-function try_parse_hdrval(::Type{Bool}, s::ASCIIString)
+function try_parse_hdrval(::Type{Bool}, s::Compat.ASCIIString)
     if length(s) == 1
         if s[1] == 'T'
             return Nullable(true)
@@ -22,9 +22,9 @@ end
 # single space).  See CFITSIO manual section 4.5 for details.
 #
 # TODO: parse '' within the string as a single '.
-function try_parse_hdrval(::Type{ASCIIString}, s::ASCIIString)
+function try_parse_hdrval(::Type{Compat.ASCIIString}, s::Compat.ASCIIString)
     if length(s) < 2 || s[1] != '\'' || s[end] != '\''
-        return Nullable{ASCIIString}()
+        return Nullable{Compat.ASCIIString}()
     end
 
     i = endof(s) - 1
@@ -37,13 +37,13 @@ function try_parse_hdrval(::Type{ASCIIString}, s::ASCIIString)
     return Nullable(s[2:i])
 end
 
-try_parse_hdrval(::Type{Float64}, s::ASCIIString) = tryparse(Float64, s)
+try_parse_hdrval(::Type{Float64}, s::Compat.ASCIIString) = tryparse(Float64, s)
 
 # hack for integers in Julia v0.3: tryparse(Int, s) not available in Compat.
 if VERSION > v"0.4.0-dev+3864"
-    try_parse_hdrval(::Type{Int}, s::ASCIIString) = tryparse(Int, s)
+    try_parse_hdrval(::Type{Int}, s::Compat.ASCIIString) = tryparse(Int, s)
 else
-    try_parse_hdrval(::Type{Int}, s::ASCIIString) = try
+    try_parse_hdrval(::Type{Int}, s::Compat.ASCIIString) = try
         Nullable(parseint(s))
     catch e
         Nullable{Int}()
@@ -51,13 +51,13 @@ else
 end
 
 # Try to parse the header value as any type
-function try_parse_hdrval(s::ASCIIString)
+function try_parse_hdrval(s::Compat.ASCIIString)
     length(s) == 0 && return Nullable(nothing)
 
     nb = try_parse_hdrval(Bool, s)
     isnull(nb) || return nb
 
-    ns = try_parse_hdrval(ASCIIString, s)
+    ns = try_parse_hdrval(Compat.ASCIIString, s)
     isnull(ns) || return ns
 
     ni = try_parse_hdrval(Int, s)
@@ -71,12 +71,12 @@ end
 
 # functions for displaying header values in show(io, header)
 hdrval_repr(v::Bool) = v ? "T" : "F"
-hdrval_repr(v::ASCIIString) = @sprintf "'%s'" v
+hdrval_repr(v::Compat.ASCIIString) = @sprintf "'%s'" v
 hdrval_repr(v::@compat(Union{AbstractFloat, Integer})) = string(v)
 
-# returns one of: ASCIIString, Bool, Int, Float64, nothing
+# returns one of: Compat.ASCIIString, Bool, Int, Float64, nothing
 # (never error)
-function parse_header_val(s::ASCIIString)
+function parse_header_val(s::Compat.ASCIIString)
     nval = try_parse_hdrval(s)
     return isnull(nval) ? s : get(nval)
 end
@@ -89,12 +89,12 @@ function fits_try_read_keys{T}(f::FITSFile, ::Type{T}, keys)
     for key in keys
         ccall((:ffgkey, libcfitsio), Cint,
               (Ptr{Void},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
-              f.ptr, bytestring(key), value, C_NULL, status)
+              f.ptr, key, value, C_NULL, status)
 
         # If the key is found, return it. If there was some other error
         # besides key not found, throw an error.
         if status[1] == 0
-            return try_parse_hdrval(T, bytestring(pointer(value)))
+            return try_parse_hdrval(T, unsafe_string(pointer(value)))
         elseif status[1] != 202
             error(fits_get_errstatus(status[1]))
         end
@@ -107,7 +107,7 @@ end
 const EXTNAME_KEYS = ["EXTNAME", "HDUNAME"]
 const EXTVER_KEYS = ["EXTVER", "HDUVER"]
 fits_try_read_extname(f::FITSFile) =
-    fits_try_read_keys(f, ASCIIString, EXTNAME_KEYS)
+    fits_try_read_keys(f, Compat.ASCIIString, EXTNAME_KEYS)
 fits_try_read_extver(f::FITSFile) = fits_try_read_keys(f, Int, EXTVER_KEYS)
 
 function fits_get_ext_info_string(f::FITSFile)
@@ -210,7 +210,7 @@ function read_key(hdu::HDU, key::Integer)
     keyout, parse_header_val(value), comment
 end
 
-function read_key(hdu::HDU, key::ASCIIString)
+function read_key(hdu::HDU, key::Compat.ASCIIString)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     value, comment = fits_read_keyword(hdu.fitsfile, key)
@@ -231,22 +231,22 @@ function read_header(hdu::HDU)
     nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
 
     # Initialize output arrays
-    keys = Array(ASCIIString, nkeys)
+    keys = Array(Compat.ASCIIString, nkeys)
     values = Array(Any, nkeys)
-    comments = Array(ASCIIString, nkeys)
+    comments = Array(Compat.ASCIIString, nkeys)
     for i=1:nkeys
         ccall((:ffgkyn,libcfitsio), Cint,
               (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
               hdu.fitsfile.ptr, i, key, value, comment, status)
-        keys[i] = bytestring(pointer(key))
-        values[i] = parse_header_val(bytestring(pointer(value)))
-        comments[i] = bytestring(pointer(comment))
+        keys[i] = unsafe_string(pointer(key))
+        values[i] = parse_header_val(unsafe_string(pointer(value)))
+        comments[i] = unsafe_string(pointer(comment))
     end
     fits_assert_ok(status[1])
     FITSHeader(keys, values, comments)
 end
 
-function read_header(hdu::HDU, ::Type{ASCIIString})
+function read_header(hdu::HDU, ::Type{Compat.ASCIIString})
     # Return the header as a raw string.
 
     fits_assert_open(hdu.fitsfile)
@@ -256,13 +256,13 @@ function read_header(hdu::HDU, ::Type{ASCIIString})
 end
 
 length(hdr::FITSHeader) = length(hdr.keys)
-haskey(hdr::FITSHeader, key::ASCIIString) = in(key, hdr.keys)
+haskey(hdr::FITSHeader, key::Compat.ASCIIString) = in(key, hdr.keys)
 keys(hdr::FITSHeader) = hdr.keys
 values(hdr::FITSHeader) = hdr.values
-getindex(hdr::FITSHeader, key::ASCIIString) = hdr.values[hdr.map[key]]
+getindex(hdr::FITSHeader, key::Compat.ASCIIString) = hdr.values[hdr.map[key]]
 getindex(hdr::FITSHeader, i::Integer) = hdr.values[i]
 
-function setindex!(hdr::FITSHeader, value::Any, key::ASCIIString)
+function setindex!(hdr::FITSHeader, value::Any, key::Compat.ASCIIString)
     if in(key, hdr.keys)
         hdr.values[hdr.map[key]] = value
     else
@@ -278,12 +278,12 @@ function setindex!(hdr::FITSHeader, value::Any, i::Integer)
 end
 
 # Comments
-get_comment(hdr::FITSHeader, key::ASCIIString) = hdr.comments[hdr.map[key]]
+get_comment(hdr::FITSHeader, key::Compat.ASCIIString) = hdr.comments[hdr.map[key]]
 get_comment(hdr::FITSHeader, i::Integer) = hdr.comments[i]
-function set_comment!(hdr::FITSHeader, key::ASCIIString, comment::ASCIIString)
+function set_comment!(hdr::FITSHeader, key::Compat.ASCIIString, comment::Compat.ASCIIString)
     hdr.comments[hdr.map[key]] = comment
 end
-function set_comment!(hdr::FITSHeader, i::Integer, comment::ASCIIString)
+function set_comment!(hdr::FITSHeader, i::Integer, comment::Compat.ASCIIString)
     hdr.comments[i] = comment
 end
 

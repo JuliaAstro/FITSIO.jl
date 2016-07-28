@@ -75,7 +75,7 @@ fname = tempname() * ".fits"
 f = FITS(fname, "w")
 
 ## Binary table
-indata = Dict{ASCIIString, Array}()
+indata = Dict{Compat.ASCIIString, Array}()
 for (i, T) in enumerate([UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
                          Float32, Float64, Complex64, Complex128])
     indata["col$i"] = T[1:20;]
@@ -104,7 +104,7 @@ end
 
 ## ASCII tables
 
-indata = Dict{ASCIIString, Array}()
+indata = Dict{Compat.ASCIIString, Array}()
 for (i, T) in enumerate([Int16, Int32, Float32, Float64])
     indata["col$i"] = T[1:20;]
 end
@@ -117,7 +117,7 @@ write(f, indata; hdutype=ASCIITableHDU)
 # expected output type for each input type.
 expected_type = @compat(Dict(Int16=>Int32, Int32=>Int32,
                      Float32=>Float64, Float64=>Float64,
-                     ASCIIString=>ASCIIString))
+                     Compat.ASCIIString=>Compat.ASCIIString))
 for (colname, incol) in indata
     outcol = read(f[3], colname)  # table is in extension 3
     @test outcol == incol
@@ -173,14 +173,14 @@ outhdr = read_header(f[1])
 @test haskey(outhdr, "FLTKEY")
 
 # Read entire header as a single string
-s = read_header(f[1], ASCIIString)
+s = read_header(f[1], Compat.ASCIIString)
 @test s[1:9] == "SIMPLE  ="  # all headers should start with this.
 @test length(s) == (9 + length(inhdr)) * 80  # 9 lines = 8 default + "END"
 
 # Test to check that read_header gets the right block even after reading another.
 s_reread = read_header(f[1])
 s_reread = read_header(f[2])
-s_reread = read_header(f[1], ASCIIString)
+s_reread = read_header(f[1], Compat.ASCIIString)
 @assert s == s_reread
 
 # Read single keywords
@@ -208,7 +208,7 @@ end
 # files is to test the parsing of non-standard FITS keyword records
 # (non-standard files can't be created with cfitsio).
 
-function create_test_file(fname::AbstractString, header::ASCIIString)
+function create_test_file(fname::AbstractString, header::Compat.ASCIIString)
     if length(header) % 80 != 0
         error("length of header must be multiple of 80")
     end

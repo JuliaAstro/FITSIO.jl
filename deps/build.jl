@@ -53,7 +53,7 @@ provides(BuildProcess,
 	     @build_steps begin
 		 ChangeDirectory(srcdir)
 	         FileRule(joinpath(libdir, libfilename), @build_steps begin
-		          `cp $(libfilename) $(joinpath(libdir, libfilename))`
+		          `powershell -Command "cp $(libfilename) $(joinpath(libdir, libfilename))"`
 			  end)
              end
 	  end), libcfitsio, os = :Windows)

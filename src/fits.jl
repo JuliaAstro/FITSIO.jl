@@ -55,9 +55,9 @@ function show(io::IO, f::FITS)
     else
         print(io, "HDUs: ")
 
-        names = Array(ASCIIString, nhdu)
-        vers = Array(ASCIIString, nhdu)
-        types = Array(ASCIIString, nhdu)
+        names = Array(Compat.ASCIIString, nhdu)
+        vers = Array(Compat.ASCIIString, nhdu)
+        types = Array(Compat.ASCIIString, nhdu)
         for i = 1:nhdu
             t = fits_movabs_hdu(f.fitsfile, i)
             types[i] = (t == :image_hdu ? "Image" :
@@ -75,10 +75,10 @@ function show(io::IO, f::FITS)
         # only display version info if present
         if maximum(length, vers) > 0
             dispnames = ["Num", "Name", "Ver", "Type"]
-            dispcols = Vector{ASCIIString}[nums, names, vers, types]
+            dispcols = Vector{Compat.ASCIIString}[nums, names, vers, types]
         else
             dispnames = ["Num", "Name", "Type"]
-            dispcols = Vector{ASCIIString}[nums, names, types]
+            dispcols = Vector{Compat.ASCIIString}[nums, names, types]
         end
 
         show_ascii_table(io, dispnames, dispcols, 2, 6)

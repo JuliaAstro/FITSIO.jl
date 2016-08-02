@@ -5,16 +5,25 @@ using Compat
 
 version = "3370"
 baseurl = "ftp://heasarc.gsfc.nasa.gov/software/fitsio/c/"
-@unix_only archivename = "cfitsio$(version).tar.gz"
-@windows_only archivename = "cfitsio_MSVC_$(WORD_SIZE)bit_DLL_$(version).zip"
+
+if is_unix()
+    archivename = "cfitsio$(version).tar.gz"
+elseif is_windows()
+    archivename = "cfitsio_MSVC_$(WORD_SIZE)bit_DLL_$(version).zip"
+end
 
 libcfitsio = library_dependency("libcfitsio", aliases=["cfitsio"])
 downloadsdir = BinDeps.downloadsdir(libcfitsio)
 libdir = BinDeps.libdir(libcfitsio)
 srcdir = BinDeps.srcdir(libcfitsio)
-@unix_only libfilename = "libcfitsio.so"
-@osx_only libfilename = "libcfitsio.dylib"
-@windows_only libfilename = "cfitsio.dll"
+
+if is_unix()
+    libfilename = "libcfitsio.so"
+elseif is_apple()
+    libfilename = "libcfitsio.dylib"
+elseif is_windows()
+    libfilename = "cfitsio.dll"
+end
 
 # Unix
 prefix = joinpath(BinDeps.depsdir(libcfitsio), "usr")
@@ -49,9 +58,12 @@ provides(BuildProcess,
              end
 	  end), libcfitsio, os = :Windows)
 
-
-@windows_only push!(BinDeps.defaults, BuildProcess)
+if is_windows()
+    push!(BinDeps.defaults, BuildProcess)
+end
 
 @BinDeps.install @compat Dict(:libcfitsio => :libcfitsio)
 
-@windows_only pop!(BinDeps.defaults)
+if is_windows()
+    pop!(BinDeps.defaults)
+end

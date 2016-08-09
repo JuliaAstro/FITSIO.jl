@@ -145,7 +145,6 @@ for (T, code) in ((UInt8,     8), # BYTE_IMG
     end
 end
 
-# TODO: elimiate duplicates (Clong vs Int64 or Clong vs Cint) ?
 for (T, code) in ((UInt8,       11),
                   (Int8,        12),
                   (Bool,        14),
@@ -154,16 +153,21 @@ for (T, code) in ((UInt8,       11),
                   (Cshort,      21),
                   (Cuint,       30),
                   (Cint,        31),
-                  (Culong,      40),
-                  (Clong,       41),
-                  (Float32,     42),
                   (Int64,       81),
+                  (Float32,     42),
                   (Float64,     82),
                   (Complex64,   83),
                   (Complex128, 163))
     @eval cfitsio_typecode(::Type{$T}) = convert(Cint, $code)
 end
 
+# Above, we don't define a method for Clong because it is either Cint (Int32)
+# or Int64 depending on the platform, and those methods are already defined.
+# Culong is either UInt64 or Cuint depending on platform. Only define it if
+# not already defined.
+if Culong !== Cuint
+    cfitsio_typecode(::Type{Culong}) = convert(Cint, 40)
+end
 
 # -----------------------------------------------------------------------------
 # FITSFile type

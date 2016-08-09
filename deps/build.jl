@@ -35,7 +35,7 @@ provides(BuildProcess,
                  ChangeDirectory(joinpath(srcdir, "cfitsio"))
                  FileRule(joinpath(libdir, libfilename),
                           @build_steps begin
-                              `./configure --prefix=$prefix`
+                              `./configure --prefix=$prefix --enable-reentrant`
                               `make shared install`
                           end)
              end

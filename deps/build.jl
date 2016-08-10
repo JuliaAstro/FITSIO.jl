@@ -17,10 +17,10 @@ downloadsdir = BinDeps.downloadsdir(libcfitsio)
 libdir = BinDeps.libdir(libcfitsio)
 srcdir = BinDeps.srcdir(libcfitsio)
 
-if is_unix()
-    libfilename = "libcfitsio.so"
-elseif is_apple()
+if is_apple()
     libfilename = "libcfitsio.dylib"
+elseif is_unix()
+    libfilename = "libcfitsio.so"
 elseif is_windows()
     libfilename = "cfitsio.dll"
 end

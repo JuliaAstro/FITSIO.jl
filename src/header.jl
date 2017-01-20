@@ -85,7 +85,7 @@ end
 # (null if no key exists or if parsing an existing key is unsuccessful.)
 function fits_try_read_keys{T}(f::FITSFile, ::Type{T}, keys)
     status = Cint[0]
-    value = Array(UInt8, 71)
+    value = Vector{UInt8}(71)
     for key in keys
         ccall((:ffgkey, libcfitsio), Cint,
               (Ptr{Void},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
@@ -223,17 +223,17 @@ function read_header(hdu::HDU)
 
     # Below, we use a direct call to ffgkyn so that we can keep reusing the
     # same buffers.
-    key = Array(UInt8, 81)
-    value = Array(UInt8, 81)
-    comment = Array(UInt8, 81)
+    key = Vector{UInt8}(81)
+    value = Vector{UInt8}(81)
+    comment = Vector{UInt8}(81)
     status = Cint[0]
 
     nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
 
     # Initialize output arrays
-    keys = Array(Compat.ASCIIString, nkeys)
-    values = Array(Any, nkeys)
-    comments = Array(Compat.ASCIIString, nkeys)
+    keys = Vector{Compat.ASCIIString}(nkeys)
+    values = Vector{Any}(nkeys)
+    comments = Vector{Compat.ASCIIString}(nkeys)
     for i=1:nkeys
         ccall((:ffgkyn,libcfitsio), Cint,
               (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),

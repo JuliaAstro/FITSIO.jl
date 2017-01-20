@@ -136,7 +136,7 @@ f = FITS(fname, "w")
 # arre what we expect.
 io = IOBuffer()
 show(io, f)
-s = takebuf_string(io)
+s = String(take!(io))
 @test s[1:6] == "File: "
 @test s[end-7:end] == "No HDUs."
 
@@ -190,7 +190,7 @@ s_reread = read_header(f[1], Compat.ASCIIString)
 # Test that show() works and that the beginning of output is what we expect.
 io = IOBuffer()
 show(io, f)
-s = takebuf_string(io)
+s = String(take!(io))
 @test s[1:6] == "File: "
 
 # Clean up from last test.

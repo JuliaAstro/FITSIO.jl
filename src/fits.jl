@@ -55,9 +55,9 @@ function show(io::IO, f::FITS)
     else
         print(io, "HDUs: ")
 
-        names = Array(Compat.ASCIIString, nhdu)
-        vers = Array(Compat.ASCIIString, nhdu)
-        types = Array(Compat.ASCIIString, nhdu)
+        names = Vector{Compat.ASCIIString}(nhdu)
+        vers = Vector{Compat.ASCIIString}(nhdu)
+        types = Vector{Compat.ASCIIString}(nhdu)
         for i = 1:nhdu
             t = fits_movabs_hdu(f.fitsfile, i)
             types[i] = (t == :image_hdu ? "Image" :

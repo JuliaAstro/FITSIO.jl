@@ -192,7 +192,7 @@ function fits_assert_open(f::FITSFile)
 end
 
 function fits_get_errstatus(status::Cint)
-    msg = Array(UInt8, 31)
+    msg = Vector{UInt8}(31)
     ccall((:ffgerr,libcfitsio), Void, (Cint,Ptr{UInt8}), status, msg)
     unsafe_string(pointer(msg))
 end
@@ -209,12 +209,12 @@ fits_get_version() = ccall((:ffvers, libcfitsio), Cfloat, (Ptr{Cfloat},), &0.)
 # file access & info functions
 
 function fits_create_file(filename::AbstractString)
-    ptr = Array(Ptr{Void}, 1)
-    status = Cint[0]
-    ccall((:ffinit,libcfitsio), Cint, (Ptr{Ptr{Void}},Ptr{UInt8},Ptr{Cint}),
+    ptr = Ref{Ptr{Void}}()
+    status = Ref{Cint}(0)
+    ccall((:ffinit,libcfitsio), Cint, (Ref{Ptr{Void}},Ptr{UInt8},Ref{Cint}),
           ptr, filename, status)
-    fits_assert_ok(status[1])
-    FITSFile(ptr[1])
+    fits_assert_ok(status[])
+    FITSFile(ptr[])
 end
 
 fits_clobber_file(filename::AbstractString) = fits_create_file("!"*filename)
@@ -225,13 +225,13 @@ for (a,b) in ((:fits_open_data, "ffdopn"),
               (:fits_open_table,"fftopn"))
     @eval begin
         function ($a)(filename::AbstractString, mode::Integer=0)
-            ptr = Array(Ptr{Void}, 1)
-            status = Cint[0]
+            ptr = Ref{Ptr{Void}}()
+            status = Ref{Cint}(0)
             ccall(($b,libcfitsio), Cint,
-                  (Ptr{Ptr{Void}},Ptr{UInt8},Cint,Ptr{Cint}),
+                  (Ref{Ptr{Void}},Ptr{UInt8},Cint,Ref{Cint}),
                   ptr, filename, mode, status)
-            fits_assert_ok(status[1])
-            FITSFile(ptr[1])
+            fits_assert_ok(status[])
+            FITSFile(ptr[])
         end
     end
 end
@@ -244,11 +244,11 @@ for (a,b) in ((:fits_close_file, "ffclos"),
             # fits_close_file() is called during garbage collection, but file
             # may already be closed by user, so we need to check if it is open.
             if f.ptr != C_NULL
-                status = Cint[0]
+                status = Ref{Cint}(0)
                 ccall(($b,libcfitsio), Cint,
-                      (Ptr{Void},Ptr{Cint}),
+                      (Ptr{Void},Ref{Cint}),
                       f.ptr, status)
-                fits_assert_ok(status[1])
+                fits_assert_ok(status[])
                 f.ptr = C_NULL
             end
         end
@@ -258,22 +258,22 @@ end
 close(f::FITSFile) = fits_close_file(f)
 
 function fits_file_name(f::FITSFile)
-    value = Array(UInt8, 1025)
-    status = Cint[0]
+    value = Vector{UInt8}(1025)
+    status = Ref{Cint}(0)
     ccall((:ffflnm,libcfitsio), Cint,
-          (Ptr{Void},Ptr{UInt8},Ptr{Cint}),
+          (Ptr{Void},Ptr{UInt8},Ref{Cint}),
           f.ptr, value, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
     unsafe_string(pointer(value))
 end
 
 function fits_file_mode(f::FITSFile)
-    result = Cint[0]
-    status = Cint[0]
-    ccall(("ffflmd", libcfitsio), Cint, (Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
+    result = Ref{Cint}(0)
+    status = Ref{Cint}(0)
+    ccall(("ffflmd", libcfitsio), Cint, (Ptr{Void}, Ref{Cint}, Ref{Cint}),
           f.ptr, result, status)
-    fits_assert_ok(status[1])
-    result[1]
+    fits_assert_ok(status[])
+    result[]
 end
 
 
@@ -281,46 +281,46 @@ end
 # header access functions
 
 function fits_get_hdrspace(f::FITSFile)
-    keysexist = Cint[0]
-    morekeys = Cint[0]
-    status = Cint[0]
+    keysexist = Ref{Cint}(0)
+    morekeys = Ref{Cint}(0)
+    status = Ref{Cint}(0)
     ccall((:ffghsp,libcfitsio), Cint,
-        (Ptr{Void},Ptr{Cint},Ptr{Cint},Ptr{Cint}),
+        (Ptr{Void},Ref{Cint},Ref{Cint},Ref{Cint}),
         f.ptr, keysexist, morekeys, status)
-    fits_assert_ok(status[1])
-    (keysexist[1], morekeys[1])
+    fits_assert_ok(status[])
+    (keysexist[], morekeys[])
 end
 
 function fits_read_keyword(f::FITSFile, keyname::Compat.ASCIIString)
-    value = Array(UInt8, 71)
-    comment = Array(UInt8, 71)
-    status = Cint[0]
+    value = Vector{UInt8}(71)
+    comment = Vector{UInt8}(71)
+    status = Ref{Cint}(0)
     ccall((:ffgkey,libcfitsio), Cint,
-        (Ptr{Void},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+        (Ptr{Void},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ref{Cint}),
         f.ptr, keyname, value, comment, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
     unsafe_string(pointer(value)), unsafe_string(pointer(comment))
 end
 
 function fits_read_record(f::FITSFile, keynum::Integer)
-    card = Array(UInt8, 81)
-    status = Cint[0]
+    card = Vector{UInt8}(81)
+    status = Ref{Cint}(0)
     ccall((:ffgrec,libcfitsio), Cint,
-        (Ptr{Void},Cint,Ptr{UInt8},Ptr{Cint}),
+        (Ptr{Void},Cint,Ptr{UInt8},Ref{Cint}),
         f.ptr, keynum, card, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
     unsafe_string(pointer(card))
 end
 
 function fits_read_keyn(f::FITSFile, keynum::Integer)
-    keyname = Array(UInt8, 9)
-    value = Array(UInt8, 71)
-    comment = Array(UInt8, 71)
-    status = Cint[0]
+    keyname = Vector{UInt8}(9)
+    value = Vector{UInt8}(71)
+    comment = Vector{UInt8}(71)
+    status = Ref{Cint}(0)
     ccall((:ffgkyn,libcfitsio), Cint,
-        (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+        (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ref{Cint}),
         f.ptr, keynum, keyname, value, comment, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
     (unsafe_string(pointer(keyname)), unsafe_string(pointer(value)),
      unsafe_string(pointer(comment)))
 end
@@ -330,26 +330,26 @@ function fits_write_key(f::FITSFile, keyname::Compat.ASCIIString,
                         comment::Compat.ASCIIString)
     cvalue = isa(value,Compat.ASCIIString) ?  value :
              isa(value,Bool) ? Cint[value] : [value]
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall((:ffpky,libcfitsio), Cint,
-        (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+        (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ref{Cint}),
         f.ptr, cfitsio_typecode(typeof(value)), keyname,
         cvalue, comment, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_write_comment(f::FITSFile, comment::Compat.ASCIIString)
-    status = Cint[0]
-    ccall((:ffpcom, libcfitsio), Cint, (Ptr{Void}, Ptr{UInt8}, Ptr{Cint}),
+    status = Ref{Cint}(0)
+    ccall((:ffpcom, libcfitsio), Cint, (Ptr{Void}, Ptr{UInt8}, Ref{Cint}),
           f.ptr, comment, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_write_history(f::FITSFile, history::Compat.ASCIIString)
-    status = Cint[0]
-    ccall((:ffphis, libcfitsio), Cint, (Ptr{Void}, Ptr{UInt8}, Ptr{Cint}),
+    status = Ref{Cint}(0)
+    ccall((:ffphis, libcfitsio), Cint, (Ptr{Void}, Ptr{UInt8}, Ref{Cint}),
           f.ptr, history, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 # update key: if already present, update it, otherwise add it.
@@ -359,72 +359,72 @@ for (a,T,S) in (("ffukys", :(Compat.ASCIIString), :(Ptr{UInt8})),
     @eval begin
         function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::$T,
                                  comment::@compat(Union{Compat.ASCIIString, Ptr{Void}})=C_NULL)
-            status = Cint[0]
+            status = Ref{Cint}(0)
             ccall(($a, libcfitsio), Cint,
-                  (Ptr{Void}, Ptr{UInt8}, $S, Ptr{UInt8}, Ptr{Cint}),
+                  (Ptr{Void}, Ptr{UInt8}, $S, Ptr{UInt8}, Ref{Cint}),
                   f.ptr, key, value, comment, status)
-            fits_assert_ok(status[1])
+            fits_assert_ok(status[])
         end
     end
 end
 
 function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::AbstractFloat,
                          comment::@compat(Union{Compat.ASCIIString, Ptr{Void}})=C_NULL)
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall(("ffukyd", libcfitsio), Cint,
-          (Ptr{Void}, Ptr{UInt8}, Cdouble, Cint, Ptr{UInt8}, Ptr{Cint}),
+          (Ptr{Void}, Ptr{UInt8}, Cdouble, Cint, Ptr{UInt8}, Ref{Cint}),
           f.ptr, key, value, -15, comment, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::@compat(Void),
                          comment::@compat(Union{Compat.ASCIIString, Ptr{Void}})=C_NULL)
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall(("ffukyu", libcfitsio), Cint,
-          (Ptr{Void}, Ptr{UInt8}, Ptr{UInt8}, Ptr{Cint}),
+          (Ptr{Void}, Ptr{UInt8}, Ptr{UInt8}, Ref{Cint}),
           f.ptr, key, comment, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_write_record(f::FITSFile, card::Compat.ASCIIString)
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall((:ffprec,libcfitsio), Cint,
-        (Ptr{Void},Ptr{UInt8},Ptr{Cint}),
+        (Ptr{Void},Ptr{UInt8},Ref{Cint}),
         f.ptr, card, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_delete_record(f::FITSFile, keynum::Integer)
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall((:ffdrec,libcfitsio), Cint,
-        (Ptr{Void},Cint,Ptr{Cint}),
+        (Ptr{Void},Cint,Ref{Cint}),
         f.ptr, keynum, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_delete_key(f::FITSFile, keyname::Compat.ASCIIString)
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall((:ffdkey,libcfitsio), Cint,
-        (Ptr{Void},Ptr{UInt8},Ptr{Cint}),
+        (Ptr{Void},Ptr{UInt8},Ref{Cint}),
         f.ptr, keyname, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_hdr2str(f::FITSFile, nocomments::Bool=false)
-    status = Cint[0]
-    header = Array(Ptr{UInt8}, 1)
-    nkeys = Cint[0]
+    status = Ref{Cint}(0)
+    header = Ref{Ptr{UInt8}}()
+    nkeys = Ref{Cint}(0)
     ccall((:ffhdr2str, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Ptr{UInt8}}, Cint,
-           Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}),
+           Ptr{Ptr{UInt8}}, Ref{Cint}, Ref{Cint}),
           f.ptr, nocomments, &C_NULL, 0, header, nkeys, status)
-    result = unsafe_string(header[1])
+    result = unsafe_string(header[])
 
     # free header pointer allocated by cfitsio (result is a copy)
-    ccall((:fffree, libcfitsio), Ptr{Cint},
-          (Ptr{UInt8}, Ptr{Cint}),
-          header[1], status)
-    fits_assert_ok(status[1])
+    ccall((:fffree, libcfitsio), Ref{Cint},
+          (Ptr{UInt8}, Ref{Cint}),
+          header[], status)
+    fits_assert_ok(status[])
     result
 end
 
@@ -448,42 +448,42 @@ for (a,b) in ((:fits_movabs_hdu,"ffmahd"),
               (:fits_movrel_hdu,"ffmrhd"))
     @eval begin
         function ($a)(f::FITSFile, hduNum::Integer)
-            hdu_type = Cint[0]
-            status = Cint[0]
+            hdu_type = Ref{Cint}(0)
+            status = Ref{Cint}(0)
             ccall(($b,libcfitsio), Cint,
-                  (Ptr{Void}, Cint, Ptr{Cint}, Ptr{Cint}),
+                  (Ptr{Void}, Cint, Ref{Cint}, Ref{Cint}),
                   f.ptr, hduNum, hdu_type, status)
-            fits_assert_ok(status[1])
-            hdu_int_to_type(hdu_type[1])
+            fits_assert_ok(status[])
+            hdu_int_to_type(hdu_type[])
         end
     end
 end
 
 function fits_movnam_hdu(f::FITSFile, extname::Compat.ASCIIString, extver::Integer=0,
                          hdu_type::Integer=-1)
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall((:ffmnhd,libcfitsio), Cint,
-          (Ptr{Void}, Cint, Ptr{UInt8}, Cint, Ptr{Cint}),
+          (Ptr{Void}, Cint, Ptr{UInt8}, Cint, Ref{Cint}),
           f.ptr, hdu_type, extname, extver, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_get_hdu_num(f::FITSFile)
-    hdunum = Cint[0]
+    hdunum = Ref{Cint}(0)
     ccall((:ffghdn,libcfitsio), Cint,
-          (Ptr{Void}, Ptr{Cint}),
+          (Ptr{Void}, Ref{Cint}),
           f.ptr, hdunum)
-    hdunum[1]
+    hdunum[]
 end
 
 function fits_get_hdu_type(f::FITSFile)
-    hdutype = Cint[0]
-    status = Cint[0]
+    hdutype = Ref{Cint}(0)
+    status = Ref{Cint}(0)
     ccall((:ffghdt, libcfitsio), Cint,
-          (Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
+          (Ptr{Void}, Ref{Cint}, Ref{Cint}),
           f.ptr, hdutype, status)
-    fits_assert_ok(status[1])
-    hdu_int_to_type(hdutype[1])
+    fits_assert_ok(status[])
+    hdu_int_to_type(hdutype[])
 end
 
 # -----------------------------------------------------------------------------
@@ -493,33 +493,33 @@ for (a, b) in ((:fits_get_img_type,      "ffgidt"),
                (:fits_get_img_equivtype, "ffgiet"),
                (:fits_get_img_dim,       "ffgidm"))
     @eval function ($a)(f::FITSFile)
-        result = Cint[0]
-        status = Cint[0]
-        ccall(($b, libcfitsio), Cint, (Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
+        result = Ref{Cint}(0)
+        status = Ref{Cint}(0)
+        ccall(($b, libcfitsio), Cint, (Ptr{Void}, Ref{Cint}, Ref{Cint}),
               f.ptr, result, status)
-        fits_assert_ok(status[1])
-        result[1]
+        fits_assert_ok(status[])
+        result[]
     end
 end
 
 function fits_create_img{T, S<:Integer}(f::FITSFile, ::Type{T},
                                         naxes::Vector{S})
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall((:ffcrimll, libcfitsio), Cint,
-          (Ptr{Void}, Cint, Cint, Ptr{Int64}, Ptr{Cint}),
+          (Ptr{Void}, Cint, Cint, Ptr{Int64}, Ref{Cint}),
           f.ptr, bitpix_from_type(T), length(naxes),
           convert(Vector{Int64}, naxes), status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_write_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
                                       nelements::Integer, data::Array{T})
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall((:ffppxll, libcfitsio), Cint,
-          (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Cint}),
+          (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ref{Cint}),
           f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, data, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_write_pix(f::FITSFile, data::Array)
@@ -529,28 +529,28 @@ end
 function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
                                      nelements::Int, nullval::T,
                                      data::Array{T})
-    anynull = Cint[0]
-    status = Cint[0]
+    anynull = Ref{Cint}(0)
+    status = Ref{Cint}(0)
     ccall((:ffgpxvll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Void},
-           Ptr{Cint}, Ptr{Cint}),
+           Ref{Cint}, Ref{Cint}),
           f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, &nullval, data, anynull, status)
-    fits_assert_ok(status[1])
-    anynull[1]
+    fits_assert_ok(status[])
+    anynull[]
 end
 
 function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
                                      nelements::Int, data::Array{T})
-    anynull = Cint[0]
-    status = Cint[0]
+    anynull = Ref{Cint}(0)
+    status = Ref{Cint}(0)
     ccall((:ffgpxvll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Void},
-           Ptr{Cint}, Ptr{Cint}),
+           Ref{Cint}, Ref{Cint}),
           f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, C_NULL, data, anynull, status)
-    fits_assert_ok(status[1])
-    anynull[1]
+    fits_assert_ok(status[])
+    anynull[]
 end
 
 function fits_read_pix(f::FITSFile, data::Array)
@@ -560,27 +560,27 @@ end
 function fits_read_subset{S1<:Integer,S2<:Integer,S3<:Integer,T}(
              f::FITSFile, fpixel::Vector{S1}, lpixel::Vector{S2},
              inc::Vector{S3}, data::Array{T})
-    anynull = Cint[0]
-    status = Cint[0]
+    anynull = Ref{Cint}(0)
+    status = Ref{Cint}(0)
     ccall((:ffgsv, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Ptr{Void},
-           Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
+           Ptr{Void}, Ref{Cint}, Ref{Cint}),
           f.ptr, cfitsio_typecode(T),
           convert(Vector{Clong}, fpixel),
           convert(Vector{Clong}, lpixel),
           convert(Vector{Clong}, inc),
           C_NULL, data, anynull, status)
-    fits_assert_ok(status[1])
-    anynull[1]
+    fits_assert_ok(status[])
+    anynull[]
 end
 
 function fits_copy_image_section(fin::FITSFile, fout::FITSFile,
                                  section::Compat.ASCIIString)
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall((:fits_copy_image_section,libcfitsio), Cint,
-          (Ptr{Void}, Ptr{Void}, Ptr{UInt8}, Ptr{Cint}),
+          (Ptr{Void}, Ptr{Void}, Ptr{UInt8}, Ref{Cint}),
           fin.ptr, fout.ptr, section, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 
@@ -601,16 +601,16 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
             ttype = [pointer(x[1]) for x in coldefs]
             tform = [pointer(x[2]) for x in coldefs]
             tunit = [pointer(x[3]) for x in coldefs]
-            status = Cint[0]
+            status = Ref{Cint}(0)
 
             ccall(("ffcrtb", libcfitsio), Cint,
                   (Ptr{Void}, Cint, Int64, Cint,
                    Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}},
-                   Ptr{Ptr{UInt8}}, Ptr{UInt8}, Ptr{Cint}),
+                   Ptr{Ptr{UInt8}}, Ptr{UInt8}, Ref{Cint}),
                   f.ptr, $b, numrows, ntype,
                   ttype, tform, tunit, extname,
                   status)
-            fits_assert_ok(status[1])
+            fits_assert_ok(status[])
         end
     end
 end
@@ -620,28 +620,28 @@ for (a,b,T) in ((:fits_get_num_cols,  "ffgncl",  :Cint),
                 (:fits_get_rowsize,   "ffgrsz",  :Clong))
     @eval begin
         function ($a)(f::FITSFile)
-            result = $T[0]
-            status = Cint[0]
+            result = Ref{$T}(0)
+            status = Ref{Cint}(0)
             ccall(($b,libcfitsio), Cint,
-                  (Ptr{Void}, Ptr{$T}, Ptr{Cint}),
+                  (Ptr{Void}, Ref{$T}, Ref{Cint}),
                   f.ptr, result, status)
-            fits_assert_ok(status[1])
-            result[1]
+            fits_assert_ok(status[])
+            result[]
         end
     end
 end
 
 function fits_get_colnum(f::FITSFile, tmplt::Compat.ASCIIString)
-    result = Cint[0]
-    status = Cint[0]
+    result = Ref{Cint}(0)
+    status = Ref{Cint}(0)
 
     # Second argument is case-sensitivity of search: 0 = case-insensitive
     #                                                1 = case-sensitive
     ccall(("ffgcno", libcfitsio), Cint,
-          (Ptr{Void}, Cint, Ptr{UInt8}, Ptr{Cint}, Ptr{Cint}),
+          (Ptr{Void}, Cint, Ptr{UInt8}, Ref{Cint}, Ref{Cint}),
           f.ptr, 0, tmplt, result, status)
-    fits_assert_ok(status[1])
-    return result[1]
+    fits_assert_ok(status[])
+    return result[]
 end
 
 # The following block are all functions that have separate variants for Clong
@@ -668,48 +668,48 @@ else
 end
 @eval begin
     function fits_get_coltype(ff::FITSFile, colnum::Integer)
-        typecode = Cint[0]
-        repcnt = $T[0]
-        width = $T[0]
-        status = Cint[0]
+        typecode = Ref{Cint}(0)
+        repcnt = Ref{$T}(0)
+        width = Ref{$T}(0)
+        status = Ref{Cint}(0)
         ccall(($ffgtcl,libcfitsio), Cint,
-              (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
+              (Ptr{Void}, Cint, Ref{Cint}, Ref{$T}, Ref{$T}, Ref{Cint}),
               ff.ptr, colnum, typecode, repcnt, width, status)
-        fits_assert_ok(status[1])
-        return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
+        fits_assert_ok(status[])
+        return @compat Int(typecode[]), Int(repcnt[]), Int(width[])
     end
 
     function fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
-        typecode = Cint[0]
-        repcnt = $T[0]
-        width = $T[0]
-        status = Cint[0]
+        typecode = Ref{Cint}(0)
+        repcnt = Ref{$T}(0)
+        width = Ref{$T}(0)
+        status = Ref{Cint}(0)
         ccall(($ffeqty,libcfitsio), Cint,
-              (Ptr{Void}, Cint, Ptr{Cint}, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
+              (Ptr{Void}, Cint, Ref{Cint}, Ref{$T}, Ref{$T}, Ref{Cint}),
               ff.ptr, colnum, typecode, repcnt, width, status)
-        fits_assert_ok(status[1])
-        return @compat Int(typecode[1]), Int(repcnt[1]), Int(width[1])
+        fits_assert_ok(status[])
+        return @compat Int(typecode[]), Int(repcnt[]), Int(width[])
     end
 
     function fits_get_img_size(f::FITSFile)
         ndim = fits_get_img_dim(f)
-        naxes = Array($T, ndim)
-        status = Cint[0]
+        naxes = Vector{$T}(ndim)
+        status = Ref{Cint}(0)
         ccall(($ffgisz, libcfitsio), Cint,
-              (Ptr{Void}, Cint, Ptr{$T}, Ptr{Cint}),
+              (Ptr{Void}, Cint, Ptr{$T}, Ref{Cint}),
               f.ptr, ndim, naxes, status)
-        fits_assert_ok(status[1])
+        fits_assert_ok(status[])
         naxes
     end
 
     function fits_get_num_rows(f::FITSFile)
-        result = $T[0]
-        status = Cint[0]
+        result = Ref{$T}(0)
+        status = Ref{Cint}(0)
         ccall(($ffgnrw, libcfitsio), Cint,
-              (Ptr{Void}, Ptr{$T}, Ptr{Cint}),
+              (Ptr{Void}, Ref{$T}, Ref{Cint}),
               f.ptr, result, status)
-        fits_assert_ok(status[1])
-        return @compat Int(result[1])
+        fits_assert_ok(status[])
+        return @compat Int(result[])
     end
 
     # `fits_read_tdim` returns the dimensions of a table column in a
@@ -718,34 +718,34 @@ end
     # returns `[r]` with `r` equals to the repeat count in the TFORM
     # keyword.
     function fits_read_tdim(ff::FITSFile, colnum::Integer)
-        naxes = Array($T, 99)  # 99 is the maximum allowed number of axes
-        naxis = Cint[0]
-        status = Cint[0]
+        naxes = Vector{$T}(99)  # 99 is the maximum allowed number of axes
+        naxis = Ref{Cint}(0)
+        status = Ref{Cint}(0)
         ccall(($ffgtdm,libcfitsio), Cint,
-              (Ptr{Void}, Cint, Cint, Ptr{Cint}, Ptr{$T}, Ptr{Cint}),
+              (Ptr{Void}, Cint, Cint, Ref{Cint}, Ptr{$T}, Ref{Cint}),
               ff.ptr, colnum, length(naxes), naxis, naxes, status)
-        fits_assert_ok(status[1])
-        return naxes[1:naxis[1]]
+        fits_assert_ok(status[])
+        return naxes[1:naxis[]]
     end
 
     function fits_write_tdim(ff::FITSFile, colnum::Integer,
                                  naxes::Array{$T})
-        status = Cint[0]
+        status = Ref{Cint}(0)
         ccall(($ffptdm, libcfitsio), Cint,
-              (Ptr{Void}, Cint, Cint, Ptr{$T}, Ptr{Cint}),
+              (Ptr{Void}, Cint, Cint, Ptr{$T}, Ref{Cint}),
               ff.ptr, colnum, length(naxes), naxes, status)
-        fits_assert_ok(status[1])
+        fits_assert_ok(status[])
     end
 
     function fits_read_descript(f::FITSFile, colnum::Integer, rownum::Integer)
-        repeat = $T[0]
-        offset = $T[0]
-        status = Cint[0]
+        repeat = Ref{$T}(0)
+        offset = Ref{$T}(0)
+        status = Ref{Cint}(0)
         ccall(($ffgdes, libcfitsio), Cint,
-              (Ptr{Void}, Cint, Int64, Ptr{$T}, Ptr{$T}, Ptr{Cint}),
+              (Ptr{Void}, Cint, Int64, Ref{$T}, Ref{$T}, Ref{Cint}),
               f.ptr, colnum, rownum, repeat, offset, status)
-        fits_assert_ok(status[1])
-        return @compat Int(repeat[1]), Int(offset[1])
+        fits_assert_ok(status[])
+        return @compat Int(repeat[]), Int(offset[])
     end
 end
 
@@ -764,17 +764,17 @@ function fits_read_col(f::FITSFile,
     abs(typecode) == 16 || error("not a string column")
 
     # create an array of character buffers of the correct width
-    buffers = [Array(UInt8, width) for i in 1:length(data)]
+    buffers = [Vector{UInt8}(width) for i in 1:length(data)]
 
     # Call the CFITSIO function
-    anynull = Cint[0]
-    status = Cint[0]
+    anynull = Ref{Cint}(0)
+    status = Ref{Cint}(0)
     ccall((:ffgcvs, libcfitsio), Cint,
           (Ptr{Void}, Cint, Int64, Int64, Int64,
-           Ptr{UInt8}, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ptr{Cint}),
+           Ptr{UInt8}, Ptr{Ptr{UInt8}}, Ref{Cint}, Ref{Cint}),
           f.ptr, colnum, firstrow, firstelem, length(data),
           " ", buffers, anynull, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 
     # Create strings out of the buffers, terminating at null characters.
     # Note that `Compat.ASCIIString(x)` does not copy the buffer x.
@@ -790,15 +790,15 @@ function fits_read_col{T}(f::FITSFile,
                           firstrow::Integer,
                           firstelem::Integer,
                           data::Array{T})
-    anynull = Cint[0]
-    status = Cint[0]
+    anynull = Ref{Cint}(0)
+    status = Ref{Cint}(0)
     ccall((:ffgcv,libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
-           Ptr{Void}, Ptr{Void}, Ptr{Cint}, Ptr{Cint}),
+           Ptr{Void}, Ptr{Void}, Ref{Cint}, Ref{Cint}),
           f.ptr, cfitsio_typecode(T), colnum,
           firstrow, firstelem, length(data),
           C_NULL, data, anynull, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_write_col(f::FITSFile,
@@ -806,13 +806,13 @@ function fits_write_col(f::FITSFile,
                         firstrow::Integer,
                         firstelem::Integer,
                         data::Array{Compat.ASCIIString})
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall((:ffpcls, libcfitsio), Cint,
           (Ptr{Void}, Cint, Int64, Int64, Int64,
-           Ptr{Ptr{UInt8}}, Ptr{Cint}),
+           Ptr{Ptr{UInt8}}, Ref{Cint}),
           f.ptr, colnum, firstrow, firstelem, length(data),
           data, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 function fits_write_col{T}(f::FITSFile,
@@ -820,25 +820,25 @@ function fits_write_col{T}(f::FITSFile,
                            firstrow::Integer,
                            firstelem::Integer,
                            data::Array{T})
-    status = Cint[0]
+    status = Ref{Cint}(0)
     ccall((:ffpcl, libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Int64, Int64, Int64,
-           Ptr{Void}, Ptr{Cint}),
+           Ptr{Void}, Ref{Cint}),
           f.ptr, cfitsio_typecode(T), colnum,
           firstrow, firstelem, length(data),
           data, status)
-    fits_assert_ok(status[1])
+    fits_assert_ok(status[])
 end
 
 for (a,b) in ((:fits_insert_rows, "ffirow"),
               (:fits_delete_rows, "ffdrow"))
     @eval begin
         function ($a)(f::FITSFile, firstrow::Integer, nrows::Integer)
-            status = Cint[0]
+            status = Ref{Cint}(0)
             ccall(($b,libcfitsio), Cint,
-                  (Ptr{Void}, Int64, Int64, Ptr{Cint}),
+                  (Ptr{Void}, Int64, Int64, Ref{Cint}),
                   f.ptr, firstrow, nrows, status)
-            fits_assert_ok(status[1])
+            fits_assert_ok(status[])
         end
     end
 end

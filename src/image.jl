@@ -58,7 +58,7 @@ function read(hdu::ImageHDU)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    data = Array(TYPE_FROM_BITPIX[bitpix], sz...)
+    data = Array{TYPE_FROM_BITPIX[bitpix]}(sz...)
     fits_read_pix(hdu.fitsfile, data)
     data
 end
@@ -119,7 +119,7 @@ function read_internal(hdu::ImageHDU, I::@compat(Union{Range{Int}, Integer, Colo
 
     # construct output array
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    data = Array(TYPE_FROM_BITPIX[bitpix], _index_shape(sz, I...))
+    data = Array{TYPE_FROM_BITPIX[bitpix]}(_index_shape(sz, I...))
 
     fits_read_subset(hdu.fitsfile, firsts, lasts, steps, data)
     data

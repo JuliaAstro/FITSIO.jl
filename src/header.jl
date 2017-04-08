@@ -85,7 +85,7 @@ end
 # (null if no key exists or if parsing an existing key is unsuccessful.)
 function fits_try_read_keys{T}(f::FITSFile, ::Type{T}, keys)
     status = Cint[0]
-    value = Array(UInt8, 71)
+    value = Vector{UInt8}(71)
     for key in keys
         ccall((:ffgkey, libcfitsio), Cint,
               (Ptr{Void},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),

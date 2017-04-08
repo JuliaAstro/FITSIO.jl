@@ -80,6 +80,10 @@ type FITS
     mode::AbstractString
     hdus::Dict{Int, HDU}
 
+    # Hold on to memory if backed by a julia buffer
+    memhandle::FITSMemoryHandle
+    hidden::Any
+
     function FITS(filename::AbstractString, mode::AbstractString="r")
         f = (mode == "r"                     ? fits_open_file(filename, 0)   :
              mode == "r+" && isfile(filename)? fits_open_file(filename, 1)   :
@@ -87,12 +91,18 @@ type FITS
              mode == "w"                     ? fits_create_file("!"*filename):
              error("invalid open mode: $mode"))
 
-        new(f, filename, mode, Dict{Int, HDU}())
+        new(f, filename, mode, Dict{Int, HDU}(), FITSMemoryHandle(), nothing)
+    end
+
+    function FITS(data::Vector{UInt8}, mode::AbstractString="r", filename = "")
+        @assert mode == "r"
+        f, handle = fits_open_memfile(data, 0)
+        new(f, filename, mode, Dict{Int, HDU}(), handle, data)
     end
 end
 
 # FITSHeader
-# 
+#
 # An in-memory representation of the header of an HDU. It stores the
 # (key, value, comment) information for each card in a header. We
 # could almost just use an OrderedDict for this, but we need to store

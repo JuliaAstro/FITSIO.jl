@@ -122,7 +122,7 @@ function fits_get_ext_info_string(f::FITSFile)
 end
 
 
-# Return indicies of reserved keys in a header.
+# Return indices of reserved keys in a header.
 # This is more complex than you would think because some reserved keys
 # are only reserved when other keys are present. Also, in general a key
 # may appear more than once in a header.
@@ -131,12 +131,12 @@ const RESERVED_KEYS = ["SIMPLE","EXTEND","XTENSION","BITPIX","PCOUNT","GCOUNT",
                        "ZQUANTIZ","ZDITHER0","ZIMAGE","ZCMPTYPE","ZSIMPLE",
                        "ZTENSION","ZPCOUNT","ZGCOUNT","ZBITPIX","ZEXTEND",
                        "CHECKSUM","DATASUM"]
-function reserved_key_indicies(hdr::FITSHeader)
+function reserved_key_indices(hdr::FITSHeader)
     nhdr = length(hdr)
-    indicies = Int[]
+    indices = Int[]
     for i=1:nhdr
         if in(hdr.keys[i], RESERVED_KEYS)
-            push!(indicies, i)
+            push!(indices, i)
         end
     end
 
@@ -144,7 +144,7 @@ function reserved_key_indicies(hdr::FITSHeader)
     if in("NAXIS", hdr.keys)
         for i=1:nhdr
             if ismatch(r"^NAXIS\d*$", hdr.keys[i])
-                push!(indicies, i)
+                push!(indices, i)
             end
         end
     end
@@ -155,7 +155,7 @@ function reserved_key_indicies(hdr::FITSHeader)
                 ismatch(r"^ZTILE\d*$", hdr.keys[i]) ||
                 ismatch(r"^ZNAME\d*$", hdr.keys[i]) ||
                 ismatch(r"^ZVAL\d*$", hdr.keys[i]))
-                push!(indicies, i)
+                push!(indices, i)
             end
         end
     end
@@ -169,22 +169,22 @@ function reserved_key_indicies(hdr::FITSHeader)
                        r"^TRPIX\d*$", r"^TRVAL\d*$", r"^TDELT\d*$",
                        r"^TCUNI\d*$", r"^TFIELDS$"]
                 if ismatch(re, hdr.keys[i])
-                    push!(indicies, i)
+                    push!(indices, i)
                 end
             end
         end
     end
 
-    return indicies
+    return indices
 end
 
 
 # Write header to CHDU.
 # If `clean` is true, skip writing reserved header keywords.
 function fits_write_header(f::FITSFile, hdr::FITSHeader, clean::Bool=true)
-    indicies = clean? reserved_key_indicies(hdr): Int[]
+    indices = clean? reserved_key_indices(hdr): Int[]
     for i=1:length(hdr)
-        if clean && in(i, indicies)
+        if clean && in(i, indices)
             continue
         end
         if hdr.keys[i] == "COMMENT"

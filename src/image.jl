@@ -102,11 +102,11 @@ function read_internal(hdu::ImageHDU, I::@compat(Union{Range{Int}, Integer, Colo
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
 
-    # check number of indicies and bounds. Note that number of indicies and
+    # check number of indices and bounds. Note that number of indices and
     # array dimension must match, unlike in Arrays. Array-like behavior could
     # be supported in the future with care taken in constructing first, last,
     if length(I) != length(sz)
-        throw(DimensionMismatch("number of indicies must match dimensions"))
+        throw(DimensionMismatch("number of indices must match dimensions"))
     end
     for i=1:length(sz)
         _checkbounds(sz[i], I[i]) || throw(BoundsError())

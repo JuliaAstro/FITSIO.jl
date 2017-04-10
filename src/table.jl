@@ -131,8 +131,8 @@ fits_tform(::Type{ASCIITableHDU}, A::Vector) = error("unsupported type: $(eltype
 fits_tform(::Type{ASCIITableHDU}, A::Array) = error("only 1-d arrays supported: dimensions are $(size(A))")
 
 # for passing to fits_create_tbl.
-table_type_code(::Type{ASCIITableHDU}) = convert(Cint, 1)
-table_type_code(::Type{TableHDU}) = convert(Cint, 2)
+table_type_code(::Type{ASCIITableHDU}) = Cint(1)
+table_type_code(::Type{TableHDU}) = Cint(2)
 
 function show(io::IO, hdu::TableHDU)
     fits_assert_open(hdu.fitsfile)
@@ -304,7 +304,7 @@ function write_internal(f::FITS, colnames::Vector{Compat.ASCIIString},
     end
 
     # extension name
-    name_ptr = (isa(name, Void) ? convert(Ptr{UInt8}, C_NULL) :
+    name_ptr = (isa(name, Void) ? Ptr{UInt8}(C_NULL) :
                    pointer(name))
 
     status = Ref{Cint}(0)

@@ -7,14 +7,6 @@
 #   and throw an error with the appropriate message.
 #
 #
-# Syntax compatibility notes:
-#
-# - `convert(Vector{T}, x)` can be changed to `Vector{T}(x)` once
-#   v0.3 is no longer supported, or can be changed to
-#   `@compat Vector{T}(x)` once syntax support is in Compat.
-# - `convert(Cint, x)` can be changed to `Cint(x)` once v0.3 is not supported
-#   or `@compat Cint(x)` once syntax support is in Compat.
-#
 # The following table gives the correspondances between CFITSIO "types",
 # the BITPIX keyword and Julia types.
 #
@@ -140,7 +132,7 @@ for (T, code) in ((UInt8,     8), # BYTE_IMG
                   (Int8,     10), # SBYTE_IMG
                   (UInt16,   20), # USHORT_IMG
                   (UInt32,   40)) # ULONG_IMG
-    local value = convert(Cint, code)
+    local value = Cint(code)
     @eval begin
         TYPE_FROM_BITPIX[$value] = $T
         bitpix_from_type(::Type{$T}) = $value
@@ -160,7 +152,7 @@ for (T, code) in ((UInt8,       11),
                   (Float64,     82),
                   (Complex64,   83),
                   (Complex128, 163))
-    @eval cfitsio_typecode(::Type{$T}) = convert(Cint, $code)
+    @eval cfitsio_typecode(::Type{$T}) = Cint($code)
 end
 
 # Above, we don't define a method for Clong because it is either Cint (Int32)
@@ -168,7 +160,7 @@ end
 # Culong is either UInt64 or Cuint depending on platform. Only define it if
 # not already defined.
 if Culong !== Cuint
-    cfitsio_typecode(::Type{Culong}) = convert(Cint, 40)
+    cfitsio_typecode(::Type{Culong}) = Cint(40)
 end
 
 # -----------------------------------------------------------------------------
@@ -535,7 +527,7 @@ function fits_create_img{T, S<:Integer}(f::FITSFile, ::Type{T},
     ccall((:ffcrimll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Ptr{Int64}, Ref{Cint}),
           f.ptr, bitpix_from_type(T), length(naxes),
-          convert(Vector{Int64}, naxes), status)
+          Vector{Int64}(naxes), status)
     fits_assert_ok(status[])
 end
 
@@ -544,7 +536,7 @@ function fits_write_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     status = Ref{Cint}(0)
     ccall((:ffppxll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ref{Cint}),
-          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), Vector{Int64}(fpixel),
           nelements, data, status)
     fits_assert_ok(status[])
 end
@@ -561,7 +553,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     ccall((:ffgpxvll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Void},
            Ref{Cint}, Ref{Cint}),
-          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), Vector{Int64}(fpixel),
           nelements, &nullval, data, anynull, status)
     fits_assert_ok(status[])
     anynull[]
@@ -574,7 +566,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     ccall((:ffgpxvll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Void},
            Ref{Cint}, Ref{Cint}),
-          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), Vector{Int64}(fpixel),
           nelements, C_NULL, data, anynull, status)
     fits_assert_ok(status[])
     anynull[]
@@ -593,9 +585,9 @@ function fits_read_subset{S1<:Integer,S2<:Integer,S3<:Integer,T}(
           (Ptr{Void}, Cint, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Ptr{Void},
            Ptr{Void}, Ref{Cint}, Ref{Cint}),
           f.ptr, cfitsio_typecode(T),
-          convert(Vector{Clong}, fpixel),
-          convert(Vector{Clong}, lpixel),
-          convert(Vector{Clong}, inc),
+          Vector{Clong}(fpixel),
+          Vector{Clong}(lpixel),
+          Vector{Clong}(inc),
           C_NULL, data, anynull, status)
     fits_assert_ok(status[])
     anynull[]

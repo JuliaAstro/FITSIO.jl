@@ -47,7 +47,7 @@ import .Libcfitsio: libcfitsio,
                     TYPE_FROM_BITPIX
 
 # HDU Types
-abstract HDU
+@compat abstract type HDU end
 
 type ImageHDU <: HDU
     fitsfile::FITSFile

@@ -30,9 +30,9 @@ for (T, tform, code) in ((UInt8,       'B',  11),
     @eval fits_tform_char(::Type{$T}) = $tform
     CFITSIO_COLTYPE[code] = T
 end
-typealias FITSTableScalar @compat(Union{UInt8, Int8, Bool, UInt16, Int16, UInt32,
-                                Int32, Int64, Float32, Float64, Complex64,
-                                Complex128})
+const FITSTableScalar = @compat(Union{UInt8, Int8, Bool, UInt16, Int16, UInt32,
+                                      Int32, Int64, Float32, Float64, Complex64,
+                                      Complex128})
 
 # Helper function for reading information about a (binary) table column
 # Returns: (eltype, rowsize, isvariable)
@@ -220,7 +220,7 @@ function show(io::IO, hdu::ASCIITableHDU)
     for i in 1:ncols
         eqtypecode, repeat, width = fits_get_eqcoltype(hdu.fitsfile, i)
         T = CFITSIO_COLTYPE[eqtypecode]
-        coltypes[i] = repr(T)        
+        coltypes[i] = repr(T)
     end
 
     print(io, """

@@ -353,7 +353,7 @@ function fits_read_keyn(f::FITSFile, keynum::Integer)
 end
 
 function fits_write_key(f::FITSFile, keyname::Compat.ASCIIString,
-                        value::@compat(Union{AbstractFloat,Compat.ASCIIString}),
+                        value::Union{AbstractFloat,Compat.ASCIIString},
                         comment::Compat.ASCIIString)
     cvalue = isa(value,Compat.ASCIIString) ?  value :
              isa(value,Bool) ? Cint[value] : [value]
@@ -385,7 +385,7 @@ for (a,T,S) in (("ffukys", :(Compat.ASCIIString), :(Ptr{UInt8})),
                 ("ffukyj", :Integer,     :Int64))
     @eval begin
         function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::$T,
-                                 comment::@compat(Union{Compat.ASCIIString, Ptr{Void}})=C_NULL)
+                                 comment::Union{Compat.ASCIIString, Ptr{Void}}=C_NULL)
             status = Ref{Cint}(0)
             ccall(($a, libcfitsio), Cint,
                   (Ptr{Void}, Ptr{UInt8}, $S, Ptr{UInt8}, Ref{Cint}),
@@ -396,7 +396,7 @@ for (a,T,S) in (("ffukys", :(Compat.ASCIIString), :(Ptr{UInt8})),
 end
 
 function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::AbstractFloat,
-                         comment::@compat(Union{Compat.ASCIIString, Ptr{Void}})=C_NULL)
+                         comment::Union{Compat.ASCIIString, Ptr{Void}}=C_NULL)
     status = Ref{Cint}(0)
     ccall(("ffukyd", libcfitsio), Cint,
           (Ptr{Void}, Ptr{UInt8}, Cdouble, Cint, Ptr{UInt8}, Ref{Cint}),
@@ -404,8 +404,8 @@ function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::AbstractFl
     fits_assert_ok(status[])
 end
 
-function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::@compat(Void),
-                         comment::@compat(Union{Compat.ASCIIString, Ptr{Void}})=C_NULL)
+function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::Void,
+                         comment::Union{Compat.ASCIIString, Ptr{Void}}=C_NULL)
     status = Ref{Cint}(0)
     ccall(("ffukyu", libcfitsio), Cint,
           (Ptr{Void}, Ptr{UInt8}, Ptr{UInt8}, Ref{Cint}),
@@ -615,7 +615,7 @@ end
 # ASCII/binary table HDU functions
 
 # The three fields are: ttype, tform, tunit (CFITSIO's terminology)
-const ColumnDef = @compat Tuple{Compat.ASCIIString, Compat.ASCIIString, Compat.ASCIIString}
+const ColumnDef = Tuple{Compat.ASCIIString, Compat.ASCIIString, Compat.ASCIIString}
 
 for (a,b) in ((:fits_create_binary_tbl, 2),
               (:fits_create_ascii_tbl,  1))
@@ -703,7 +703,7 @@ end
               (Ptr{Void}, Cint, Ref{Cint}, Ref{$T}, Ref{$T}, Ref{Cint}),
               ff.ptr, colnum, typecode, repcnt, width, status)
         fits_assert_ok(status[])
-        return @compat Int(typecode[]), Int(repcnt[]), Int(width[])
+        return Int(typecode[]), Int(repcnt[]), Int(width[])
     end
 
     function fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
@@ -715,7 +715,7 @@ end
               (Ptr{Void}, Cint, Ref{Cint}, Ref{$T}, Ref{$T}, Ref{Cint}),
               ff.ptr, colnum, typecode, repcnt, width, status)
         fits_assert_ok(status[])
-        return @compat Int(typecode[]), Int(repcnt[]), Int(width[])
+        return Int(typecode[]), Int(repcnt[]), Int(width[])
     end
 
     function fits_get_img_size(f::FITSFile)
@@ -736,7 +736,7 @@ end
               (Ptr{Void}, Ref{$T}, Ref{Cint}),
               f.ptr, result, status)
         fits_assert_ok(status[])
-        return @compat Int(result[])
+        return Int(result[])
     end
 
     # `fits_read_tdim` returns the dimensions of a table column in a
@@ -772,7 +772,7 @@ end
               (Ptr{Void}, Cint, Int64, Ref{$T}, Ref{$T}, Ref{Cint}),
               f.ptr, colnum, rownum, repeat, offset, status)
         fits_assert_ok(status[])
-        return @compat Int(repeat[]), Int(offset[])
+        return Int(repeat[]), Int(offset[])
     end
 end
 

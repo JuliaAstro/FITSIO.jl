@@ -1,8 +1,8 @@
 # FITS methods
 
-const VERBOSE_MODE = @compat Dict("r"=>"read-only",
-                                  "w"=>"read-write",
-                                  "r+"=>"append")
+const VERBOSE_MODE = Dict("r"=>"read-only",
+                          "w"=>"read-write",
+                          "r+"=>"append")
 
 # helper function for show()
 function show_ascii_table(io, names, cols, spaces=2, indent=0)
@@ -31,7 +31,7 @@ end
 
 function length(f::FITS)
     fits_assert_open(f.fitsfile)
-    @compat Int(fits_get_num_hdus(f.fitsfile))
+    Int(fits_get_num_hdus(f.fitsfile))
 end
 
 endof(f::FITS) = length(f)

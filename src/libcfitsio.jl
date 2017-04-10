@@ -7,14 +7,6 @@
 #   and throw an error with the appropriate message.
 #
 #
-# Syntax compatibility notes:
-#
-# - `convert(Vector{T}, x)` can be changed to `Vector{T}(x)` once
-#   v0.3 is no longer supported, or can be changed to
-#   `@compat Vector{T}(x)` once syntax support is in Compat.
-# - `convert(Cint, x)` can be changed to `Cint(x)` once v0.3 is not supported
-#   or `@compat Cint(x)` once syntax support is in Compat.
-#
 # The following table gives the correspondances between CFITSIO "types",
 # the BITPIX keyword and Julia types.
 #
@@ -140,7 +132,7 @@ for (T, code) in ((UInt8,     8), # BYTE_IMG
                   (Int8,     10), # SBYTE_IMG
                   (UInt16,   20), # USHORT_IMG
                   (UInt32,   40)) # ULONG_IMG
-    local value = convert(Cint, code)
+    local value = Cint(code)
     @eval begin
         TYPE_FROM_BITPIX[$value] = $T
         bitpix_from_type(::Type{$T}) = $value
@@ -160,7 +152,7 @@ for (T, code) in ((UInt8,       11),
                   (Float64,     82),
                   (Complex64,   83),
                   (Complex128, 163))
-    @eval cfitsio_typecode(::Type{$T}) = convert(Cint, $code)
+    @eval cfitsio_typecode(::Type{$T}) = Cint($code)
 end
 
 # Above, we don't define a method for Clong because it is either Cint (Int32)
@@ -168,7 +160,7 @@ end
 # Culong is either UInt64 or Cuint depending on platform. Only define it if
 # not already defined.
 if Culong !== Cuint
-    cfitsio_typecode(::Type{Culong}) = convert(Cint, 40)
+    cfitsio_typecode(::Type{Culong}) = Cint(40)
 end
 
 # -----------------------------------------------------------------------------
@@ -353,7 +345,7 @@ function fits_read_keyn(f::FITSFile, keynum::Integer)
 end
 
 function fits_write_key(f::FITSFile, keyname::Compat.ASCIIString,
-                        value::@compat(Union{AbstractFloat,Compat.ASCIIString}),
+                        value::Union{AbstractFloat,Compat.ASCIIString},
                         comment::Compat.ASCIIString)
     cvalue = isa(value,Compat.ASCIIString) ?  value :
              isa(value,Bool) ? Cint[value] : [value]
@@ -385,7 +377,7 @@ for (a,T,S) in (("ffukys", :(Compat.ASCIIString), :(Ptr{UInt8})),
                 ("ffukyj", :Integer,     :Int64))
     @eval begin
         function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::$T,
-                                 comment::@compat(Union{Compat.ASCIIString, Ptr{Void}})=C_NULL)
+                                 comment::Union{Compat.ASCIIString, Ptr{Void}}=C_NULL)
             status = Ref{Cint}(0)
             ccall(($a, libcfitsio), Cint,
                   (Ptr{Void}, Ptr{UInt8}, $S, Ptr{UInt8}, Ref{Cint}),
@@ -396,7 +388,7 @@ for (a,T,S) in (("ffukys", :(Compat.ASCIIString), :(Ptr{UInt8})),
 end
 
 function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::AbstractFloat,
-                         comment::@compat(Union{Compat.ASCIIString, Ptr{Void}})=C_NULL)
+                         comment::Union{Compat.ASCIIString, Ptr{Void}}=C_NULL)
     status = Ref{Cint}(0)
     ccall(("ffukyd", libcfitsio), Cint,
           (Ptr{Void}, Ptr{UInt8}, Cdouble, Cint, Ptr{UInt8}, Ref{Cint}),
@@ -404,8 +396,8 @@ function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::AbstractFl
     fits_assert_ok(status[])
 end
 
-function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::@compat(Void),
-                         comment::@compat(Union{Compat.ASCIIString, Ptr{Void}})=C_NULL)
+function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::Void,
+                         comment::Union{Compat.ASCIIString, Ptr{Void}}=C_NULL)
     status = Ref{Cint}(0)
     ccall(("ffukyu", libcfitsio), Cint,
           (Ptr{Void}, Ptr{UInt8}, Ptr{UInt8}, Ref{Cint}),
@@ -535,7 +527,7 @@ function fits_create_img{T, S<:Integer}(f::FITSFile, ::Type{T},
     ccall((:ffcrimll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Cint, Ptr{Int64}, Ref{Cint}),
           f.ptr, bitpix_from_type(T), length(naxes),
-          convert(Vector{Int64}, naxes), status)
+          Vector{Int64}(naxes), status)
     fits_assert_ok(status[])
 end
 
@@ -544,7 +536,7 @@ function fits_write_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     status = Ref{Cint}(0)
     ccall((:ffppxll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ref{Cint}),
-          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), Vector{Int64}(fpixel),
           nelements, data, status)
     fits_assert_ok(status[])
 end
@@ -561,7 +553,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     ccall((:ffgpxvll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Void},
            Ref{Cint}, Ref{Cint}),
-          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), Vector{Int64}(fpixel),
           nelements, &nullval, data, anynull, status)
     fits_assert_ok(status[])
     anynull[]
@@ -574,7 +566,7 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     ccall((:ffgpxvll, libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{Int64}, Int64, Ptr{Void}, Ptr{Void},
            Ref{Cint}, Ref{Cint}),
-          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
+          f.ptr, cfitsio_typecode(T), Vector{Int64}(fpixel),
           nelements, C_NULL, data, anynull, status)
     fits_assert_ok(status[])
     anynull[]
@@ -593,9 +585,9 @@ function fits_read_subset{S1<:Integer,S2<:Integer,S3<:Integer,T}(
           (Ptr{Void}, Cint, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Ptr{Void},
            Ptr{Void}, Ref{Cint}, Ref{Cint}),
           f.ptr, cfitsio_typecode(T),
-          convert(Vector{Clong}, fpixel),
-          convert(Vector{Clong}, lpixel),
-          convert(Vector{Clong}, inc),
+          Vector{Clong}(fpixel),
+          Vector{Clong}(lpixel),
+          Vector{Clong}(inc),
           C_NULL, data, anynull, status)
     fits_assert_ok(status[])
     anynull[]
@@ -615,7 +607,7 @@ end
 # ASCII/binary table HDU functions
 
 # The three fields are: ttype, tform, tunit (CFITSIO's terminology)
-typealias ColumnDef @compat Tuple{Compat.ASCIIString, Compat.ASCIIString, Compat.ASCIIString}
+const ColumnDef = Tuple{Compat.ASCIIString, Compat.ASCIIString, Compat.ASCIIString}
 
 for (a,b) in ((:fits_create_binary_tbl, 2),
               (:fits_create_ascii_tbl,  1))
@@ -703,7 +695,7 @@ end
               (Ptr{Void}, Cint, Ref{Cint}, Ref{$T}, Ref{$T}, Ref{Cint}),
               ff.ptr, colnum, typecode, repcnt, width, status)
         fits_assert_ok(status[])
-        return @compat Int(typecode[]), Int(repcnt[]), Int(width[])
+        return Int(typecode[]), Int(repcnt[]), Int(width[])
     end
 
     function fits_get_eqcoltype(ff::FITSFile, colnum::Integer)
@@ -715,7 +707,7 @@ end
               (Ptr{Void}, Cint, Ref{Cint}, Ref{$T}, Ref{$T}, Ref{Cint}),
               ff.ptr, colnum, typecode, repcnt, width, status)
         fits_assert_ok(status[])
-        return @compat Int(typecode[]), Int(repcnt[]), Int(width[])
+        return Int(typecode[]), Int(repcnt[]), Int(width[])
     end
 
     function fits_get_img_size(f::FITSFile)
@@ -736,7 +728,7 @@ end
               (Ptr{Void}, Ref{$T}, Ref{Cint}),
               f.ptr, result, status)
         fits_assert_ok(status[])
-        return @compat Int(result[])
+        return Int(result[])
     end
 
     # `fits_read_tdim` returns the dimensions of a table column in a
@@ -772,7 +764,7 @@ end
               (Ptr{Void}, Cint, Int64, Ref{$T}, Ref{$T}, Ref{Cint}),
               f.ptr, colnum, rownum, repeat, offset, status)
         fits_assert_ok(status[])
-        return @compat Int(repeat[]), Int(offset[])
+        return Int(repeat[]), Int(offset[])
     end
 end
 

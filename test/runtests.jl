@@ -278,5 +278,3 @@ end
 
 # test that this function works and returns the right type.
 @test typeof(FITSIO.libcfitsio_version()) === VersionNumber
-
-println("All tests passed.")

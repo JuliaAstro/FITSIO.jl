@@ -47,7 +47,7 @@ import .Libcfitsio: libcfitsio,
                     TYPE_FROM_BITPIX
 
 # HDU Types
-abstract HDU
+@compat abstract type HDU end
 
 type ImageHDU <: HDU
     fitsfile::FITSFile
@@ -123,7 +123,7 @@ type FITSHeader
         for i in 1:length(keys)
           map[keys[i]] = i
         end
-        new(keys, convert(Vector{Any}, values), comments, map)
+        new(keys, Vector{Any}(values), comments, map)
     end
 end
 
@@ -135,7 +135,7 @@ include("table.jl")  # TableHDU & ASCIITableHDU methods
 function libcfitsio_version()
     # fits_get_version returns a float. e.g., 3.341f0. We parse that
     # into a proper version number. E.g., 3.341 -> v"3.34.1"
-    v = convert(Int, round(1000 * fits_get_version()))
+    v = Int(round(1000 * fits_get_version()))
     x = div(v, 1000)
     y = div(rem(v, 1000), 10)
     z = rem(v, 10)

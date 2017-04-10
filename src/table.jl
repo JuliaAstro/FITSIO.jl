@@ -30,9 +30,9 @@ for (T, tform, code) in ((UInt8,       'B',  11),
     @eval fits_tform_char(::Type{$T}) = $tform
     CFITSIO_COLTYPE[code] = T
 end
-typealias FITSTableScalar @compat(Union{UInt8, Int8, Bool, UInt16, Int16, UInt32,
-                                Int32, Int64, Float32, Float64, Complex64,
-                                Complex128})
+const FITSTableScalar = Union{UInt8, Int8, Bool, UInt16, Int16, UInt32,
+                              Int32, Int64, Float32, Float64, Complex64,
+                              Complex128}
 
 # Helper function for reading information about a (binary) table column
 # Returns: (eltype, rowsize, isvariable)
@@ -131,8 +131,8 @@ fits_tform(::Type{ASCIITableHDU}, A::Vector) = error("unsupported type: $(eltype
 fits_tform(::Type{ASCIITableHDU}, A::Array) = error("only 1-d arrays supported: dimensions are $(size(A))")
 
 # for passing to fits_create_tbl.
-table_type_code(::Type{ASCIITableHDU}) = convert(Cint, 1)
-table_type_code(::Type{TableHDU}) = convert(Cint, 2)
+table_type_code(::Type{ASCIITableHDU}) = Cint(1)
+table_type_code(::Type{TableHDU}) = Cint(2)
 
 function show(io::IO, hdu::TableHDU)
     fits_assert_open(hdu.fitsfile)
@@ -220,7 +220,7 @@ function show(io::IO, hdu::ASCIITableHDU)
     for i in 1:ncols
         eqtypecode, repeat, width = fits_get_eqcoltype(hdu.fitsfile, i)
         T = CFITSIO_COLTYPE[eqtypecode]
-        coltypes[i] = repr(T)        
+        coltypes[i] = repr(T)
     end
 
     print(io, """
@@ -270,7 +270,7 @@ function write_internal(f::FITS, colnames::Vector{Compat.ASCIIString},
     fits_assert_open(f.fitsfile)
 
     # move to last HDU; table will be added after the CHDU
-    nhdus = @compat(Int(fits_get_num_hdus(f.fitsfile)))
+    nhdus = Int(fits_get_num_hdus(f.fitsfile))
     (nhdus > 1) && fits_movabs_hdu(f.fitsfile, nhdus)
 
     ncols = length(colnames)
@@ -278,7 +278,7 @@ function write_internal(f::FITS, colnames::Vector{Compat.ASCIIString},
 
     # determine which columns are requested to be variable-length
     isvarcol = zeros(Bool, ncols)
-    if !isa(varcols, @compat(Void))
+    if !isa(varcols, Void)
         for i=1:ncols
             isvarcol[i] = (i in varcols) || (colnames[i] in varcols)
         end
@@ -296,7 +296,7 @@ function write_internal(f::FITS, colnames::Vector{Compat.ASCIIString},
     tform = [pointer(s) for s in tform_str]
 
     # get units
-    if isa(units, @compat(Void))
+    if isa(units, Void)
         tunit = C_NULL
     else
         tunit = Ptr{UInt8}[(haskey(units, n)? pointer(units[n]): C_NULL)
@@ -304,7 +304,7 @@ function write_internal(f::FITS, colnames::Vector{Compat.ASCIIString},
     end
 
     # extension name
-    name_ptr = (isa(name, @compat(Void)) ? convert(Ptr{UInt8}, C_NULL) :
+    name_ptr = (isa(name, Void) ? Ptr{UInt8}(C_NULL) :
                    pointer(name))
 
     status = Ref{Cint}(0)

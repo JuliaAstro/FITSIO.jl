@@ -9,7 +9,7 @@ baseurl = "ftp://heasarc.gsfc.nasa.gov/software/fitsio/c/"
 if is_unix()
     archivename = "cfitsio$(version).tar.gz"
 elseif is_windows()
-    archivename = "cfitsio_MSVC_$(WORD_SIZE)bit_DLL_$(version).zip"
+    archivename = "cfitsio_MSVC_$(Sys.WORD_SIZE)bit_DLL_$(version).zip"
 end
 
 libcfitsio = library_dependency("libcfitsio", aliases=["cfitsio"])

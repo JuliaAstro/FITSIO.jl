@@ -49,7 +49,7 @@ function show(io::IO, f::FITS)
     """)
 
     nhdu = length(f)
-    
+
     if nhdu == 0
         print(io, "No HDUs.")
     else
@@ -69,7 +69,7 @@ function show(io::IO, f::FITS)
             nver = fits_try_read_extver(f.fitsfile)
             vers[i] = isnull(nver) ? "" : string(get(nver))
         end
-        
+
         nums = [string(i) for i=1:nhdu]
 
         # only display version info if present

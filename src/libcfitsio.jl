@@ -67,6 +67,7 @@ module Libcfitsio
 using Compat
 
 export FITSFile,
+       FITSMemoryHandle,
        fits_assert_open,
        fits_clobber_file,
        fits_close_file,
@@ -106,6 +107,7 @@ export FITSFile,
        fits_open_file,
        fits_open_image,
        fits_open_table,
+       fits_open_memfile,
        fits_read_col,
        fits_read_descript,
        fits_read_keyn,
@@ -182,6 +184,14 @@ type FITSFile
     end
 end
 
+# FITS wants to be able to update the ptr, so keep them
+# in a mutable struct
+type FITSMemoryHandle
+    ptr::Ptr{Void}
+    size::Csize_t
+end
+FITSMemoryHandle() = FITSMemoryHandle(C_NULL, 0)
+
 # -----------------------------------------------------------------------------
 # error messaging
 
@@ -234,6 +244,23 @@ for (a,b) in ((:fits_open_data, "ffdopn"),
             FITSFile(ptr[])
         end
     end
+end
+
+# filename is ignored by the C library
+function fits_open_memfile(data::Vector{UInt8}, mode::Integer=0, filename="")
+    # Only reading is supported right now
+    @assert mode == 0
+    ptr = Ref{Ptr{Void}}(C_NULL)
+    status = Ref{Cint}(0)
+    handle = FITSMemoryHandle(pointer(data),length(data))
+    dataptr = Ptr{Ptr{Void}}(pointer_from_objref(handle))
+    sizeptr = Ptr{Csize_t}(dataptr+sizeof(Ptr{Void}))
+    ccall(("ffomem",libcfitsio), Cint,
+      (Ptr{Ptr{Void}},Ptr{UInt8},Cint,Ptr{Ptr{UInt8}},
+       Ptr{Csize_t}, Csize_t, Ptr{Void}, Ptr{Cint}),
+       ptr, filename, mode, dataptr, sizeptr, 2880, C_NULL, status)
+    fits_assert_ok(status[])
+    FITSFile(ptr[]), handle
 end
 
 for (a,b) in ((:fits_close_file, "ffclos"),

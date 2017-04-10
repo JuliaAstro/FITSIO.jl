@@ -252,6 +252,13 @@ hdr = read_header(f[1])
 data = read(f[1])
 close(f)
 
+# Test that we can read is at a memory backed file
+f = FITS(read(fname))
+hdr = read_header(f[1])
+data = read(f[1])
+close(f)
+
+
 # test that we can write it back out.
 fname2 = tempname() * ".fits"
 f2 = FITS(fname2, "w")

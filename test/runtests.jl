@@ -8,40 +8,40 @@ import Compat.String
 
 # Create a FITS instance and loop over supported types.
 fname = tempname() * ".fits"
-f = FITS(fname, "w")
-for T in [UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
-          Float32, Float64]
-    indata = reshape(T[1:100;], 5, 20)
+FITS(fname, "w") do f
+    for T in [UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
+              Float32, Float64]
+        indata = reshape(T[1:100;], 5, 20)
 
-    # Test writing the data to a new extension
-    write(f, indata)
+        # Test writing the data to a new extension
+        write(f, indata)
 
-    # test reading the full array
-    outdata = read(f[end])
-    @test indata == outdata
-    @test eltype(indata) == eltype(outdata)
+        # test reading the full array
+        outdata = read(f[end])
+        @test indata == outdata
+        @test eltype(indata) == eltype(outdata)
 
-    # test reading subsets of the array
-    @test read(f[end], :, :) == indata
-    @test read(f[end], 4, 1:10) == indata[4, 1:10]  # 2-d array
-    @test read(f[end], :, 4) == indata[:, 4]  # 1-d array
-    @test read(f[end], 2, 3) == indata[2, 3]  # scalar
-    @test read(f[end], :, 1:2:10) == indata[:, 1:2:10]
-    @test read(f[end], 1:3, :) == indata[1:3, :]
+        # test reading subsets of the array
+        @test read(f[end], :, :) == indata
+        @test read(f[end], 4, 1:10) == indata[4, 1:10]  # 2-d array
+        @test read(f[end], :, 4) == indata[:, 4]  # 1-d array
+        @test read(f[end], 2, 3) == indata[2, 3]  # scalar
+        @test read(f[end], :, 1:2:10) == indata[:, 1:2:10]
+        @test read(f[end], 1:3, :) == indata[1:3, :]
 
-    # test expected errors
-    @test_throws DimensionMismatch read(f[end], :)
-    @test_throws DimensionMismatch read(f[end], :, :, 1)
-    @test_throws BoundsError read(f[end], 1:6, :)
-    @test_throws BoundsError read(f[end], 1, 0)
+        # test expected errors
+        @test_throws DimensionMismatch read(f[end], :)
+        @test_throws DimensionMismatch read(f[end], :, :, 1)
+        @test_throws BoundsError read(f[end], 1:6, :)
+        @test_throws BoundsError read(f[end], 1, 0)
 
+    end
+
+    # test iteration
+    for hdu in f
+        @test size(hdu) == (5, 20)
+    end
 end
-
-# test iteration
-for hdu in f
-    @test size(hdu) == (5, 20)
-end
-close(f)
 if isfile(fname)
     rm(fname)
 end

@@ -101,6 +101,21 @@ type FITS
     end
 end
 
+"""
+    FITS(f::Function, args...)
+
+Apply the function `f` to the result of `FITS(args...)` and close the resulting file
+descriptor upon completion.
+"""
+function FITS(f::Function, args...)
+    io = FITS(args...)
+    try
+        f(io)
+    finally
+        close(io)
+    end
+end
+
 # FITSHeader
 #
 # An in-memory representation of the header of an HDU. It stores the

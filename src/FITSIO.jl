@@ -147,15 +147,9 @@ include("header.jl")  # FITSHeader methods
 include("image.jl")  # ImageHDU methods
 include("table.jl")  # TableHDU & ASCIITableHDU methods
 
-function libcfitsio_version()
-    # fits_get_version returns a float. e.g., 3.341f0. We parse that
-    # into a proper version number. E.g., 3.341 -> v"3.34.1"
-    v = Int(round(1000 * fits_get_version()))
-    x = div(v, 1000)
-    y = div(rem(v, 1000), 10)
-    z = rem(v, 10)
-    VersionNumber(x, y, z)
-end
+# fits_get_version returns a float. e.g., 3.341f0. We parse that
+# into a proper version number. E.g., 3.341 -> v"3.34.1"
+libcfitsio_version() = VersionNumber(string(fits_get_version()))
 
 include("deprecations.jl")
 

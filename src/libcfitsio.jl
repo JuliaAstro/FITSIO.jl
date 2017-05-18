@@ -386,7 +386,7 @@ function fits_write_key(f::FITSFile, keyname::Compat.ASCIIString,
                         value::Union{Real,Compat.ASCIIString},
                         comment::Compat.ASCIIString)
     cvalue = isa(value,Compat.ASCIIString) ?  value :
-             isa(value,Bool) ? Cint[value] : [value]
+             isa(value,Bool) ? Cint[value] : reinterpret(UInt8, [value])
     status = Ref{Cint}(0)
     ccall((:ffpky,libcfitsio), Cint,
         (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ref{Cint}),

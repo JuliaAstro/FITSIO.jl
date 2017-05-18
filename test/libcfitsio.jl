@@ -7,7 +7,7 @@ function writehealpix(filename, pixels, nside, ordering, coordsys)
         tform = "1D"
     end 
 
-    file = fits_create_file(filename)
+    file = fits_create_file("!"*filename)
     try
         fits_create_img(file, Int16, Int[])
         fits_write_date(file)
@@ -62,7 +62,7 @@ for T in (Float32, Float64)
     ordering = "NESTED"
     coordsys = "G"
 
-    filename = tempname()
+    filename = tempname() * ".fits"
     writehealpix(filename, pixels, nside, ordering, coordsys)
     @test readhealpix(filename) == (pixels, nside, ordering, coordsys)
 end

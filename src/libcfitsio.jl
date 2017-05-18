@@ -103,12 +103,16 @@ export FITSFile,
        fits_read_col,
        fits_read_descript,
        fits_read_keyn,
+       fits_read_key_str,
+       fits_read_key_lng,
+       fits_read_keys_lng,
        fits_read_keyword,
        fits_read_pix,
        fits_read_record,
        fits_read_subset,
        fits_update_key,
        fits_write_col,
+       fits_write_date,
        fits_write_comment,
        fits_write_history,
        fits_write_key,
@@ -310,6 +314,40 @@ function fits_get_hdrspace(f::FITSFile)
     (keysexist[], morekeys[])
 end
 
+function fits_read_key_str(f::FITSFile, keyname::Compat.ASCIIString)
+    value = Vector{UInt8}(71)
+    comment = Vector{UInt8}(71)
+    status = Ref{Cint}(0)
+    ccall((:ffgkys, libcfitsio), Cint,
+          (Ptr{Void}, Ptr{UInt8}, Ptr{UInt8}, Ptr{UInt8}, Ref{Cint}),
+          f.ptr, keyname, value, comment, status)
+    fits_assert_ok(status[])
+    unsafe_string(pointer(value)), unsafe_string(pointer(comment))
+end
+
+function fits_read_key_lng(f::FITSFile, keyname::Compat.ASCIIString)
+    value = Ref{Clong}(0)
+    comment = Vector{UInt8}(71)
+    status = Ref{Cint}(0)
+    ccall((:ffgkyj, libcfitsio), Cint,
+          (Ptr{Void}, Ptr{UInt8}, Ref{Clong}, Ptr{UInt8}, Ref{Cint}),
+          f.ptr, keyname, value, comment, status)
+    fits_assert_ok(status[])
+    value[], unsafe_string(pointer(comment))
+end
+
+function fits_read_keys_lng(f::FITSFile, keyname::Compat.ASCIIString,
+                            nstart::Int, nmax::Int)
+    value = Vector{Clong}(nmax - nstart + 1)
+    nfound = Ref{Cint}(0)
+    status = Ref{Cint}(0)
+    ccall((:ffgknj, libcfitsio), Cint,
+          (Ptr{Void}, Ptr{UInt8}, Cint, Cint, Ptr{Clong}, Ref{Cint}, Ref{Cint}),
+          f.ptr, keyname, nstart, nmax, value, nfound, status)
+    fits_assert_ok(status[])
+    value, nfound[]
+end
+
 function fits_read_keyword(f::FITSFile, keyname::Compat.ASCIIString)
     value = Vector{UInt8}(71)
     comment = Vector{UInt8}(71)
@@ -345,7 +383,7 @@ function fits_read_keyn(f::FITSFile, keynum::Integer)
 end
 
 function fits_write_key(f::FITSFile, keyname::Compat.ASCIIString,
-                        value::Union{AbstractFloat,Compat.ASCIIString},
+                        value::Union{Number,Compat.ASCIIString},
                         comment::Compat.ASCIIString)
     cvalue = isa(value,Compat.ASCIIString) ?  value :
              isa(value,Bool) ? Cint[value] : [value]
@@ -354,6 +392,12 @@ function fits_write_key(f::FITSFile, keyname::Compat.ASCIIString,
         (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ref{Cint}),
         f.ptr, cfitsio_typecode(typeof(value)), keyname,
         cvalue, comment, status)
+    fits_assert_ok(status[])
+end
+
+function fits_write_date(f::FITSFile)
+    status = Ref{Cint}(0)
+    ccall((:ffpdat, libcfitsio), Cint, (Ptr{Void}, Ref{Cint}), f.ptr, status)
     fits_assert_ok(status[])
 end
 

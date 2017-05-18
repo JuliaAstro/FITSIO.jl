@@ -281,3 +281,6 @@ end
 # test it parses a number as intended.
 @test FITSIO.libcfitsio_version(3.341)  === VersionNumber(3, 34, 1)
 @test FITSIO.libcfitsio_version(3.41f0) === VersionNumber(3, 41, 0)
+
+include("libcfitsio.jl")
+

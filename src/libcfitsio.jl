@@ -383,7 +383,7 @@ function fits_read_keyn(f::FITSFile, keynum::Integer)
 end
 
 function fits_write_key(f::FITSFile, keyname::Compat.ASCIIString,
-                        value::Union{Number,Compat.ASCIIString},
+                        value::Union{Real,Compat.ASCIIString},
                         comment::Compat.ASCIIString)
     cvalue = isa(value,Compat.ASCIIString) ?  value :
              isa(value,Bool) ? Cint[value] : [value]

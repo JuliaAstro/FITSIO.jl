@@ -337,7 +337,7 @@ function fits_read_key_lng(f::FITSFile, keyname::Compat.ASCIIString)
 end
 
 function fits_read_keys_lng(f::FITSFile, keyname::Compat.ASCIIString,
-                            nstart::Int, nmax::Int)
+                            nstart::Integer, nmax::Integer)
     value = Vector{Clong}(nmax - nstart + 1)
     nfound = Ref{Cint}(0)
     status = Ref{Cint}(0)

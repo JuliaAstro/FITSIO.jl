@@ -203,9 +203,10 @@ function fits_get_errstatus(status::Cint)
     unsafe_string(pointer(msg))
 end
 
-function fits_assert_ok(status::Cint)
+function fits_assert_ok(status::Cint, filename = nothing)
     if status != 0
-        error(fits_get_errstatus(status))
+        prefix = filename == nothing ? "" : "While processing file `$filename`: "
+        error(string(prefix, fits_get_errstatus(status)))
     end
 end
 
@@ -219,7 +220,7 @@ function fits_create_file(filename::AbstractString)
     status = Ref{Cint}(0)
     ccall((:ffinit,libcfitsio), Cint, (Ref{Ptr{Void}},Ptr{UInt8},Ref{Cint}),
           ptr, filename, status)
-    fits_assert_ok(status[])
+    fits_assert_ok(status[], filename)
     FITSFile(ptr[])
 end
 
@@ -236,7 +237,7 @@ for (a,b) in ((:fits_open_data, "ffdopn"),
             ccall(($b,libcfitsio), Cint,
                   (Ref{Ptr{Void}},Ptr{UInt8},Cint,Ref{Cint}),
                   ptr, filename, mode, status)
-            fits_assert_ok(status[])
+            fits_assert_ok(status[], filename)
             FITSFile(ptr[])
         end
     end

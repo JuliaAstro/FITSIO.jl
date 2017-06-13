@@ -1,3 +1,13 @@
+v0.10.0 (2017-06-13)
+====================
+
+- Add `FITS(::Vector{UInt8})` constructor: support for memory-backed files.
+- Add support for `FITS("file.fits") do f; ...; end`, which automatically
+  closes the file at the end of the block.
+- Add Libcfitsio functions: `fits_read_key_str`, `fits_read_key_lng`,
+  `fits_read_keys_lng`, `fits_write_date` low-level functions.
+- Error message from opening a file now includes file name.
+
 v0.9.0 (2017-01-24)
 ===================
 

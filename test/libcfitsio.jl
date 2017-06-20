@@ -63,7 +63,11 @@ for T in (Float32, Float64)
     coordsys = "G"
 
     filename = tempname() * ".fits"
-    writehealpix(filename, pixels, nside, ordering, coordsys)
-    @test readhealpix(filename) == (pixels, nside, ordering, coordsys)
+    try
+        writehealpix(filename, pixels, nside, ordering, coordsys)
+        @test readhealpix(filename) == (pixels, nside, ordering, coordsys)
+    finally
+        ispath(filename) && rm(filename)
+    end
 end
 

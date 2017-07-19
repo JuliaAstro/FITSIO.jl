@@ -148,7 +148,7 @@ include("image.jl")  # ImageHDU methods
 include("table.jl")  # TableHDU & ASCIITableHDU methods
 
 """
-    libcfitsio_version(version=fits_get_version()) -> VersionNumber
+    libcfitsio_version() -> VersionNumber
 
 ### Purpose ###
 

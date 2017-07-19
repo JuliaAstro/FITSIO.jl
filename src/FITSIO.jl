@@ -147,6 +147,23 @@ include("header.jl")  # FITSHeader methods
 include("image.jl")  # ImageHDU methods
 include("table.jl")  # TableHDU & ASCIITableHDU methods
 
+"""
+    libcfitsio_version(version=fits_get_version()) -> VersionNumber
+
+### Purpose ###
+
+Return the version of the underlying CFITSIO library
+
+### Example ###
+
+```julia
+julia> using FITSIO
+
+julia> FITSIO.libcfitsio_version()
+v"3.37.0"
+```
+
+"""
 function libcfitsio_version(version=fits_get_version())
     # fits_get_version returns a float. e.g., 3.341f0. We parse that
     # into a proper version number. E.g., 3.341 -> v"3.34.1"

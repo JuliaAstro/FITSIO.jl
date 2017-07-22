@@ -37,7 +37,7 @@
 #       11  TBYTE           Cuchar = Uint8
 #       12  TSBYTE          Cchar = Int8
 #       14  TLOGICAL        Bool
-#       16  TSTRING         Compat.ASCIIString
+#       16  TSTRING         String
 #       20  TUSHORT         Cushort
 #       21  TSHORT          Cshort
 #       30  TUINT           Cuint
@@ -55,8 +55,6 @@
 isdefined(Base, :__precompile__) && __precompile__()
 
 module Libcfitsio
-
-using Compat
 
 export FITSFile,
        FITSMemoryHandle,
@@ -146,7 +144,7 @@ end
 for (T, code) in ((UInt8,       11),
                   (Int8,        12),
                   (Bool,        14),
-                  (Compat.ASCIIString, 16),
+                  (String,      16),
                   (Cushort,     20),
                   (Cshort,      21),
                   (Cuint,       30),
@@ -315,7 +313,7 @@ function fits_get_hdrspace(f::FITSFile)
     (keysexist[], morekeys[])
 end
 
-function fits_read_key_str(f::FITSFile, keyname::Compat.ASCIIString)
+function fits_read_key_str(f::FITSFile, keyname::String)
     value = Vector{UInt8}(71)
     comment = Vector{UInt8}(71)
     status = Ref{Cint}(0)
@@ -326,7 +324,7 @@ function fits_read_key_str(f::FITSFile, keyname::Compat.ASCIIString)
     unsafe_string(pointer(value)), unsafe_string(pointer(comment))
 end
 
-function fits_read_key_lng(f::FITSFile, keyname::Compat.ASCIIString)
+function fits_read_key_lng(f::FITSFile, keyname::String)
     value = Ref{Clong}(0)
     comment = Vector{UInt8}(71)
     status = Ref{Cint}(0)
@@ -337,7 +335,7 @@ function fits_read_key_lng(f::FITSFile, keyname::Compat.ASCIIString)
     value[], unsafe_string(pointer(comment))
 end
 
-function fits_read_keys_lng(f::FITSFile, keyname::Compat.ASCIIString,
+function fits_read_keys_lng(f::FITSFile, keyname::String,
                             nstart::Integer, nmax::Integer)
     value = Vector{Clong}(nmax - nstart + 1)
     nfound = Ref{Cint}(0)
@@ -349,7 +347,7 @@ function fits_read_keys_lng(f::FITSFile, keyname::Compat.ASCIIString,
     value, nfound[]
 end
 
-function fits_read_keyword(f::FITSFile, keyname::Compat.ASCIIString)
+function fits_read_keyword(f::FITSFile, keyname::String)
     value = Vector{UInt8}(71)
     comment = Vector{UInt8}(71)
     status = Ref{Cint}(0)
@@ -383,10 +381,9 @@ function fits_read_keyn(f::FITSFile, keynum::Integer)
      unsafe_string(pointer(comment)))
 end
 
-function fits_write_key(f::FITSFile, keyname::Compat.ASCIIString,
-                        value::Union{Real,Compat.ASCIIString},
-                        comment::Compat.ASCIIString)
-    cvalue = isa(value,Compat.ASCIIString) ?  value :
+function fits_write_key(f::FITSFile, keyname::String,
+                        value::Union{Real,String}, comment::String)
+    cvalue = isa(value,String) ?  value :
              isa(value,Bool) ? Cint[value] : reinterpret(UInt8, [value])
     status = Ref{Cint}(0)
     ccall((:ffpky,libcfitsio), Cint,
@@ -402,14 +399,14 @@ function fits_write_date(f::FITSFile)
     fits_assert_ok(status[])
 end
 
-function fits_write_comment(f::FITSFile, comment::Compat.ASCIIString)
+function fits_write_comment(f::FITSFile, comment::String)
     status = Ref{Cint}(0)
     ccall((:ffpcom, libcfitsio), Cint, (Ptr{Void}, Ptr{UInt8}, Ref{Cint}),
           f.ptr, comment, status)
     fits_assert_ok(status[])
 end
 
-function fits_write_history(f::FITSFile, history::Compat.ASCIIString)
+function fits_write_history(f::FITSFile, history::String)
     status = Ref{Cint}(0)
     ccall((:ffphis, libcfitsio), Cint, (Ptr{Void}, Ptr{UInt8}, Ref{Cint}),
           f.ptr, history, status)
@@ -417,12 +414,12 @@ function fits_write_history(f::FITSFile, history::Compat.ASCIIString)
 end
 
 # update key: if already present, update it, otherwise add it.
-for (a,T,S) in (("ffukys", :(Compat.ASCIIString), :(Ptr{UInt8})),
+for (a,T,S) in (("ffukys", :(String), :(Ptr{UInt8})),
                 ("ffukyl", :Bool,        :Cint),
                 ("ffukyj", :Integer,     :Int64))
     @eval begin
-        function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::$T,
-                                 comment::Union{Compat.ASCIIString, Ptr{Void}}=C_NULL)
+        function fits_update_key(f::FITSFile, key::String, value::$T,
+                                 comment::Union{String, Ptr{Void}}=C_NULL)
             status = Ref{Cint}(0)
             ccall(($a, libcfitsio), Cint,
                   (Ptr{Void}, Ptr{UInt8}, $S, Ptr{UInt8}, Ref{Cint}),
@@ -432,8 +429,8 @@ for (a,T,S) in (("ffukys", :(Compat.ASCIIString), :(Ptr{UInt8})),
     end
 end
 
-function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::AbstractFloat,
-                         comment::Union{Compat.ASCIIString, Ptr{Void}}=C_NULL)
+function fits_update_key(f::FITSFile, key::String, value::AbstractFloat,
+                         comment::Union{String, Ptr{Void}}=C_NULL)
     status = Ref{Cint}(0)
     ccall(("ffukyd", libcfitsio), Cint,
           (Ptr{Void}, Ptr{UInt8}, Cdouble, Cint, Ptr{UInt8}, Ref{Cint}),
@@ -441,8 +438,8 @@ function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::AbstractFl
     fits_assert_ok(status[])
 end
 
-function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::Void,
-                         comment::Union{Compat.ASCIIString, Ptr{Void}}=C_NULL)
+function fits_update_key(f::FITSFile, key::String, value::Void,
+                         comment::Union{String, Ptr{Void}}=C_NULL)
     status = Ref{Cint}(0)
     ccall(("ffukyu", libcfitsio), Cint,
           (Ptr{Void}, Ptr{UInt8}, Ptr{UInt8}, Ref{Cint}),
@@ -450,7 +447,7 @@ function fits_update_key(f::FITSFile, key::Compat.ASCIIString, value::Void,
     fits_assert_ok(status[])
 end
 
-function fits_write_record(f::FITSFile, card::Compat.ASCIIString)
+function fits_write_record(f::FITSFile, card::String)
     status = Ref{Cint}(0)
     ccall((:ffprec,libcfitsio), Cint,
         (Ptr{Void},Ptr{UInt8},Ref{Cint}),
@@ -466,7 +463,7 @@ function fits_delete_record(f::FITSFile, keynum::Integer)
     fits_assert_ok(status[])
 end
 
-function fits_delete_key(f::FITSFile, keyname::Compat.ASCIIString)
+function fits_delete_key(f::FITSFile, keyname::String)
     status = Ref{Cint}(0)
     ccall((:ffdkey,libcfitsio), Cint,
         (Ptr{Void},Ptr{UInt8},Ref{Cint}),
@@ -523,7 +520,7 @@ for (a,b) in ((:fits_movabs_hdu,"ffmahd"),
     end
 end
 
-function fits_movnam_hdu(f::FITSFile, extname::Compat.ASCIIString, extver::Integer=0,
+function fits_movnam_hdu(f::FITSFile, extname::String, extver::Integer=0,
                          hdu_type::Integer=-1)
     status = Ref{Cint}(0)
     ccall((:ffmnhd,libcfitsio), Cint,
@@ -639,7 +636,7 @@ function fits_read_subset{S1<:Integer,S2<:Integer,S3<:Integer,T}(
 end
 
 function fits_copy_image_section(fin::FITSFile, fout::FITSFile,
-                                 section::Compat.ASCIIString)
+                                 section::String)
     status = Ref{Cint}(0)
     ccall((:fits_copy_image_section,libcfitsio), Cint,
           (Ptr{Void}, Ptr{Void}, Ptr{UInt8}, Ref{Cint}),
@@ -652,13 +649,13 @@ end
 # ASCII/binary table HDU functions
 
 # The three fields are: ttype, tform, tunit (CFITSIO's terminology)
-const ColumnDef = Tuple{Compat.ASCIIString, Compat.ASCIIString, Compat.ASCIIString}
+const ColumnDef = Tuple{String, String, String}
 
 for (a,b) in ((:fits_create_binary_tbl, 2),
               (:fits_create_ascii_tbl,  1))
     @eval begin
         function ($a)(f::FITSFile, numrows::Integer,
-                      coldefs::Array{ColumnDef}, extname::Compat.ASCIIString)
+                      coldefs::Array{ColumnDef}, extname::String)
 
             # get length and convert coldefs to three arrays of Ptr{Uint8}
             ntype = length(coldefs)
@@ -695,7 +692,7 @@ for (a,b,T) in ((:fits_get_num_cols,  "ffgncl",  :Cint),
     end
 end
 
-function fits_get_colnum(f::FITSFile, tmplt::Compat.ASCIIString)
+function fits_get_colnum(f::FITSFile, tmplt::String)
     result = Ref{Cint}(0)
     status = Ref{Cint}(0)
 
@@ -817,7 +814,7 @@ function fits_read_col(f::FITSFile,
                        colnum::Integer,
                        firstrow::Integer,
                        firstelem::Integer,
-                       data::Array{Compat.ASCIIString})
+                       data::Array{String})
 
     # get width: number of characters in each string
     typecode, repcount, width = fits_get_eqcoltype(f, colnum)
@@ -841,11 +838,11 @@ function fits_read_col(f::FITSFile,
     fits_assert_ok(status[])
 
     # Create strings out of the buffers, terminating at null characters.
-    # Note that `Compat.ASCIIString(x)` does not copy the buffer x.
+    # Note that `String(x)` does not copy the buffer x.
     for i in 1:length(data)
         zeropos = search(buffers[i], 0x00)
-        data[i] = (zeropos >= 1) ? Compat.ASCIIString(buffers[i][1:(zeropos-1)]) :
-                                   Compat.ASCIIString(buffers[i])
+        data[i] = (zeropos >= 1) ? String(buffers[i][1:(zeropos-1)]) :
+                                   String(buffers[i])
     end
 end
 
@@ -869,7 +866,7 @@ function fits_write_col(f::FITSFile,
                         colnum::Integer,
                         firstrow::Integer,
                         firstelem::Integer,
-                        data::Array{Compat.ASCIIString})
+                        data::Array{String})
     status = Ref{Cint}(0)
     ccall((:ffpcls, libcfitsio), Cint,
           (Ptr{Void}, Cint, Int64, Int64, Int64,

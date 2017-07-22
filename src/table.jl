@@ -17,7 +17,7 @@ const CFITSIO_COLTYPE = Dict{Int, DataType}()
 for (T, tform, code) in ((UInt8,       'B',  11),
                          (Int8,        'S',  12),
                          (Bool,        'L',  14),
-                         (Compat.ASCIIString, 'A',  16),
+                         (String,      'A',  16),
                          (UInt16,      'U',  20),
                          (Int16,       'I',  21),
                          (UInt32,      'V',  40),
@@ -46,12 +46,12 @@ function fits_get_col_info(f::FITSFile, colnum::Integer)
     T = CFITSIO_COLTYPE[eqtypecode]
 
     if isvariable
-        if T !== Compat.ASCIIString
+        if T !== String
             T = Vector{T}
         end
         rowsize = Int[]
     else
-        if T === Compat.ASCIIString
+        if T === String
             # for strings, cfitsio only considers it to be a vector column if
             # width != repeat, even if tdim is multi-valued.
             if repeat == width
@@ -80,7 +80,7 @@ function fits_get_col_info(f::FITSFile, colnum::Integer)
 end
 
 # Parse max length from tform for a variable column
-function var_col_maxlen(tform::Compat.ASCIIString)
+function var_col_maxlen(tform::String)
     maxlen = -1
     i = search(tform, '(')
     if i > 0
@@ -94,7 +94,7 @@ end
 
 # Helper function for getting fits tdim shape for given array
 fits_tdim(A::Array) = (ndims(A) == 1)? [1]: [size(A, i) for i=1:ndims(A)-1]
-function fits_tdim(A::Array{Compat.ASCIIString})
+function fits_tdim(A::Array{String})
     n = ndims(A)
     tdim = Vector{Int}(n)
     tdim[1] = maximum(length, A)
@@ -111,14 +111,14 @@ fits_tform{T}(::Type{TableHDU}, A::Array{T}) = "$(prod(fits_tdim(A)))$(fits_tfor
 # For string arrays with 2+ dimensions, write tform as rAw. Otherwise,
 # cfitsio doesn't recognize that multiple strings should be written to
 # a single row, even if TDIM is set to 2+ dimensions.
-fits_tform(::Type{TableHDU}, A::Vector{Compat.ASCIIString}) = "$(maximum(length, A))A"
-fits_tform(::Type{TableHDU}, A::Array{Compat.ASCIIString}) = "$(prod(fits_tdim(A)))A$(maximum(length, A))"
+fits_tform(::Type{TableHDU}, A::Vector{String}) = "$(maximum(length, A))A"
+fits_tform(::Type{TableHDU}, A::Array{String}) = "$(prod(fits_tdim(A)))A$(maximum(length, A))"
 
 # variable length columns
 fits_tform_v{T<:FITSTableScalar}(::Type{TableHDU}, A::Vector{Vector{T}}) = "1P$(fits_tform_char(T))($(maximum(length(A))))"
-fits_tform_v(::Type{TableHDU}, A::Vector{Compat.ASCIIString}) = "1PA($(maximum(length(A))))"
+fits_tform_v(::Type{TableHDU}, A::Vector{String}) = "1PA($(maximum(length(A))))"
 fits_tform_v(::Type{TableHDU}, A::Vector{Vector}) = error("column data must be a leaf type: e.g., Vector{Vector{Int}}, not Vector{Vector{T}}.")
-fits_tform_v(::Type{TableHDU}, ::Any) = error("variable length columns only supported for arrays of arrays and arrays of Compat.ASCIIString")
+fits_tform_v(::Type{TableHDU}, ::Any) = error("variable length columns only supported for arrays of arrays and arrays of String")
 fits_tform_v(::Type{ASCIITableHDU}, ::Any) = error("variable length columns not supported in ASCII tables")
 
 
@@ -126,7 +126,7 @@ fits_tform(::Type{ASCIITableHDU}, ::Vector{Int16}) = "I7"
 fits_tform(::Type{ASCIITableHDU}, ::Vector{Int32}) = "I12"
 fits_tform(::Type{ASCIITableHDU}, ::Vector{Float32}) = "E26.17"
 fits_tform(::Type{ASCIITableHDU}, ::Vector{Float64}) = "E26.17"
-fits_tform(::Type{ASCIITableHDU}, A::Vector{Compat.ASCIIString}) = "A$(maximum(length, A))"
+fits_tform(::Type{ASCIITableHDU}, A::Vector{String}) = "A$(maximum(length, A))"
 fits_tform(::Type{ASCIITableHDU}, A::Vector) = error("unsupported type: $(eltype(A))")
 fits_tform(::Type{ASCIITableHDU}, A::Array) = error("only 1-d arrays supported: dimensions are $(size(A))")
 
@@ -160,8 +160,8 @@ function show(io::IO, hdu::TableHDU)
     coltforms = [unsafe_string(pointer(item)) for item in coltforms_in]
 
     # get some more information for all the columns
-    coltypes    = Vector{Compat.ASCIIString}(ncols)
-    colrowsizes = Vector{Compat.ASCIIString}(ncols)
+    coltypes    = Vector{String}(ncols)
+    colrowsizes = Vector{String}(ncols)
     showlegend = false
     for i in 1:ncols
         T, rowsize, isvariable = fits_get_col_info(hdu.fitsfile, i)
@@ -181,7 +181,7 @@ function show(io::IO, hdu::TableHDU)
     Columns: """)
     show_ascii_table(
         io, ["Name", "Size", "Type", "TFORM"],
-        Vector{Compat.ASCIIString}[colnames, colrowsizes, coltypes, coltforms],
+        Vector{String}[colnames, colrowsizes, coltypes, coltforms],
         2, 9)
     if showlegend
         print(io, "\n         (*) = variable-length column\n")
@@ -216,7 +216,7 @@ function show(io::IO, hdu::ASCIITableHDU)
     coltforms = [unsafe_string(pointer(item)) for item in coltforms_in]
 
     # Get additional info
-    coltypes = Vector{Compat.ASCIIString}(ncols)
+    coltypes = Vector{String}(ncols)
     for i in 1:ncols
         eqtypecode, repeat, width = fits_get_eqcoltype(hdu.fitsfile, i)
         T = CFITSIO_COLTYPE[eqtypecode]
@@ -230,7 +230,7 @@ function show(io::IO, hdu::ASCIITableHDU)
     Rows: $(nrows[])
     Columns: """)
     show_ascii_table(io, ["Name", "Type", "TFORM"],
-                     Vector{Compat.ASCIIString}[colnames, coltypes, coltforms], 2, 9)
+                     Vector{String}[colnames, coltypes, coltforms], 2, 9)
 end
 
 # Write a variable length array column of numbers
@@ -244,7 +244,7 @@ function fits_write_var_col{T}(f::FITSFile, colnum::Integer,
 end
 
 function fits_write_var_col(f::FITSFile, colnum::Integer,
-                            data::Vector{Compat.ASCIIString})
+                            data::Vector{String})
     status = Ref{Cint}(0)
     buffer = Ref{Ptr{UInt8}}()  # holds the address of the current row
     for i=1:length(data)
@@ -264,7 +264,7 @@ function fits_write_var_col(f::FITSFile, colnum::Integer,
 end
 
 # Add a new TableHDU to a FITS object
-function write_internal(f::FITS, colnames::Vector{Compat.ASCIIString},
+function write_internal(f::FITS, colnames::Vector{String},
                         coldata::Vector, hdutype, name, ver, header, units,
                         varcols)
     fits_assert_open(f.fitsfile)
@@ -285,7 +285,7 @@ function write_internal(f::FITS, colnames::Vector{Compat.ASCIIString},
     end
 
     # create an array of tform strings (which we will create pointers to)
-    tform_str = Vector{Compat.ASCIIString}(ncols)
+    tform_str = Vector{String}(ncols)
     for i in 1:ncols
         if isvarcol[i]
             tform_str[i] = fits_tform_v(hdutype, coldata[i])
@@ -339,7 +339,7 @@ function write_internal(f::FITS, colnames::Vector{Compat.ASCIIString},
     nothing
 end
 
-function write(f::FITS, colnames::Vector{Compat.ASCIIString}, coldata::Vector;
+function write(f::FITS, colnames::Vector{String}, coldata::Vector;
                units=nothing, header=nothing, hdutype=TableHDU,
                name=nothing, ver=nothing, varcols=nothing)
     if length(colnames) != length(coldata)
@@ -349,7 +349,7 @@ function write(f::FITS, colnames::Vector{Compat.ASCIIString}, coldata::Vector;
                    units, varcols)
 end
 
-function write(f::FITS, data::Dict{Compat.ASCIIString};
+function write(f::FITS, data::Dict{String};
                units=nothing, header=nothing, hdutype=TableHDU,
                name=nothing, ver=nothing, varcols=nothing)
     colnames = collect(keys(data))
@@ -374,7 +374,7 @@ end
 # Read a variable length array column of strings
 # (Must be separate implementation from normal fits_read_col function because
 # the length of each string must be determined for each row.)
-function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{Compat.ASCIIString})
+function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{String})
     status = Ref{Cint}(0)
     bufptr = Ref{Ptr{UInt8}}()  # holds a pointer to the current row buffer
     for i=1:length(data)
@@ -389,13 +389,13 @@ function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{Compat.ASC
 
         # Create string out of the buffer, terminating at null characters
         zeropos = search(buffer, 0x00)
-        data[i] = (zeropos >= 1) ? Compat.ASCIIString(buffer[1:(zeropos-1)]) :
-                                   Compat.ASCIIString(buffer)
+        data[i] = (zeropos >= 1) ? String(buffer[1:(zeropos-1)]) :
+                                   String(buffer)
     end
 end
 
 # Read a table column
-function read(hdu::ASCIITableHDU, colname::Compat.ASCIIString)
+function read(hdu::ASCIITableHDU, colname::String)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
@@ -411,7 +411,7 @@ function read(hdu::ASCIITableHDU, colname::Compat.ASCIIString)
     return result
 end
 
-function read(hdu::TableHDU, colname::Compat.ASCIIString)
+function read(hdu::TableHDU, colname::String)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 

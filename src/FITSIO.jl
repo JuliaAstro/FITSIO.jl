@@ -150,15 +150,11 @@ include("table.jl")  # TableHDU & ASCIITableHDU methods
 """
     libcfitsio_version() -> VersionNumber
 
-### Purpose ###
-
 Return the version of the underlying CFITSIO library
 
 ### Example ###
 
 ```julia
-julia> using FITSIO
-
 julia> FITSIO.libcfitsio_version()
 v"3.37.0"
 ```

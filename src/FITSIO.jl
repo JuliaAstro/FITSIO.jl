@@ -157,6 +157,4 @@ function libcfitsio_version(version=fits_get_version())
     VersionNumber(x, y, z)
 end
 
-include("deprecations.jl")
-
 end # module

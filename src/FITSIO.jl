@@ -85,10 +85,10 @@ type FITS
     hidden::Any
 
     function FITS(filename::AbstractString, mode::AbstractString="r")
-        f = (mode == "r"                     ? fits_open_file(filename, 0)   :
-             mode == "r+" && isfile(filename)? fits_open_file(filename, 1)   :
-             mode == "r+"                    ? fits_create_file(filename)    :
-             mode == "w"                     ? fits_create_file("!"*filename):
+        f = (mode == "r"                      ? fits_open_file(filename, 0)    :
+             mode == "r+" && isfile(filename) ? fits_open_file(filename, 1)    :
+             mode == "r+"                     ? fits_create_file(filename)     :
+             mode == "w"                      ? fits_create_file("!"*filename) :
              error("invalid open mode: $mode"))
 
         new(f, filename, mode, Dict{Int, HDU}(), FITSMemoryHandle(), nothing)

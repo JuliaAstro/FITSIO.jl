@@ -93,7 +93,7 @@ function var_col_maxlen(tform::String)
 end
 
 # Helper function for getting fits tdim shape for given array
-fits_tdim(A::Array) = (ndims(A) == 1)? [1]: [size(A, i) for i=1:ndims(A)-1]
+fits_tdim(A::Array) = (ndims(A) == 1) ? [1] : [size(A, i) for i=1:ndims(A)-1]
 function fits_tdim(A::Array{String})
     n = ndims(A)
     tdim = Vector{Int}(n)
@@ -299,7 +299,7 @@ function write_internal(f::FITS, colnames::Vector{String},
     if isa(units, Void)
         tunit = C_NULL
     else
-        tunit = Ptr{UInt8}[(haskey(units, n)? pointer(units[n]): C_NULL)
+        tunit = Ptr{UInt8}[(haskey(units, n) ? pointer(units[n]) : C_NULL)
                            for n in colnames]
     end
 

@@ -172,7 +172,7 @@ end
 # Write header to CHDU.
 # If `clean` is true, skip writing reserved header keywords.
 function fits_write_header(f::FITSFile, hdr::FITSHeader, clean::Bool=true)
-    indices = clean? reserved_key_indices(hdr): Int[]
+    indices = clean ? reserved_key_indices(hdr) : Int[]
     for i=1:length(hdr)
         if clean && in(i, indices)
             continue

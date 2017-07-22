@@ -123,18 +123,18 @@ end
 # could almost just use an OrderedDict for this, but we need to store
 # comments.
 type FITSHeader
-    keys::Vector{Compat.ASCIIString}
+    keys::Vector{String}
     values::Vector{Any}
-    comments::Vector{Compat.ASCIIString}
-    map::Dict{Compat.ASCIIString, Int}
+    comments::Vector{String}
+    map::Dict{String, Int}
 
-    function FITSHeader(keys::Vector{Compat.ASCIIString}, values::Vector,
-                        comments::Vector{Compat.ASCIIString})
+    function FITSHeader(keys::Vector{String}, values::Vector,
+                        comments::Vector{String})
         if ((length(keys) != length(values)) ||
             (length(keys) != length(comments)))
             error("keys, values, comments must be same length")
         end
-        map = Dict{Compat.ASCIIString, Int64}()
+        map = Dict{String, Int64}()
         for i in 1:length(keys)
           map[keys[i]] = i
         end

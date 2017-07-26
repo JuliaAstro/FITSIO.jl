@@ -193,6 +193,21 @@ end
 # -----------------------------------------------------------------------------
 # Public API
 
+
+"""
+    read_key(hdu, key)
+
+Read the specified key and return a tuple of `(value, comment)`.
+
+The key, can be either the index of the header record (Integer)
+or the header keyword (ASCIIString).
+
+### Example ###
+
+```julia
+
+```
+"""
 function read_key(hdu::HDU, key::Integer)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
@@ -207,6 +222,22 @@ function read_key(hdu::HDU, key::String)
     parse_header_val(value), comment
 end
 
+"""
+    read_header(hdu)
+
+Read the entire header from the given HDU and return a `FITSHeader` object.
+The value of each header record is parsed as `Int`, `Float64`, `ASCIIString`,
+`Bool` or `nothing` according to the FITS standard.
+
+If the value cannot be parsed according to the FITS standard, the value is
+stored as the raw unparsed `ASCIIString`.
+
+### Example ###
+
+```julia
+
+```
+"""
 function read_header(hdu::HDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
@@ -236,6 +267,17 @@ function read_header(hdu::HDU)
     FITSHeader(keys, values, comments)
 end
 
+"""
+    read_header(hdu, String)
+
+Read the entire header from the given HDU as a single string.
+
+### Example ###
+
+```julia
+
+```
+"""
 function read_header(hdu::HDU, ::Type{String})
     # Return the header as a raw string.
 

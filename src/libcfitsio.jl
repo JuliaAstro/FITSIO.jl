@@ -471,6 +471,18 @@ function fits_delete_key(f::FITSFile, keyname::String)
     fits_assert_ok(status[])
 end
 
+"""
+    fits_hdr2str(f::FITSFile, nocomments::Bool=false)
+
+Return the header of the CHDU as a string. If `nocomments` is `true`, comment
+cards are stripped from the output.
+
+### Example ###
+
+```julia
+
+```
+"""
 function fits_hdr2str(f::FITSFile, nocomments::Bool=false)
     status = Ref{Cint}(0)
     header = Ref{Ptr{UInt8}}()
@@ -505,6 +517,37 @@ function hdu_int_to_type(hdu_type_int)
     :unknown
 end
 
+"""
+    fits_movabs_hdu(f::FITSFile, hduNum::Integer)
+
+Change the current HDU to the value specified by `hduNum`, and return a symbol
+describing the type of the HDU.
+
+Possible symbols are: `image_hdu`, `ascii_table`, or `binary_table`.
+The value of `hduNum` must range between 1 and the value returned by
+[`fits_get_num_hdus`](@ref).
+
+### Example ###
+
+```julia
+
+```
+"""
+fits_movabs_hdu(f::FITSFile, hduNum::Integer)
+
+"""
+    fits_movrel_hdu(f::FITSFile, hduNum::Integer)
+
+Change the current HDU by moving forward or backward by `hduNum` HDUs
+(positive means forward), and return the same as [`fits_movabs_hdu`](@ref).
+
+### Example ###
+
+```julia
+
+```
+"""
+fits_movrel_hdu(f::FITSFile, hduNum::Integer)
 for (a,b) in ((:fits_movabs_hdu,"ffmahd"),
               (:fits_movrel_hdu,"ffmrhd"))
     @eval begin
@@ -520,6 +563,25 @@ for (a,b) in ((:fits_movabs_hdu,"ffmahd"),
     end
 end
 
+"""
+    fits_movnam_hdu(f::FITSFile, extname::String, extver::Integer=0,
+                    hdu_type_int::Integer=-1)
+
+Change the current HDU by moving to the (first) HDU which has the specified
+extension type and EXTNAME and EXTVER keyword values (or HDUNAME and HDUVER keywords).
+
+If `extver` is 0 (the default) then the EXTVER keyword is ignored and the first HDU
+with a matching EXTNAME (or HDUNAME) keyword will be found. If `hdu_type_int`
+is -1 (the default) only the extname and extver values will be used to locate the
+correct extension. If no matching HDU is found in the file, the current HDU will
+remain unchanged.
+
+### Example ###
+
+```julia
+
+```
+"""
 function fits_movnam_hdu(f::FITSFile, extname::String, extver::Integer=0,
                          hdu_type::Integer=-1)
     status = Ref{Cint}(0)
@@ -550,6 +612,18 @@ end
 # -----------------------------------------------------------------------------
 # image HDU functions
 
+"""
+    fits_get_img_size(f::FITSFile)
+
+Get the dimensions of the image.
+
+### Example ###
+
+```julia
+
+```
+"""
+fits_get_img_size(f::FITSFile)
 for (a, b) in ((:fits_get_img_type,      "ffgidt"),
                (:fits_get_img_equivtype, "ffgiet"),
                (:fits_get_img_dim,       "ffgidm"))
@@ -563,6 +637,17 @@ for (a, b) in ((:fits_get_img_type,      "ffgidt"),
     end
 end
 
+"""
+    fits_create_img(f::FITSFile, t::Type, naxes::Vector{Int})
+
+Create a new primary array or IMAGE extension with a specified data type and size.
+
+### Example ###
+
+```julia
+
+```
+"""
 function fits_create_img{T, S<:Integer}(f::FITSFile, ::Type{T},
                                         naxes::Vector{S})
     status = Ref{Cint}(0)
@@ -573,6 +658,17 @@ function fits_create_img{T, S<:Integer}(f::FITSFile, ::Type{T},
     fits_assert_ok(status[])
 end
 
+"""
+    fits_write_pix(f::FITSFile, fpixel::Vector{Int}, nelements::Int, data::Array)
+
+Write pixels from `data` into the FITS file.
+
+### Example ###
+
+```julia
+
+```
+"""
 function fits_write_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
                                       nelements::Integer, data::Array{T})
     status = Ref{Cint}(0)
@@ -601,6 +697,17 @@ function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
     anynull[]
 end
 
+"""
+    fits_read_pix(f::FITSFile, fpixel::Vector{Int}, nelements::Int, data::Array)
+
+Read pixels from the FITS file into `data`.
+
+### Example ###
+
+```julia
+
+```
+"""
 function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
                                      nelements::Int, data::Array{T})
     anynull = Ref{Cint}(0)
@@ -651,6 +758,61 @@ end
 # The three fields are: ttype, tform, tunit (CFITSIO's terminology)
 const ColumnDef = Tuple{String, String, String}
 
+"""
+    fits_create_binary_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef},
+                           extname::String)
+
+Append a new HDU containing a binary table. The meaning of the parameters is the same
+as in a call to [`fits_create_ascii_tbl`](@ref).
+
+In general, one should pick this function for creating tables in a new HDU, as binary tables
+require less space on the disk and are more efficient to read and write.
+(Moreover, a few datatypes are not supported in ASCII tables).
+
+### Example ###
+
+```julia
+
+```
+"""
+fits_create_binary_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
+
+"""
+    fits_create_ascii_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
+
+Append a new HDU containing an ASCII table.
+
+The table will have `numrows` rows (this parameter can be set to zero), each
+initialized with the default value. In order to create a table, the programmer
+must specify the characteristics of each column. The columns are specified by the
+`coldefs` variable, which is an array of tuples.
+Each tuple must have three string fields:
+
+1. The name of the column.
+2. The data type and the repetition count. It must be a string made by a number
+   (the repetition count) followed by a letter specifying the type (in the example
+   above, `D` stands for `Float64`, `E` stands for `Float32`, `A` stands for `Char`).
+   Refer to the CFITSIO documentation for more information about the syntax of this
+   parameter.
+3. The measure unit of this field. This is used only as a comment.
+
+The value of `extname` sets the "extended name" of the table, i.e., a string
+that in some situations can be used to refer to the HDU itself.
+
+Note that, unlike for binary tables, CFITSIO puts some limitations to the
+types that can be used in an ASCII table column. Refer to the CFITSIO manual
+for further information.
+
+See also [`fits_create_binary_tbl`](@ref) for a similar function which
+creates binary tables.
+
+### Example ###
+
+```julia
+
+```
+"""
+fits_create_ascii_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
 for (a,b) in ((:fits_create_binary_tbl, 2),
               (:fits_create_ascii_tbl,  1))
     @eval begin
@@ -727,6 +889,25 @@ else
     ffgdes = "ffgdesll"
     ffgisz = "ffgiszll"
 end
+
+"""
+
+Provided that the current HDU contains either an ASCII or binary table, return
+information about the column at position `colnum` (counting from 1).
+
+Return is a tuple containing
+
+- `typecode`: CFITSIO integer type code of the column.
+- `repcount`: Repetition count for the column.
+- `width`: Width of an individual element.
+
+### Example ###
+
+```julia
+
+```
+"""
+fits_get_coltype(f::FITSFile, colnum::Integer)
 @eval begin
     function fits_get_coltype(ff::FITSFile, colnum::Integer)
         typecode = Ref{Cint}(0)
@@ -810,6 +991,29 @@ end
     end
 end
 
+"""
+    fits_read_col(f, colnum, firstrow, firstelem, data)
+
+Read data from one column of an ASCII/binary table and convert the data into the
+specified type `T`.
+
+### Arguments ###
+
+* `f::FITSFile`: the file to be read.
+* `colnum::Integer`: the column number, where the value of the first column is `1`.
+* `firstrow::Integer`: the elements to be read start from this row.
+* `firstelem::Integer`: specifies which is the first element to be read, when each
+  cell contains more than one element (i.e., the "repetition count" of the field is
+  greater than one).
+* `data::Array`: at the end of the call, this will be filled with the elements read
+  from the column. The length of the array gives the overall number of elements.
+
+### Example ###
+
+```julia
+
+```
+"""
 function fits_read_col(f::FITSFile,
                        colnum::Integer,
                        firstrow::Integer,
@@ -862,6 +1066,28 @@ function fits_read_col{T}(f::FITSFile,
     fits_assert_ok(status[])
 end
 
+"""
+    fits_write_col(f, colnum, firstrow, firstelem, data)
+
+Write some data in one column of a ASCII/binary table.
+
+If there is no room for the elements, new rows will be created. (It is therefore
+useless to call :func:`fits_insert_rows` if you only need to *append* elements
+to the end of a table.)
+
+* `f::FITSFile`: the file in which data will be written.
+* `colnum::Integer`: the column number, where the value of the first column is `1`.
+* `firstrow::Integer`: the data wil be written from this row onwards.
+* `firstelem::Integer`: specifies the position in the row where the first element
+  will be written .
+* `data::Array`: contains the elements that are to be written to the column of the table.
+
+### Example ###
+
+```julia
+
+```
+"""
 function fits_write_col(f::FITSFile,
                         colnum::Integer,
                         firstrow::Integer,
@@ -891,6 +1117,38 @@ function fits_write_col{T}(f::FITSFile,
     fits_assert_ok(status[])
 end
 
+"""
+    fits_insert_rows(f::FITSFile, firstrow::Integer, nrows::Integer)
+
+Insert a number of rows equal to `nrows` after the row number `firstrow`.
+
+The elements in each row are initialized to their default value: you can
+modify them later using [`fits_write_col`](@ref).
+
+Since the first row is at position 1, in order to insert rows *before*
+the first one `firstrow` must be equal to zero.
+
+### Example ###
+
+```julia
+
+```
+"""
+fits_insert_rows(f::FITSFile, firstrow::Integer, nrows::Integer)
+
+"""
+    fits_delete_rows(f::FITSFile, firstrow::integer, nrows::Integer)
+
+Delete `nrows` rows, starting from the one at position `firstrow`. The index of
+the first row is 1.
+
+### Example ###
+
+```julia
+
+```
+"""
+fits_delete_rows(f::FITSFile, firstrow::Integer, nrows::Integer)
 for (a,b) in ((:fits_insert_rows, "ffirow"),
               (:fits_delete_rows, "ffdrow"))
     @eval begin

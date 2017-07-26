@@ -533,7 +533,7 @@ The value of `hduNum` must range between 1 and the value returned by
 
 ```
 """
-fits_movabs_hdu(f::FITSFile, hduNum::Integer)
+function fits_movabs_hdu end
 
 """
     fits_movrel_hdu(f::FITSFile, hduNum::Integer)
@@ -547,7 +547,7 @@ Change the current HDU by moving forward or backward by `hduNum` HDUs
 
 ```
 """
-fits_movrel_hdu(f::FITSFile, hduNum::Integer)
+function fits_movrel_hdu end
 for (a,b) in ((:fits_movabs_hdu,"ffmahd"),
               (:fits_movrel_hdu,"ffmrhd"))
     @eval begin
@@ -623,7 +623,7 @@ Get the dimensions of the image.
 
 ```
 """
-fits_get_img_size(f::FITSFile)
+function fits_get_img_size end
 for (a, b) in ((:fits_get_img_type,      "ffgidt"),
                (:fits_get_img_equivtype, "ffgiet"),
                (:fits_get_img_dim,       "ffgidm"))
@@ -775,7 +775,7 @@ require less space on the disk and are more efficient to read and write.
 
 ```
 """
-fits_create_binary_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
+function fits_create_binary_tbl end
 
 """
     fits_create_ascii_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
@@ -812,7 +812,7 @@ creates binary tables.
 
 ```
 """
-fits_create_ascii_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
+function fits_create_ascii_tbl end
 for (a,b) in ((:fits_create_binary_tbl, 2),
               (:fits_create_ascii_tbl,  1))
     @eval begin
@@ -891,6 +891,7 @@ else
 end
 
 """
+    fits_get_coltype(f::FITSFile, colnum::Integer)
 
 Provided that the current HDU contains either an ASCII or binary table, return
 information about the column at position `colnum` (counting from 1).
@@ -907,7 +908,7 @@ Return is a tuple containing
 
 ```
 """
-fits_get_coltype(f::FITSFile, colnum::Integer)
+function fits_get_coltype end
 @eval begin
     function fits_get_coltype(ff::FITSFile, colnum::Integer)
         typecode = Ref{Cint}(0)
@@ -1134,7 +1135,7 @@ the first one `firstrow` must be equal to zero.
 
 ```
 """
-fits_insert_rows(f::FITSFile, firstrow::Integer, nrows::Integer)
+function fits_insert_rows end
 
 """
     fits_delete_rows(f::FITSFile, firstrow::integer, nrows::Integer)

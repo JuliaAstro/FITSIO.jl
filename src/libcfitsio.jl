@@ -1149,7 +1149,7 @@ the first row is 1.
 
 ```
 """
-fits_delete_rows(f::FITSFile, firstrow::Integer, nrows::Integer)
+function fits_delete_rows end
 for (a,b) in ((:fits_insert_rows, "ffirow"),
               (:fits_delete_rows, "ffdrow"))
     @eval begin

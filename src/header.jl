@@ -200,7 +200,7 @@ end
 Read the specified key and return a tuple of `(value, comment)`.
 
 The key, can be either the index of the header record (Integer)
-or the header keyword (ASCIIString).
+or the header keyword (String).
 
 ### Example ###
 
@@ -226,11 +226,11 @@ end
     read_header(hdu)
 
 Read the entire header from the given HDU and return a `FITSHeader` object.
-The value of each header record is parsed as `Int`, `Float64`, `ASCIIString`,
+The value of each header record is parsed as `Int`, `Float64`, `String`,
 `Bool` or `nothing` according to the FITS standard.
 
 If the value cannot be parsed according to the FITS standard, the value is
-stored as the raw unparsed `ASCIIString`.
+stored as the raw unparsed `String`.
 
 ### Example ###
 

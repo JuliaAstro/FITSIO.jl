@@ -127,7 +127,7 @@ end
 
 ### Purpose ###
 
-Close the file. Subsequent attempts to operate on `f will result in an error.
+Close the file. Subsequent attempts to operate on `f` will result in an error.
 `FITS` objects are also automatically closed when they are garbage collected.
 
 ### Example ###

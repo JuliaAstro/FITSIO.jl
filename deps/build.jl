@@ -62,6 +62,12 @@ if is_windows()
     push!(BinDeps.defaults, BuildProcess)
 end
 
+# OSX
+if is_apple()
+    using Homebrew
+    provides(Homebrew.HB, "cfitsio", libcfitsio, os=:Darwin)
+end
+
 @BinDeps.install @compat Dict(:libcfitsio => :libcfitsio)
 
 if is_windows()

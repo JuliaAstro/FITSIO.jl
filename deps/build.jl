@@ -1,14 +1,15 @@
 using BinDeps
 using Compat
+using Compat.Sys: iswindows, isapple, isunix
 
 @BinDeps.setup
 
 version = "3370"
 baseurl = "ftp://heasarc.gsfc.nasa.gov/software/fitsio/c/"
 
-if is_unix()
+if isunix()
     archivename = "cfitsio$(version).tar.gz"
-elseif is_windows()
+elseif iswindows()
     archivename = "cfitsio_MSVC_$(Sys.WORD_SIZE)bit_DLL_$(version).zip"
 end
 
@@ -17,11 +18,11 @@ downloadsdir = BinDeps.downloadsdir(libcfitsio)
 libdir = BinDeps.libdir(libcfitsio)
 srcdir = BinDeps.srcdir(libcfitsio)
 
-if is_apple()
+if isapple()
     libfilename = "libcfitsio.dylib"
-elseif is_unix()
+elseif isunix()
     libfilename = "libcfitsio.so"
-elseif is_windows()
+elseif iswindows()
     libfilename = "cfitsio.dll"
 end
 
@@ -58,18 +59,18 @@ provides(BuildProcess,
              end
 	  end), libcfitsio, os = :Windows)
 
-if is_windows()
+if iswindows()
     push!(BinDeps.defaults, BuildProcess)
 end
 
 # OSX
-if is_apple()
+if isapple()
     using Homebrew
     provides(Homebrew.HB, "cfitsio", libcfitsio, os=:Darwin)
 end
 
 @BinDeps.install @compat Dict(:libcfitsio => :libcfitsio)
 
-if is_windows()
+if iswindows()
     pop!(BinDeps.defaults)
 end

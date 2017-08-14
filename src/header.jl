@@ -193,7 +193,6 @@ end
 # -----------------------------------------------------------------------------
 # Public API
 
-
 """
     read_key(hdu, key)
 
@@ -201,12 +200,6 @@ Read the specified key and return a tuple of `(value, comment)`.
 
 The key, can be either the index of the header record (Integer)
 or the header keyword (String).
-
-### Example ###
-
-```julia
-
-```
 """
 function read_key(hdu::HDU, key::Integer)
     fits_assert_open(hdu.fitsfile)
@@ -231,12 +224,6 @@ The value of each header record is parsed as `Int`, `Float64`, `String`,
 
 If the value cannot be parsed according to the FITS standard, the value is
 stored as the raw unparsed `String`.
-
-### Example ###
-
-```julia
-
-```
 """
 function read_header(hdu::HDU)
     fits_assert_open(hdu.fitsfile)
@@ -271,12 +258,6 @@ end
     read_header(hdu, String)
 
 Read the entire header from the given HDU as a single string.
-
-### Example ###
-
-```julia
-
-```
 """
 function read_header(hdu::HDU, ::Type{String})
     # Return the header as a raw string.
@@ -287,9 +268,32 @@ function read_header(hdu::HDU, ::Type{String})
     fits_hdr2str(hdu.fitsfile)
 end
 
+"""
+    length(hdr)
+
+Number of records.
+"""
 length(hdr::FITSHeader) = length(hdr.keys)
+
+"""
+    haskey(hdr)
+
+Header keyword exists.
+"""
 haskey(hdr::FITSHeader, key::String) = in(key, hdr.keys)
+
+"""
+    keys(hdr)
+
+Array of keywords (not a copy).
+"""
 keys(hdr::FITSHeader) = hdr.keys
+
+"""
+    values(hdr)
+
+Array of values (not a copy).
+"""
 values(hdr::FITSHeader) = hdr.values
 getindex(hdr::FITSHeader, key::String) = hdr.values[hdr.map[key]]
 getindex(hdr::FITSHeader, i::Integer) = hdr.values[i]
@@ -310,8 +314,19 @@ function setindex!(hdr::FITSHeader, value::Any, i::Integer)
 end
 
 # Comments
+"""
+    get_comment(hdr, key)
+
+Get the comment based on keyword or index.
+"""
 get_comment(hdr::FITSHeader, key::String) = hdr.comments[hdr.map[key]]
 get_comment(hdr::FITSHeader, i::Integer) = hdr.comments[i]
+
+"""
+    set_comment!(hdr, key, comment)
+
+Set the comment baed on keyword or index.
+"""
 function set_comment!(hdr::FITSHeader, key::String, comment::String)
     hdr.comments[hdr.map[key]] = comment
 end

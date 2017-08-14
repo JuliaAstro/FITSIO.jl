@@ -213,6 +213,11 @@ fits_get_version() = ccall((:ffvers, libcfitsio), Cfloat, (Ptr{Cfloat},), &0.)
 # -----------------------------------------------------------------------------
 # file access & info functions
 
+"""
+    fits_create_file(filename::AbstractString)
+
+Create and open a new empty output `FITSFile`.
+"""
 function fits_create_file(filename::AbstractString)
     ptr = Ref{Ptr{Void}}()
     status = Ref{Cint}(0)
@@ -222,8 +227,43 @@ function fits_create_file(filename::AbstractString)
     FITSFile(ptr[])
 end
 
+"""
+    fits_clobber_file(filename::AbstractString)
+
+Like [`fits_create_file`](@ref), but overwrites `filename` if it exists.
+"""
 fits_clobber_file(filename::AbstractString) = fits_create_file("!"*filename)
 
+"""
+    fits_open_data(filename::String)
+
+Open an existing data file (like [`fits_open_file`](@ref)) and move to the first HDU
+containing either an image or a table.
+"""
+function fits_open_data end
+
+"""
+    fits_open_file(filename::String)
+
+Open an existing data file.
+"""
+function fits_open_file end
+
+"""
+    fits_open_image(filename::String)
+
+Open an existing data file (like [`fits_open_file`](@ref)) and move to the first
+HDU containing an image.
+"""
+function fits_open_image end
+
+"""
+    fits_open_table(filename::String)
+
+Open an existing data file (like [`fits_open_file`](@ref)) and move to the first
+HDU containing either an ASCII or a binary table.
+"""
+function fits_open_table end
 for (a,b) in ((:fits_open_data, "ffdopn"),
               (:fits_open_file, "ffopen"),
               (:fits_open_image,"ffiopn"),
@@ -258,6 +298,20 @@ function fits_open_memfile(data::Vector{UInt8}, mode::Integer=0, filename="")
     FITSFile(ptr[]), handle
 end
 
+"""
+    fits_close_file(f::FITSFile)
+
+Close a previously opened FITS file.
+
+"""
+function fits_close_file end
+
+"""
+    fits_delete_file(f::FITSFile)
+
+Close an opened FITS file (like [`fits_close_file`](@ref)) and removes it from the disk.
+"""
+function fits_delete_file end
 for (a,b) in ((:fits_close_file, "ffclos"),
               (:fits_delete_file,"ffdelt"))
     @eval begin
@@ -279,6 +333,11 @@ end
 
 close(f::FITSFile) = fits_close_file(f)
 
+"""
+    fits_file_name(f::FITSFile)
+
+Return the name of the file associated with object `f`.
+"""
 function fits_file_name(f::FITSFile)
     value = Vector{UInt8}(1025)
     status = Ref{Cint}(0)
@@ -302,6 +361,12 @@ end
 # -----------------------------------------------------------------------------
 # header access functions
 
+"""
+    fits_get_hdrspace(f::FITSFile) -> (keysexist, morekeys)
+
+Return the number of existing keywords (not counting the END keyword) and the amount
+of space currently available for more keywords.
+"""
 function fits_get_hdrspace(f::FITSFile)
     keysexist = Ref{Cint}(0)
     morekeys = Ref{Cint}(0)
@@ -347,6 +412,11 @@ function fits_read_keys_lng(f::FITSFile, keyname::String,
     value, nfound[]
 end
 
+"""
+    fits_read_keyword(f::FITSFile, keyname::String) -> (value, comment)
+
+Return the specified keyword.
+"""
 function fits_read_keyword(f::FITSFile, keyname::String)
     value = Vector{UInt8}(71)
     comment = Vector{UInt8}(71)
@@ -358,6 +428,11 @@ function fits_read_keyword(f::FITSFile, keyname::String)
     unsafe_string(pointer(value)), unsafe_string(pointer(comment))
 end
 
+"""
+    fits_read_record(f::FITSFile, keynum::Int) -> String
+
+Return the nth header record in the CHU. The first keyword in the header is at `keynum = 1`.
+"""
 function fits_read_record(f::FITSFile, keynum::Integer)
     card = Vector{UInt8}(81)
     status = Ref{Cint}(0)
@@ -368,6 +443,11 @@ function fits_read_record(f::FITSFile, keynum::Integer)
     unsafe_string(pointer(card))
 end
 
+"""
+    fits_read_keyn(f::FITSFile, keynum::Int) -> (name, value, comment)
+
+Return the nth header record in the CHU. The first keyword in the header is at `keynum = 1`.
+"""
 function fits_read_keyn(f::FITSFile, keynum::Integer)
     keyname = Vector{UInt8}(9)
     value = Vector{UInt8}(71)
@@ -381,6 +461,11 @@ function fits_read_keyn(f::FITSFile, keynum::Integer)
      unsafe_string(pointer(comment)))
 end
 
+"""
+    fits_write_key(f::FITSFile, keyname::String, value, comment::String)
+
+Write a keyword of the appropriate data type into the CHU.
+"""
 function fits_write_key(f::FITSFile, keyname::String,
                         value::Union{Real,String}, comment::String)
     cvalue = isa(value,String) ?  value :
@@ -447,6 +532,11 @@ function fits_update_key(f::FITSFile, key::String, value::Void,
     fits_assert_ok(status[])
 end
 
+"""
+    fits_write_record(f::FITSFile, card::String)
+
+Write a user specified keyword record into the CHU.
+"""
 function fits_write_record(f::FITSFile, card::String)
     status = Ref{Cint}(0)
     ccall((:ffprec,libcfitsio), Cint,
@@ -455,6 +545,11 @@ function fits_write_record(f::FITSFile, card::String)
     fits_assert_ok(status[])
 end
 
+"""
+    fits_delete_record(f::FITSFile, keynum::Int)
+
+Delete the keyword record at the specified index.
+"""
 function fits_delete_record(f::FITSFile, keynum::Integer)
     status = Ref{Cint}(0)
     ccall((:ffdrec,libcfitsio), Cint,
@@ -463,6 +558,11 @@ function fits_delete_record(f::FITSFile, keynum::Integer)
     fits_assert_ok(status[])
 end
 
+"""
+    fits_delete_key(f::FITSFile, keyname::String)
+
+Delete the keyword named `keyname`.
+"""
 function fits_delete_key(f::FITSFile, keyname::String)
     status = Ref{Cint}(0)
     ccall((:ffdkey,libcfitsio), Cint,
@@ -476,12 +576,6 @@ end
 
 Return the header of the CHDU as a string. If `nocomments` is `true`, comment
 cards are stripped from the output.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_hdr2str(f::FITSFile, nocomments::Bool=false)
     status = Ref{Cint}(0)
@@ -526,12 +620,6 @@ describing the type of the HDU.
 Possible symbols are: `image_hdu`, `ascii_table`, or `binary_table`.
 The value of `hduNum` must range between 1 and the value returned by
 [`fits_get_num_hdus`](@ref).
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_movabs_hdu end
 
@@ -540,12 +628,6 @@ function fits_movabs_hdu end
 
 Change the current HDU by moving forward or backward by `hduNum` HDUs
 (positive means forward), and return the same as [`fits_movabs_hdu`](@ref).
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_movrel_hdu end
 for (a,b) in ((:fits_movabs_hdu,"ffmahd"),
@@ -575,12 +657,6 @@ with a matching EXTNAME (or HDUNAME) keyword will be found. If `hdu_type_int`
 is -1 (the default) only the extname and extver values will be used to locate the
 correct extension. If no matching HDU is found in the file, the current HDU will
 remain unchanged.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_movnam_hdu(f::FITSFile, extname::String, extver::Integer=0,
                          hdu_type::Integer=-1)
@@ -616,12 +692,6 @@ end
     fits_get_img_size(f::FITSFile)
 
 Get the dimensions of the image.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_get_img_size end
 for (a, b) in ((:fits_get_img_type,      "ffgidt"),
@@ -641,12 +711,6 @@ end
     fits_create_img(f::FITSFile, t::Type, naxes::Vector{Int})
 
 Create a new primary array or IMAGE extension with a specified data type and size.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_create_img{T, S<:Integer}(f::FITSFile, ::Type{T},
                                         naxes::Vector{S})
@@ -662,12 +726,6 @@ end
     fits_write_pix(f::FITSFile, fpixel::Vector{Int}, nelements::Int, data::Array)
 
 Write pixels from `data` into the FITS file.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_write_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
                                       nelements::Integer, data::Array{T})
@@ -701,12 +759,6 @@ end
     fits_read_pix(f::FITSFile, fpixel::Vector{Int}, nelements::Int, data::Array)
 
 Read pixels from the FITS file into `data`.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_read_pix{S<:Integer,T}(f::FITSFile, fpixel::Vector{S},
                                      nelements::Int, data::Array{T})
@@ -765,20 +817,15 @@ const ColumnDef = Tuple{String, String, String}
 Append a new HDU containing a binary table. The meaning of the parameters is the same
 as in a call to [`fits_create_ascii_tbl`](@ref).
 
-In general, one should pick this function for creating tables in a new HDU, as binary tables
-require less space on the disk and are more efficient to read and write.
+In general, one should pick this function for creating tables in a new HDU,
+as binary tables require less space on the disk and are more efficient to read and write.
 (Moreover, a few datatypes are not supported in ASCII tables).
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_create_binary_tbl end
 
 """
-    fits_create_ascii_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef}, extname::String)
+    fits_create_ascii_tbl(f::FITSFile, numrows::Integer, coldefs::Array{ColumnDef},
+                          extname::String)
 
 Append a new HDU containing an ASCII table.
 
@@ -805,12 +852,6 @@ for further information.
 
 See also [`fits_create_binary_tbl`](@ref) for a similar function which
 creates binary tables.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_create_ascii_tbl end
 for (a,b) in ((:fits_create_binary_tbl, 2),
@@ -838,6 +879,12 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
     end
 end
 
+"""
+    fits_get_num_hdus(f::FITSFile)
+
+Return the number of HDUs in the file.
+"""
+function fits_get_num_hdus end
 for (a,b,T) in ((:fits_get_num_cols,  "ffgncl",  :Cint),
                 (:fits_get_num_hdus,  "ffthdu",  :Cint),
                 (:fits_get_rowsize,   "ffgrsz",  :Clong))
@@ -901,12 +948,6 @@ Return is a tuple containing
 - `typecode`: CFITSIO integer type code of the column.
 - `repcount`: Repetition count for the column.
 - `width`: Width of an individual element.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_get_coltype end
 @eval begin
@@ -1008,12 +1049,6 @@ specified type `T`.
   greater than one).
 * `data::Array`: at the end of the call, this will be filled with the elements read
   from the column. The length of the array gives the overall number of elements.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_read_col(f::FITSFile,
                        colnum::Integer,
@@ -1082,12 +1117,6 @@ to the end of a table.)
 * `firstelem::Integer`: specifies the position in the row where the first element
   will be written.
 * `data::Array`: contains the elements that are to be written to the column of the table.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_write_col(f::FITSFile,
                         colnum::Integer,
@@ -1128,12 +1157,6 @@ modify them later using [`fits_write_col`](@ref).
 
 Since the first row is at position 1, in order to insert rows *before*
 the first one `firstrow` must be equal to zero.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_insert_rows end
 
@@ -1142,12 +1165,6 @@ function fits_insert_rows end
 
 Delete `nrows` rows, starting from the one at position `firstrow`. The index of
 the first row is 1.
-
-### Example ###
-
-```julia
-
-```
 """
 function fits_delete_rows end
 for (a,b) in ((:fits_insert_rows, "ffirow"),

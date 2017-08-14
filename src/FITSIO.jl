@@ -84,7 +84,7 @@ A `FITS` object is a collection of "Header-Data Units" (HDUs) and supports the
 following operations:
 
 * `f[i]`: Return the `i`-th HDU.
-* `f[name] or `f[name, ver]`: Return the HDU containing the given the given EXTNAME
+* `f[name]` or `f[name, ver]`: Return the HDU containing the given the given EXTNAME
   (or HDUNAME) keyword (an String), and optionally the given EXTVER (or HDUVER)
   number (an Integer).
 * Iteration:
@@ -92,7 +92,7 @@ following operations:
           ...
       end
 """
-function FITS end
+FITS
 type FITS
     fitsfile::FITSFile
     filename::AbstractString
@@ -142,11 +142,11 @@ end
 # could almost just use an OrderedDict for this, but we need to store
 # comments.
 """
-    FITSHeader(keys, values, comments
+    FITSHeader(keys, values, comments)
 
-Create a `FITSHeader from arrays of keywords, values and comments.
+Create a `FITSHeader` from arrays of keywords, values and comments.
 """
-function FITSHeader end
+FITSHeader
 type FITSHeader
     keys::Vector{String}
     values::Vector{Any}

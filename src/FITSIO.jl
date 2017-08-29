@@ -74,6 +74,25 @@ end
 # previously created HDUs about events that happen to the file, such
 # as deleting extensions. This could be done by, e.g., setting ext=-1
 # in the HDU object.
+"""
+    FITS(filename::String, mode::String="r")
+
+Open or create a FITS file. `mode` can be one of `"r"` (read-only), `"r+"` (read-write)
+or `"w"` (write). In "write" mode, any existing file of the same name is overwritten.
+
+A `FITS` object is a collection of "Header-Data Units" (HDUs) and supports the
+following operations:
+
+* `f[i]`: Return the `i`-th HDU.
+* `f[name]` or `f[name, ver]`: Return the HDU containing the given the given EXTNAME
+  (or HDUNAME) keyword (an String), and optionally the given EXTVER (or HDUVER)
+  number (an Integer).
+* Iteration:
+      for hdu in f
+          ...
+      end
+"""
+FITS
 type FITS
     fitsfile::FITSFile
     filename::AbstractString
@@ -122,6 +141,12 @@ end
 # (key, value, comment) information for each card in a header. We
 # could almost just use an OrderedDict for this, but we need to store
 # comments.
+"""
+    FITSHeader(keys, values, comments)
+
+Create a `FITSHeader` from arrays of keywords, values and comments.
+"""
+FITSHeader
 type FITSHeader
     keys::Vector{String}
     values::Vector{Any}

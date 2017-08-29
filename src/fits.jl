@@ -29,6 +29,11 @@ function show_ascii_table(io, names, cols, spaces=2, indent=0)
     end
 end
 
+"""
+    length(f::FITS)
+
+Number of HDUs in the file.
+"""
 function length(f::FITS)
     fits_assert_open(f.fitsfile)
     Int(fits_get_num_hdus(f.fitsfile))
@@ -122,7 +127,14 @@ function getindex(f::FITS, name::AbstractString, ver::Int=0)
     return f.hdus[i]
 end
 
+"""
+    close(f::FITS)
 
+Close the file.
+
+Subsequent attempts to operate on `f` will result in an error. `FITS` objects are also
+automatically closed when they are garbage collected.
+"""
 function close(f::FITS)
     fits_assert_open(f.fitsfile)
     fits_close_file(f.fitsfile)

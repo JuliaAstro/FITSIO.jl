@@ -126,6 +126,11 @@ function read_internal(hdu::ImageHDU, I::Union{Range{Int}, Integer, Colon}...)
 end
 
 # general method and version that returns a single value rather than 0-d array
+"""
+    read(hdu::ImageHDU, range...)
+
+Read a subsection of the image from disk.
+"""
 read(hdu::ImageHDU, I::Union{Range{Int}, Int, Colon}...) =
     read_internal(hdu, I...)
 read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]

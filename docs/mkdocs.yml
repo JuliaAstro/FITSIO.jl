@@ -1,7 +1,7 @@
 site_name:        FITSIO.jl
 repo_url:         https://github.com/JuliaAstro/FITSIO.jl
 site_description: Flexible Image Transport System (FITS) support for Julia
-site_author:      Kyle Barbary
+site_author:      FITSIO.jl developers
 
 theme: cinder
 

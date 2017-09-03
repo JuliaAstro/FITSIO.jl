@@ -12,4 +12,6 @@ makedocs(
 deploydocs(
     repo = "github.com/JuliaAstro/FITSIO.jl.git",
     target = "build",
+    deps = Deps.pip("mkdocs", "python-markdown-math"),
+    julia  = "0.6",
 )

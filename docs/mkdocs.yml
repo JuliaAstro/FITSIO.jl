@@ -3,7 +3,7 @@ repo_url:         https://github.com/JuliaAstro/FITSIO.jl
 site_description: Flexible Image Transport System (FITS) support for Julia
 site_author:      FITSIO.jl developers
 
-theme: cinder
+theme: readthedocs
 
 extra_css:
   - assets/Documenter.css

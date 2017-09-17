@@ -184,7 +184,7 @@ function show(io::IO, hdu::TableHDU)
         Vector{String}[colnames, colrowsizes, coltypes, coltforms],
         2, 9)
     if showlegend
-        print(io, "\n         (*) = variable-length column\n")
+        print(io, "\n\n         (*) = variable-length column")
     end
 end
 

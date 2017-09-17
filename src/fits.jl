@@ -19,13 +19,13 @@ function show_ascii_table(io, names, cols, spaces=2, indent=0)
     for i = 1:ncols
         print(io, rpad(names[i], lengths[i]))
     end
-    print(io, "\n")
+    println(io)
     for j = 1:nrows
         print(io, " "^indent)
         for i=1:ncols
             print(io, rpad(cols[i][j], lengths[i]))
         end
-        print(io, "\n")
+        j != nrows && println(io)
     end
 end
 

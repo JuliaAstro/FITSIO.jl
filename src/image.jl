@@ -21,8 +21,7 @@ function show(io::IO, hdu::ImageHDU)
     HDU: $(hdu.ext)$(fits_get_ext_info_string(hdu.fitsfile))
     Type: Image
     Datatype: $datainfo
-    Datasize: $(tuple(sz...))
-    """)
+    Datasize: $(tuple(sz...))""")
 end
 
 # Get image dimensions

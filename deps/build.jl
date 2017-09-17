@@ -69,7 +69,7 @@ if isapple()
     provides(Homebrew.HB, "cfitsio", libcfitsio, os=:Darwin)
 end
 
-@BinDeps.install @compat Dict(:libcfitsio => :libcfitsio)
+@BinDeps.install Dict(:libcfitsio => :libcfitsio)
 
 if iswindows()
     pop!(BinDeps.defaults)

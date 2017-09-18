@@ -86,13 +86,8 @@ _index_shape_dim(sz, dim, ::Colon) = (sz[dim],)
 _index_shape_dim(sz, dim, r::Range) = (length(r),)
 @inline _index_shape_dim(sz, dim, ::Colon, I...) =
     tuple(sz[dim], _index_shape_dim(sz, dim+1, I...)...)
-if VERSION >= v"0.5.0-dev"  # In Julia v0.5+ drop scalar-indexed dimensions.
-    @inline _index_shape_dim(sz, dim, ::Integer, I...) =
-        _index_shape_dim(sz, dim+1, I...)
-else
-    @inline _index_shape_dim(sz, dim, ::Integer, I...) =
-        tuple(1, _index_shape_dim(sz, dim+1, I...)...)
-end
+@inline _index_shape_dim(sz, dim, ::Integer, I...) =
+    _index_shape_dim(sz, dim+1, I...)
 @inline _index_shape_dim(sz, dim, r::Range, I...) =
     tuple(length(r), _index_shape_dim(sz, dim+1, I...)...)
 

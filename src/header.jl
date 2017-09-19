@@ -299,6 +299,7 @@ getindex(hdr::FITSHeader, key::String) = hdr.values[hdr.map[key]]
 getindex(hdr::FITSHeader, i::Integer) = hdr.values[i]
 
 function setindex!(hdr::FITSHeader, value::Any, key::String)
+    fits_assert_isascii(key)
     if in(key, hdr.keys)
         hdr.values[hdr.map[key]] = value
     else
@@ -328,9 +329,11 @@ get_comment(hdr::FITSHeader, i::Integer) = hdr.comments[i]
 Set the comment baed on keyword or index.
 """
 function set_comment!(hdr::FITSHeader, key::String, comment::String)
+    fits_assert_isascii(comment)
     hdr.comments[hdr.map[key]] = comment
 end
 function set_comment!(hdr::FITSHeader, i::Integer, comment::String)
+    fits_assert_isascii(comment)
     hdr.comments[i] = comment
 end
 

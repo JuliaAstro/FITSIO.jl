@@ -44,6 +44,7 @@ using .Libcfitsio
 # defined in Libcfitsio, even though it is not used there.
 import .Libcfitsio: libcfitsio,
                     fits_assert_ok,
+                    fits_assert_isascii,
                     TYPE_FROM_BITPIX
 
 # HDU Types
@@ -85,7 +86,7 @@ following operations:
 
 * `f[i]`: Return the `i`-th HDU.
 * `f[name]` or `f[name, ver]`: Return the HDU containing the given the given EXTNAME
-  (or HDUNAME) keyword (an String), and optionally the given EXTVER (or HDUVER)
+  (or HDUNAME) keyword (a String), and optionally the given EXTVER (or HDUVER)
   number (an Integer).
 * Iteration:
       for hdu in f

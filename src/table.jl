@@ -245,6 +245,7 @@ end
 
 function fits_write_var_col(f::FITSFile, colnum::Integer,
                             data::Vector{String})
+    for el in data; fits_assert_isascii(el); end
     status = Ref{Cint}(0)
     buffer = Ref{Ptr{UInt8}}()  # holds the address of the current row
     for i=1:length(data)
@@ -268,6 +269,7 @@ function write_internal(f::FITS, colnames::Vector{String},
                         coldata::Vector, hdutype, name, ver, header, units,
                         varcols)
     fits_assert_open(f.fitsfile)
+    for el in colnames; fits_assert_isascii(el); end
 
     # move to last HDU; table will be added after the CHDU
     nhdus = Int(fits_get_num_hdus(f.fitsfile))

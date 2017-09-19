@@ -35,14 +35,16 @@ using Base.Test
 
         @test_throws ErrorException f[100]
 
+        # Test representation
+        @test repr(f)[end-17:end] == "9          Image  "
+        @test repr(f[1])[1:6] == "File: "
+
         # test iteration
         for hdu in f
             @test size(hdu) == (5, 20)
         end
     end
-    if isfile(fname)
-        rm(fname)
-    end
+    rm(fname, force=true)
 
     # copy_section()
     fname1 = tempname() * ".fits"
@@ -99,6 +101,8 @@ end
         @test eltype(outcol) == eltype(incol)
     end
 
+    # Test representation
+    @test repr(f[2])[end-38:end] == "\n\n         (*) = variable-length column"
 
     ## ASCII tables
 
@@ -153,8 +157,7 @@ INTKEY  =                    1
 BOOLKEY =                    T / boolean keyword
 STRKEY  =       'string value' / string value
 COMMENT this is a comment
-HISTORY this is a history
-"""
+HISTORY this is a history"""
 
     inhdr["INTKEY"] = 2  # test setting by key
     inhdr[1] = 2.0  # test settting by index

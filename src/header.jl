@@ -336,14 +336,10 @@ end
 
 # Display the header
 function show(io::IO, hdr::FITSHeader)
-    for i=1:length(hdr)
-        cl = length(hdr.comments[i])
+    n = length(hdr)
+    for i=1:n
         if hdr.keys[i] == "COMMENT" || hdr.keys[i] == "HISTORY"
-            if cl > 71
-                @printf io "%s %s\n" hdr.keys[i] hdr.comments[i][1:71]
-            else
-                @printf io "%s %s\n" hdr.keys[i] hdr.comments[i]
-            end
+            @printf io "%s %s" hdr.keys[i] hdr.comments[i][1:min(71, end)]
         else
             @printf io "%-8s" hdr.keys[i]
             if hdr.values[i] === nothing
@@ -355,14 +351,10 @@ function show(io::IO, hdr::FITSHeader)
                 rc = length(val) <= 20 ? 50 : 70 - length(val)
             end
 
-            if cl > 0
-                if cl > rc - 3
-                    @printf io " / %s" hdr.comments[i][1:rc-3]
-                else
-                    @printf io " / %s" hdr.comments[i]
-                end
+            if length(hdr.comments[i]) > 0
+                @printf io " / %s" hdr.comments[i][1:min(rc-3, end)]
             end
-            print(io, "\n")
         end
+        i != n && println(io)
     end
 end

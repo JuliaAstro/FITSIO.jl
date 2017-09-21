@@ -208,6 +208,9 @@ function fits_assert_ok(status::Cint, filename = nothing)
     end
 end
 
+fits_assert_isascii(str::String) =
+    !isascii(str) && error("FITS file format accepts ASCII strings only")
+
 fits_get_version() = ccall((:ffvers, libcfitsio), Cfloat, (Ptr{Cfloat},), &0.)
 
 # -----------------------------------------------------------------------------
@@ -468,6 +471,8 @@ Write a keyword of the appropriate data type into the CHU.
 """
 function fits_write_key(f::FITSFile, keyname::String,
                         value::Union{Real,String}, comment::String)
+    fits_assert_isascii(keyname)
+    fits_assert_isascii(comment)
     cvalue = isa(value,String) ?  value :
              isa(value,Bool) ? Cint[value] : reinterpret(UInt8, [value])
     status = Ref{Cint}(0)
@@ -485,6 +490,7 @@ function fits_write_date(f::FITSFile)
 end
 
 function fits_write_comment(f::FITSFile, comment::String)
+    fits_assert_isascii(comment)
     status = Ref{Cint}(0)
     ccall((:ffpcom, libcfitsio), Cint, (Ptr{Void}, Ptr{UInt8}, Ref{Cint}),
           f.ptr, comment, status)
@@ -492,6 +498,7 @@ function fits_write_comment(f::FITSFile, comment::String)
 end
 
 function fits_write_history(f::FITSFile, history::String)
+    fits_assert_isascii(history)
     status = Ref{Cint}(0)
     ccall((:ffphis, libcfitsio), Cint, (Ptr{Void}, Ptr{UInt8}, Ref{Cint}),
           f.ptr, history, status)
@@ -505,6 +512,7 @@ for (a,T,S) in (("ffukys", :(String), :(Ptr{UInt8})),
     @eval begin
         function fits_update_key(f::FITSFile, key::String, value::$T,
                                  comment::Union{String, Ptr{Void}}=C_NULL)
+            isa(value, String) && fits_assert_isascii(value)
             status = Ref{Cint}(0)
             ccall(($a, libcfitsio), Cint,
                   (Ptr{Void}, Ptr{UInt8}, $S, Ptr{UInt8}, Ref{Cint}),
@@ -516,6 +524,7 @@ end
 
 function fits_update_key(f::FITSFile, key::String, value::AbstractFloat,
                          comment::Union{String, Ptr{Void}}=C_NULL)
+    isa(comment, String) && fits_assert_isascii(comment)
     status = Ref{Cint}(0)
     ccall(("ffukyd", libcfitsio), Cint,
           (Ptr{Void}, Ptr{UInt8}, Cdouble, Cint, Ptr{UInt8}, Ref{Cint}),
@@ -525,6 +534,7 @@ end
 
 function fits_update_key(f::FITSFile, key::String, value::Void,
                          comment::Union{String, Ptr{Void}}=C_NULL)
+    isa(comment, String) && fits_assert_isascii(comment)
     status = Ref{Cint}(0)
     ccall(("ffukyu", libcfitsio), Cint,
           (Ptr{Void}, Ptr{UInt8}, Ptr{UInt8}, Ref{Cint}),
@@ -538,6 +548,7 @@ end
 Write a user specified keyword record into the CHU.
 """
 function fits_write_record(f::FITSFile, card::String)
+    fits_assert_isascii(card)
     status = Ref{Cint}(0)
     ccall((:ffprec,libcfitsio), Cint,
         (Ptr{Void},Ptr{UInt8},Ref{Cint}),
@@ -860,6 +871,8 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
         function ($a)(f::FITSFile, numrows::Integer,
                       coldefs::Array{ColumnDef}, extname::String)
 
+            fits_assert_isascii(extname)
+
             # get length and convert coldefs to three arrays of Ptr{Uint8}
             ntype = length(coldefs)
             ttype = [pointer(x[1]) for x in coldefs]
@@ -1123,6 +1136,7 @@ function fits_write_col(f::FITSFile,
                         firstrow::Integer,
                         firstelem::Integer,
                         data::Array{String})
+    for el in data; fits_assert_isascii(el); end
     status = Ref{Cint}(0)
     ccall((:ffpcls, libcfitsio), Cint,
           (Ptr{Void}, Cint, Int64, Int64, Int64,

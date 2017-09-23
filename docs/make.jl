@@ -5,13 +5,15 @@ makedocs(
     format = :html,
     sitename = "FITSIO",
     pages    = Any[
-        "Introduction"   => "index.md",
+        "Introduction" => "index.md",
+        "API Reference" => "api.md"
     ]
 )
 
 deploydocs(
     repo = "github.com/JuliaAstro/FITSIO.jl.git",
     target = "build",
-    deps = Deps.pip("mkdocs", "python-markdown-math"),
+    deps = nothing,
+    make = nothing,
     julia  = "0.6",
 )

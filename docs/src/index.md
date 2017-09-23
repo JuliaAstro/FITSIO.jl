@@ -1,12 +1,17 @@
 # FITSIO.jl
 
-A [Julia](http://julialang.org) package for reading and writing Flexible Image Transport System (FITS) files, based on the [cfitsio](http://heasarc.gsfc.nasa.gov/fitsio/) library.
+A [Julia](http://julialang.org) package for reading and writing
+Flexible Image Transport System (FITS) files, based on the
+[cfitsio](http://heasarc.gsfc.nasa.gov/fitsio/) library.
 
-The interface is inspired by Erin Sheldon's [fitsio](https://github.com/esheldon/fitsio) Python package.
+The interface is inspired by Erin Sheldon's
+[fitsio](https://github.com/esheldon/fitsio) Python package.
 
 ## Installation
 
-FITSIO is available for Julia 0.6 and later versions, and can be installed with [Julia](https://github.com/julialang/julia.jl)'s built-in package manager. In a Julia session run the command
+FITSIO is available for Julia 0.5 and later versions, and can be
+installed with [Julia](https://github.com/julialang/julia.jl)'s
+built-in package manager. In a Julia session run the command
 
 ```julia
 julia> Pkg.update()
@@ -34,7 +39,9 @@ HDUs: extnum extname  exttype
 (At the REPL, information about the file contents is shown.)
 
 
-A FITS file consists of one or more header-data units (HDUs), concatenated one after the other. The `FITS` object therefore is represented as a collection of these HDUs.
+A FITS file consists of one or more header-data units (HDUs),
+concatenated one after the other. The `FITS` object therefore is
+represented as a collection of these HDUs.
 
 Get information about the first HDU:
 ```julia

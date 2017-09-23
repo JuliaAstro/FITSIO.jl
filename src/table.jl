@@ -341,6 +341,16 @@ function write_internal(f::FITS, colnames::Vector{String},
     nothing
 end
 
+
+"""
+    write(f::FITS, colnames, coldata; hdutype=TableHDU, name=nothing, ver=nothing, header=nothing, units=nothing, varcols=nothing)
+
+Same as `write(f::FITS, data::Dict; ...)` but providing column names
+and column data as a separate arrays. This is useful for specifying
+the order of the columns. Column names must be `Array{ASCIIString}`
+and column data must be an array of arrays.
+
+"""
 function write(f::FITS, colnames::Vector{String}, coldata::Vector;
                units=nothing, header=nothing, hdutype=TableHDU,
                name=nothing, ver=nothing, varcols=nothing)
@@ -351,6 +361,45 @@ function write(f::FITS, colnames::Vector{String}, coldata::Vector;
                    units, varcols)
 end
 
+
+"""
+    write(f::FITS, data::Dict; hdutype=TableHDU, name=nothing, ver=nothing, header=nothing, units=nothing, varcols=nothing)
+
+Create a new table extension and write data to it. If the FITS file is
+currently empty then a dummy primary array will be created before
+appending the table extension to it. `data` should be a dictionary
+with ASCIIString keys (giving the column names) and Array values
+(giving data to write to each column). The following types are
+supported in binary tables: `Uint8`, `Int8`, `Uint16`, `Int16`,
+`Uint32`, `Int32`, `Int64`, `Float32`, `Float64`, `Complex64`,
+`Complex128`, `ASCIIString`, `Bool`.
+
+Optional inputs:
+
+- `hdutype`: Type of table extension to create. Can be either
+  `TableHDU` (binary table) or `ASCIITableHDU` (ASCII table).
+- `name`: Name of extension.
+- `ver`: Version of extension (Int).
+- `header`: FITSHeader instance to write to new extension.
+- `units`: Dictionary mapping column name to units (as a string).
+- `varcols`: An array giving the column names or column indicies to
+  write as "variable-length columns".
+
+!!! note "Variable length columns"
+
+    Variable length columns allow a column's row entries to contain
+    arrays of different lengths. They can potentially save diskspace
+    when the rows of a column vary greatly in length, as the column
+    data is all written to a contiguous heap area at the end of the
+    table. Only column data of type `Vector{ASCIIString}` or types
+    such as `Vector{Vector{UInt8}}` can be written as variable
+    length columns. In the second case, ensure that the column data
+    type is a *leaf type*. That is, the type cannot be
+    `Vector{Vector{T}}`, which would be an array of arrays having
+    potentially non-uniform element types (which would not be writable
+    as a FITS table column).
+
+"""
 function write(f::FITS, data::Dict{String};
                units=nothing, header=nothing, hdutype=TableHDU,
                name=nothing, ver=nothing, varcols=nothing)
@@ -413,6 +462,19 @@ function read(hdu::ASCIITableHDU, colname::String)
     return result
 end
 
+
+"""
+    read(hdu, colname)
+
+Read a column as an array from the given table HDU.
+
+The column name may contain wild card characters (`*`, `?`, or
+`#`). The `*` wild card character matches any sequence of
+characters (including zero characters) and the `?` character
+matches any single character. The `#` wildcard will match any
+consecutive string of decimal digits (0-9). The string must match a
+unique column.
+"""
 function read(hdu::TableHDU, colname::String)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)

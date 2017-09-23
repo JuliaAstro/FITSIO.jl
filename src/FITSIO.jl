@@ -160,7 +160,7 @@ type FITSHeader
             (length(keys) != length(comments)))
             error("keys, values, comments must be same length")
         end
-        map = Dict{String, Int64}()
+        map = Dict{String, Int}()
         for i in 1:length(keys)
           map[keys[i]] = i
         end
@@ -178,7 +178,7 @@ include("table.jl")  # TableHDU & ASCIITableHDU methods
 
 Return the version of the underlying CFITSIO library
 
-### Example ###
+# Example
 
 ```julia
 julia> FITSIO.libcfitsio_version()

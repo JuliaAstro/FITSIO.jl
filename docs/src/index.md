@@ -31,10 +31,10 @@ julia> using FITSIO
 
 julia> f = FITS("file.fits")
 File: file.fits
-Mode: r
-HDUs: extnum extname  exttype
-       1             image_hdu
-       2             binary_table
+Mode: "w" (read-write)
+HDUs: Num  Name  Type   
+      1          Image  
+      2          Table  
 ```
 (At the REPL, information about the file contents is shown.)
 
@@ -47,13 +47,11 @@ Get information about the first HDU:
 ```julia
 julia> f[1]
 File: file.fits
-Extension: 1
-Type: IMAGE
-image info:
-  bitpix: -64
-  size: (800,800)
+HDU: 1
+Type: Image
+Datatype: Float64
+Datasize: (800, 800)
 ```
-
 
 Iterate over HDUs in the file:
 ```julia
@@ -90,12 +88,12 @@ Show info about a binary table:
 ```julia
 julia> f[2]
 File: file.fits
-Extension: 2
-Type: BINARY TABLE
+HDU: 2
+Type: Table
 Rows: 20
-Columns:
-    col2 (5A)
-    col1 (1K)
+Columns: Name  Size  Type    TFORM  
+         col2        String  5A     
+         col1        Int64   1K     
 ```
 
 
@@ -172,7 +170,7 @@ To write some header keywords in the new extension, pass a
 
 Write a table to the file:
 ```julia
-julia> data = ["col1"=>[1., 2., 3.], "col2"=>[1, 2, 3]];
+julia> data = Dict("col1"=>[1., 2., 3.], "col2"=>[1, 2, 3]);
 
 julia> write(f, data)  # write a new binary table to a new extension
 ```

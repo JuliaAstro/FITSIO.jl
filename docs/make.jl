@@ -3,7 +3,7 @@ using Documenter, FITSIO
 makedocs(
     modules = [FITSIO],
     format = :html,
-    sitename = "FITSIO",
+    sitename = "FITSIO.jl",
     pages    = Any[
         "Introduction" => "index.md",
         "API Reference" => "api.md",

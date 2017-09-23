@@ -349,7 +349,6 @@ Same as `write(f::FITS, data::Dict; ...)` but providing column names
 and column data as a separate arrays. This is useful for specifying
 the order of the columns. Column names must be `Array{ASCIIString}`
 and column data must be an array of arrays.
-
 """
 function write(f::FITS, colnames::Vector{String}, coldata::Vector;
                units=nothing, header=nothing, hdutype=TableHDU,
@@ -398,7 +397,6 @@ Optional inputs:
     `Vector{Vector{T}}`, which would be an array of arrays having
     potentially non-uniform element types (which would not be writable
     as a FITS table column).
-
 """
 function write(f::FITS, data::Dict{String};
                units=nothing, header=nothing, hdutype=TableHDU,

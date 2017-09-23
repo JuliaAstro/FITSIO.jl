@@ -69,6 +69,14 @@ length(hdu::ImageHDU) = prod(size(hdu))
 endof(hdu::ImageHDU) = length(hdu::ImageHDU)
 
 # Read a full image from an HDU
+"""
+    read(hdu::ImageHDU)
+    read(hdu::ImageHDU, range...)
+
+Read the data array or a subset thereof from disk. The first form
+reads the entire data array. The second form reads a slice of the array
+given by the specified ranges or integers.
+"""
 function read(hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
@@ -137,11 +145,6 @@ function read_internal(hdu::ImageHDU, I::Union{Range{Int}, Integer, Colon}...)
 end
 
 # general method and version that returns a single value rather than 0-d array
-"""
-    read(hdu::ImageHDU, range...)
-
-Read a subsection of the image from disk.
-"""
 read(hdu::ImageHDU, I::Union{Range{Int}, Int, Colon}...) =
     read_internal(hdu, I...)
 read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]

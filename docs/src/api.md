@@ -12,8 +12,14 @@ close(::FITS)
 
 ```@docs
 read_header
-FITSHeader
 read_key
+FITSHeader
+length(::FITSHeader)
+haskey(::FITSHeader, ::String)
+keys(::FITSHeader)
+values(::FITSHeader)
+get_comment
+set_comment!
 ```
 
 ## Image operations
@@ -21,7 +27,6 @@ read_key
 ```@docs
 write{T}(::FITS, ::Array{T})
 read(::ImageHDU)
-read(::ImageHDU, ::Union{Range{Int}, Int, Colon}...)
 ndims(::ImageHDU)
 size(::ImageHDU)
 length(::ImageHDU)

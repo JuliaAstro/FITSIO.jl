@@ -6,7 +6,8 @@ makedocs(
     sitename = "FITSIO",
     pages    = Any[
         "Introduction" => "index.md",
-        "API Reference" => "api.md"
+        "API Reference" => "api.md",
+        "Libcfitsio Submodule" => "libcfitsio.md"
     ]
 )
 

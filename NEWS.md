@@ -1,3 +1,14 @@
+v0.11.0 (unreleased)
+====================
+
+- Drop support for Julia 0.4.
+- Methods now accept `String` and, for strings written to the FITS file,
+  an error is raised for non-ASCII strings.
+- Homebrew.jl used for libcfitsio on OS X.
+- Remove extra newline from `show` output.
+- Fix some deprecation warnings on Julia 0.7.
+- Inline docstrings and HTML documentation generated with Documenter.jl.
+
 v0.10.0 (2017-06-13)
 ====================
 

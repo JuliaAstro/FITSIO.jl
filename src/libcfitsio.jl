@@ -871,7 +871,16 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
         function ($a)(f::FITSFile, numrows::Integer,
                       coldefs::Array{ColumnDef}, extname::String)
 
+            # Ensure that extension name, column names and units are
+            # ASCII, as these get written to the file. We don't check
+            # need to check that tform is ASCII because presumably
+            # cfitsio will thrown an appropriate error if it doesn't
+            # recognize the tform string.
             fits_assert_isascii(extname)
+            for coldef in coldefs
+                fits_assert_isascii(coldef[1])
+                fits_assert_isascii(coldef[3])
+            end
 
             # get length and convert coldefs to three arrays of Ptr{Uint8}
             ntype = length(coldefs)

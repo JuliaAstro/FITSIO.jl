@@ -267,6 +267,7 @@ Open an existing data file (like [`fits_open_file`](@ref)) and move to the first
 HDU containing either an ASCII or a binary table.
 """
 function fits_open_table end
+
 for (a,b) in ((:fits_open_data, "ffdopn"),
               (:fits_open_file, "ffopen"),
               (:fits_open_image,"ffiopn"),
@@ -315,6 +316,7 @@ function fits_close_file end
 Close an opened FITS file (like [`fits_close_file`](@ref)) and removes it from the disk.
 """
 function fits_delete_file end
+
 for (a,b) in ((:fits_close_file, "ffclos"),
               (:fits_delete_file,"ffdelt"))
     @eval begin
@@ -334,7 +336,7 @@ for (a,b) in ((:fits_close_file, "ffclos"),
     end
 end
 
-close(f::FITSFile) = fits_close_file(f)
+Base.close(f::FITSFile) = fits_close_file(f)
 
 """
     fits_file_name(f::FITSFile)
@@ -367,8 +369,8 @@ end
 """
     fits_get_hdrspace(f::FITSFile) -> (keysexist, morekeys)
 
-Return the number of existing keywords (not counting the END keyword) and the amount
-of space currently available for more keywords.
+Return the number of existing keywords (not counting the END keyword)
+and the amount of space currently available for more keywords.
 """
 function fits_get_hdrspace(f::FITSFile)
     keysexist = Ref{Cint}(0)
@@ -431,10 +433,12 @@ function fits_read_keyword(f::FITSFile, keyname::String)
     unsafe_string(pointer(value)), unsafe_string(pointer(comment))
 end
 
+
 """
     fits_read_record(f::FITSFile, keynum::Int) -> String
 
-Return the nth header record in the CHU. The first keyword in the header is at `keynum = 1`.
+Return the nth header record in the CHU. The first keyword in the
+header is at `keynum = 1`.
 """
 function fits_read_record(f::FITSFile, keynum::Integer)
     card = Vector{UInt8}(81)
@@ -445,6 +449,7 @@ function fits_read_record(f::FITSFile, keynum::Integer)
     fits_assert_ok(status[])
     unsafe_string(pointer(card))
 end
+
 
 """
     fits_read_keyn(f::FITSFile, keynum::Int) -> (name, value, comment)
@@ -871,7 +876,16 @@ for (a,b) in ((:fits_create_binary_tbl, 2),
         function ($a)(f::FITSFile, numrows::Integer,
                       coldefs::Array{ColumnDef}, extname::String)
 
+            # Ensure that extension name, column names and units are
+            # ASCII, as these get written to the file. We don't check
+            # need to check that tform is ASCII because presumably
+            # cfitsio will thrown an appropriate error if it doesn't
+            # recognize the tform string.
             fits_assert_isascii(extname)
+            for coldef in coldefs
+                fits_assert_isascii(coldef[1])
+                fits_assert_isascii(coldef[3])
+            end
 
             # get length and convert coldefs to three arrays of Ptr{Uint8}
             ntype = length(coldefs)
@@ -963,6 +977,7 @@ Return is a tuple containing
 - `width`: Width of an individual element.
 """
 function fits_get_coltype end
+
 @eval begin
     function fits_get_coltype(ff::FITSFile, colnum::Integer)
         typecode = Ref{Cint}(0)
@@ -1181,6 +1196,7 @@ Delete `nrows` rows, starting from the one at position `firstrow`. The index of
 the first row is 1.
 """
 function fits_delete_rows end
+
 for (a,b) in ((:fits_insert_rows, "ffirow"),
               (:fits_delete_rows, "ffdrow"))
     @eval begin

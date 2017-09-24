@@ -25,13 +25,24 @@ function show(io::IO, hdu::ImageHDU)
 end
 
 # Get image dimensions
+"""
+    ndims(hdu::ImageHDU)
+
+Get number of image dimensions, without reading the image into memory.
+"""
 function ndims(hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     fits_get_img_dim(hdu.fitsfile)
 end
 
-# Get image size
+"""
+    size(hdu::ImageHDU)
+    size(hdu::ImageHDU, i)
+
+Get image dimensions (or `i`th dimension), without reading the image
+into memory.
+"""
 function size(hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
@@ -46,12 +57,26 @@ function size(hdu::ImageHDU, i::Integer)
     sz[i]
 end
 
+"""
+    length(hdu::ImageHDU)
+
+Get total number of pixels in image (product of ``size(hdu)``).
+"""
+length(hdu::ImageHDU) = prod(size(hdu))
+
 # `endof` is needed so that hdu[:] can throw DimensionMismatch
 # when ndim != 1, rather than no method.
-length(hdu::ImageHDU) = prod(size(hdu))
 endof(hdu::ImageHDU) = length(hdu::ImageHDU)
 
 # Read a full image from an HDU
+"""
+    read(hdu::ImageHDU)
+    read(hdu::ImageHDU, range...)
+
+Read the data array or a subset thereof from disk. The first form
+reads the entire data array. The second form reads a slice of the array
+given by the specified ranges or integers.
+"""
 function read(hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
@@ -120,18 +145,20 @@ function read_internal(hdu::ImageHDU, I::Union{Range{Int}, Integer, Colon}...)
 end
 
 # general method and version that returns a single value rather than 0-d array
-"""
-    read(hdu::ImageHDU, range...)
-
-Read a subsection of the image from disk.
-"""
 read(hdu::ImageHDU, I::Union{Range{Int}, Int, Colon}...) =
     read_internal(hdu, I...)
 read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 
-# Add a new ImageHDU to a FITS object
-# The following Julia data types are supported for writing images by cfitsio:
-# Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64, Float32, Float64
+
+"""
+    write(f::FITS, data::Array; header=nothing, name=nothing, ver=nothing)
+
+Add a new image HDU to FITS file `f` with contents `data`. The
+following array element types are supported: `UInt8`, `Int8`,
+`UInt16`, `Int16`, `UInt32`, `Int32`, `Int64`, `Float32`,
+`Float64`. If a `FITSHeader` object is passed as the `header` keyword
+argument, the header will also be added to the new HDU.
+"""
 function write{T}(f::FITS, data::Array{T};
                   header::Union{Void, FITSHeader}=nothing,
                   name::Union{Void, String}=nothing,
@@ -163,6 +190,31 @@ cfitsio_range_string(r::UnitRange) = @sprintf "%d:%d" first(r) last(r)
 cfitsio_range_string(r::StepRange) =
     @sprintf "%d:%d:%d" first(r) last(r) step(r)
 
+"""
+    copy_section(hdu, dest, r...)
+
+Copy a rectangular section of an image and write it to a new FITS
+primary image or image extension in `FITS` object `dest`. The new
+image HDU is appended to the end of `dest`. All the keywords in the
+input image will be copied to the output image. The common WCS
+keywords will be updated if necessary to correspond to the coordinates
+of the section.
+
+# Examples
+
+Copy the lower-left 200 x 200 pixel section of the image in ``hdu``
+to an open file, `f`
+
+```
+copy_section(hdu, f, 1:200, 1:200)
+```
+
+Same as above but only copy odd columns in y:
+
+```
+copy_section(hdu, f, 1:200, 1:2:200)
+```
+"""
 function copy_section(hdu::ImageHDU, dest::FITS, r::Range{Int}...)
     fits_assert_open(hdu.fitsfile)
     fits_assert_open(dest.fitsfile)

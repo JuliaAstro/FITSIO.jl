@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Introduction · FITSIO.jl</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>FITSIO.jl</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" action="search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li class="current"><a class="toctext" href="index.html">Introduction</a><ul class="internal"><li><a class="toctext" href="#Installation-1">Installation</a></li><li><a class="toctext" href="#Usage-1">Usage</a></li></ul></li><li><a class="toctext" href="api.html">API Reference</a></li><li><a class="toctext" href="libcfitsio.html">Libcfitsio Submodule</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href="index.html">Introduction</a></li></ul><a class="edit-page" href="https://github.com/JuliaAstro/FITSIO.jl/tree/9c235e3711c9828144bfbecb9d241b13973b29f6/docs/src/index.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Introduction</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="FITSIO.jl-1" href="#FITSIO.jl-1">FITSIO.jl</a></h1><p>A <a href="http://julialang.org">Julia</a> package for reading and writing Flexible Image Transport System (FITS) files, based on the <a href="http://heasarc.gsfc.nasa.gov/fitsio/">cfitsio</a> library.</p><p>The interface is inspired by Erin Sheldon&#39;s <a href="https://github.com/esheldon/fitsio">fitsio</a> Python package.</p><h2><a class="nav-anchor" id="Installation-1" href="#Installation-1">Installation</a></h2><p>FITSIO is available for Julia 0.5 and later versions, and can be installed with <a href="https://github.com/julialang/julia.jl">Julia</a>&#39;s built-in package manager. In a Julia session run the command</p><pre><code class="language-julia">julia&gt; Pkg.update()
+julia&gt; Pkg.add(&quot;FITSIO.jl&quot;)</code></pre><p>On Linux or OS X, if it isn&#39;t already installed on your system, the cfitsio library is automatically downloaded and compiled (in your Julia packages directory). On Windows, a compiled dll will be downloaded.</p><h2><a class="nav-anchor" id="Usage-1" href="#Usage-1">Usage</a></h2><p>To open an existing file for reading:</p><pre><code class="language-julia">julia&gt; using FITSIO
+
+julia&gt; f = FITS(&quot;file.fits&quot;)
+File: file.fits
+Mode: &quot;w&quot; (read-write)
+HDUs: Num  Name  Type   
+      1          Image  
+      2          Table  </code></pre><p>(At the REPL, information about the file contents is shown.)</p><p>A FITS file consists of one or more header-data units (HDUs), concatenated one after the other. The <code>FITS</code> object therefore is represented as a collection of these HDUs.</p><p>Get information about the first HDU:</p><pre><code class="language-julia">julia&gt; f[1]
+File: file.fits
+HDU: 1
+Type: Image
+Datatype: Float64
+Datasize: (800, 800)</code></pre><p>Iterate over HDUs in the file:</p><pre><code class="language-julia">julia&gt; for hdu in f; println(typeof(hdu)); end
+FITSIO.ImageHDU
+FITSIO.TableHDU</code></pre><p>Each HDU can contain image data, or table data (either binary or ASCII-formatted). For image extensions, get the size of the image without reading it:</p><pre><code class="language-julia">julia&gt; ndims(f[1])
+    2
+
+julia&gt; size(f[1])
+(800,800)
+
+julia&gt; size(f[1], 2)
+800</code></pre><p>Read an image from disk:</p><pre><code class="language-julia">julia&gt; data = read(f[1]);  # read an image from disk
+
+julia&gt; data = read(f[1], :, 790:end);  # read just a subset of image</code></pre><p>Show info about a binary table:</p><pre><code class="language-julia">julia&gt; f[2]
+File: file.fits
+HDU: 2
+Type: Table
+Rows: 20
+Columns: Name  Size  Type    TFORM  
+         col2        String  5A     
+         col1        Int64   1K     </code></pre><p>Read a column from the table:</p><pre><code class="language-julia"> julia&gt; data = read(f[2], &quot;col1&quot;)</code></pre><p>Read the entire header into memory and get values from it:</p><pre><code class="language-julia">julia&gt; header = read_header(f[1]);  # read the entire header from disk
+
+julia&gt; length(header)  # total number of records in header
+17
+
+julia&gt; haskey(header, &quot;NAXIS1&quot;)  # check if a key exists
+true
+
+julia&gt; header[&quot;NAXIS1&quot;]  # get value by keyword
+800
+
+julia&gt; header[4]  # get value by position
+800
+
+julia&gt; get_comment(header, &quot;NAXIS&quot;)  # get comment for a given keyword
+&quot;length of data axis 1&quot;</code></pre><p>Read just a single header record without reading the entire header:</p><pre><code class="language-julia">julia&gt; read_key(f[1], 4)  # by position
+(&quot;NAXIS1&quot;,800,&quot;length of data axis 1&quot;)
+
+julia&gt; read_key(f[1], &quot;NAXIS1&quot;)  # read by keyword
+(800,&quot;length of data axis 1&quot;)</code></pre><p>Manipulate a header in memory:</p><pre><code class="language-julia">julia&gt; header[&quot;NEWKEY&quot;] = 10  # change or add a keyword
+
+julia&gt; set_comment!(header, &quot;NEWKEY&quot;, &quot;this is a comment&quot;)</code></pre><p>Close the file:</p><pre><code class="language-julia">julia&gt; close(f)</code></pre><p>(<code>FITS</code> objects are also closed automatically when garbage collected.)</p><p>Open a new file for writing:</p><pre><code class="language-julia">julia&gt; f = FITS(&quot;newfile.fits&quot;, &quot;w&quot;);</code></pre><p>The second argument can be <code>&quot;r&quot;</code> (read-only; default), <code>&quot;r+&quot;</code> (read-write) or <code>&quot;w&quot;</code> (write). In &quot;write&quot; mode, any existing file of the same name is overwritten.</p><p>Write an image to the file:</p><pre><code class="language-julia">julia&gt; data = reshape([1:100], 5, 20);
+
+julia&gt; write(f, data)  # Write a new image extension with the data</code></pre><p>To write some header keywords in the new extension, pass a <code>FITSHeader</code> instance as a keyword: <code>write(f, data; header=header)</code></p><p>Write a table to the file:</p><pre><code class="language-julia">julia&gt; data = Dict(&quot;col1&quot;=&gt;[1., 2., 3.], &quot;col2&quot;=&gt;[1, 2, 3]);
+
+julia&gt; write(f, data)  # write a new binary table to a new extension</code></pre><footer><hr/><a class="next" href="api.html"><span class="direction">Next</span><span class="title">API Reference</span></a></footer></article></body></html>

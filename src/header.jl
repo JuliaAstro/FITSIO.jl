@@ -194,12 +194,10 @@ end
 # Public API
 
 """
-    read_key(hdu, key)
+    read_key(hdu, key::String) -> (value, comment)
+    read_key(hdu, key::Integer) -> (keyname, value, comment)
 
-Read the specified key and return a tuple of `(value, comment)`.
-
-The key, can be either the index of the header record (Integer)
-or the header keyword (String).
+Read the HDU header record specified by keyword or position.
 """
 function read_key(hdu::HDU, key::Integer)
     fits_assert_open(hdu.fitsfile)
@@ -214,6 +212,27 @@ function read_key(hdu::HDU, key::String)
     value, comment = fits_read_keyword(hdu.fitsfile, key)
     parse_header_val(value), comment
 end
+
+
+"""
+    write_key(hdu, key::String, value[, comment])
+
+Write a keyword value the HDU's header. `value` can be a standard
+header type (`String`, `Bool`, `Integer`, `AbstractFloat`) or
+`nothing`, in which case the value part of the record will be
+empty. If the keyword already exists, the value will be
+overwritten. The comment will only be overwritten if given. If the
+keyword does not already exist, a new record will be appended at the
+end of the header.
+"""
+function write_key(hdu::HDU, key::String,
+                   value::Union{String, Bool, Integer, AbstractFloat, Void},
+                   comment::Union{String, Ptr{Void}}=C_NULL)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    fits_update_key(hdu.fitsfile, key, value, comment)
+end
+
 
 """
     read_header(hdu)
@@ -295,6 +314,7 @@ keys(hdr::FITSHeader) = hdr.keys
 Array of values (not a copy).
 """
 values(hdr::FITSHeader) = hdr.values
+
 getindex(hdr::FITSHeader, key::String) = hdr.values[hdr.map[key]]
 getindex(hdr::FITSHeader, i::Integer) = hdr.values[i]
 

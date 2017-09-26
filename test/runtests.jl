@@ -48,25 +48,24 @@ using Base.Test
 
     # copy_section()
     fname1 = tempname() * ".fits"
-    f1 = FITS(fname1, "w")
-    indata = reshape(Float32[1:400;], 20, 20)
-    write(f1, indata)
-
     fname2 = tempname() * ".fits"
-    f2 = FITS(fname2, "w")
-    copy_section(f1[1], f2, 1:10, 1:10)
-    copy_section(f1[1], f2, 1:10, 1:2:20)
-    outdata = read(f2[1])
-    @test outdata == indata[1:10, 1:10]
-    outdata = read(f2[2])
-    @test outdata == indata[1:10, 1:2:20]
-    close(f1)
-    close(f2)
-    if isfile(fname1)
-        rm(fname1)
-    end
-    if isfile(fname2)
-        rm(fname2)
+    try
+        f1 = FITS(fname1, "w")
+        indata = reshape(Float32[1:400;], 20, 20)
+        write(f1, indata)
+
+        f2 = FITS(fname2, "w")
+        copy_section(f1[1], f2, 1:10, 1:10)
+        copy_section(f1[1], f2, 1:10, 1:2:20)
+        outdata = read(f2[1])
+        @test outdata == indata[1:10, 1:10]
+        outdata = read(f2[2])
+        @test outdata == indata[1:10, 1:2:20]
+        close(f1)
+        close(f2)
+    finally
+        rm(fname1, force=true)
+        rm(fname2, force=true)
     end
 end
 
@@ -126,7 +125,7 @@ end
         @test eltype(outcol) == expected_type[eltype(incol)]
     end
     close(f)
-    isfile(fname) && rm(fname)
+    rm(fname, force=true)
 end
 
 @testset "FITSHeader" begin
@@ -210,9 +209,7 @@ HISTORY this is a history"""
 
     # Clean up from last test.
     close(f)
-    if isfile(fname)
-        rm(fname)
-    end
+    rm(fname, force=true)
 end
 
 # -----------------------------------------------------------------------------
@@ -285,8 +282,8 @@ end
         write(f2, data; header=hdr)
         close(f2)
     finally
-        isfile(fname) && rm(fname)
-        isfile(fname2) && rm(fname2)
+        rm(fname, force=true)
+        rm(fname2, force=true)
     end
 end
 

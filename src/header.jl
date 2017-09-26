@@ -235,7 +235,7 @@ end
 
 
 """
-    read_header(hdu)
+    read_header(hdu) -> FITSHeader
 
 Read the entire header from the given HDU and return a `FITSHeader` object.
 The value of each header record is parsed as `Int`, `Float64`, `String`,
@@ -273,19 +273,18 @@ function read_header(hdu::HDU)
     FITSHeader(keys, values, comments)
 end
 
+
 """
-    read_header(hdu, String)
+    read_header(hdu, String) -> String
 
 Read the entire header from the given HDU as a single string.
 """
 function read_header(hdu::HDU, ::Type{String})
-    # Return the header as a raw string.
-
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-
     fits_hdr2str(hdu.fitsfile)
 end
+
 
 """
     length(hdr)

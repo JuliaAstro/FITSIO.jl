@@ -79,20 +79,25 @@ end
 """
     FITS(filename::String, mode::String="r")
 
-Open or create a FITS file. `mode` can be one of `"r"` (read-only), `"r+"` (read-write)
-or `"w"` (write). In "write" mode, any existing file of the same name is overwritten.
+Open or create a FITS file. `mode` can be one of `"r"` (read-only),
+`"r+"` (read-write) or `"w"` (write). In "write" mode, any existing
+file of the same name is overwritten.
 
-A `FITS` object is a collection of "Header-Data Units" (HDUs) and supports the
-following operations:
+A `FITS` object is a collection of "Header-Data Units" (HDUs) and
+supports the following operations:
 
 * `f[i]`: Return the `i`-th HDU.
-* `f[name]` or `f[name, ver]`: Return the HDU containing the given the given EXTNAME
-  (or HDUNAME) keyword (a String), and optionally the given EXTVER (or HDUVER)
-  number (an Integer).
+
+* `f[name]` or `f[name, ver]`: Return the HDU containing the given the
+  given EXTNAME (or HDUNAME) keyword (a String), and optionally the
+  given EXTVER (or HDUVER) number (an Integer).
+
 * Iteration:
-      for hdu in f
-          ...
-      end
+  ```
+  for hdu in f
+      ...
+  end
+  ```
 """
 FITS
 type FITS
@@ -125,8 +130,8 @@ end
 """
     FITS(f::Function, args...)
 
-Apply the function `f` to the result of `FITS(args...)` and close the resulting file
-descriptor upon completion.
+Apply the function `f` to the result of `FITS(args...)` and close the
+resulting file descriptor upon completion.
 """
 function FITS(f::Function, args...)
     io = FITS(args...)
@@ -137,18 +142,22 @@ function FITS(f::Function, args...)
     end
 end
 
-# FITSHeader
-#
-# An in-memory representation of the header of an HDU. It stores the
-# (key, value, comment) information for each card in a header. We
-# could almost just use an OrderedDict for this, but we need to store
-# comments.
-"""
-    FITSHeader(keys, values, comments)
 
-Create a `FITSHeader` from arrays of keywords, values and comments.
 """
-FITSHeader
+    FITSHeader(keys::Vector{String}, values::Vector, comments::Vector{String})
+
+An in-memory representation of the header of an HDU. It stores the
+(key, value, comment) information for each 80-character "card" in a header.
+
+Note that this structure is not linked to a FITS file in any way; it
+is just a convenient structure for storing the header contents after
+reading from a file. (This is similar to how an `Array` returned by
+`read(f[1])` is not linked to the FITS file `f`.)  Manipulating a
+`FITSHeader` will therefore have no immediate impact on any file, even
+if it was created by `read_header(::HDU)`.  You can, however, write a
+`FITSHeader` to a file using the `write(::FITS, ...)` methods that
+append a new HDU to a file.
+"""
 type FITSHeader
     keys::Vector{String}
     values::Vector{Any}

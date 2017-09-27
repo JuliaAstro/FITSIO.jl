@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Reference",
     "title": "FITSIO.FITS",
     "category": "Type",
-    "text": "FITS(filename::String, mode::String=\"r\")\n\nOpen or create a FITS file. mode can be one of \"r\" (read-only), \"r+\" (read-write) or \"w\" (write). In \"write\" mode, any existing file of the same name is overwritten.\n\nA FITS object is a collection of \"Header-Data Units\" (HDUs) and supports the following operations:\n\nf[i]: Return the i-th HDU.\nf[name] or f[name, ver]: Return the HDU containing the given the given EXTNAME (or HDUNAME) keyword (a String), and optionally the given EXTVER (or HDUVER) number (an Integer).\nIteration:     for hdu in f         ...     end\n\n\n\n"
+    "text": "FITS(filename::String, mode::String=\"r\")\n\nOpen or create a FITS file. mode can be one of \"r\" (read-only), \"r+\" (read-write) or \"w\" (write). In \"write\" mode, any existing file of the same name is overwritten.\n\nA FITS object is a collection of \"Header-Data Units\" (HDUs) and supports the following operations:\n\nf[i]: Return the i-th HDU.\nf[name] or f[name, ver]: Return the HDU containing the given the given EXTNAME (or HDUNAME) keyword (a String), and optionally the given EXTVER (or HDUVER) number (an Integer).\nIteration:\nfor hdu in f\n    ...\nend\n\n\n\n"
 },
 
 {
@@ -81,19 +81,27 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "api.html#FITSIO.read_header",
-    "page": "API Reference",
-    "title": "FITSIO.read_header",
-    "category": "Function",
-    "text": "read_header(hdu)\n\nRead the entire header from the given HDU and return a FITSHeader object. The value of each header record is parsed as Int, Float64, String, Bool or nothing according to the FITS standard.\n\nIf the value cannot be parsed according to the FITS standard, the value is stored as the raw unparsed String.\n\n\n\nread_header(hdu, String)\n\nRead the entire header from the given HDU as a single string.\n\n\n\n"
-},
-
-{
     "location": "api.html#FITSIO.read_key",
     "page": "API Reference",
     "title": "FITSIO.read_key",
     "category": "Function",
-    "text": "read_key(hdu, key)\n\nRead the specified key and return a tuple of (value, comment).\n\nThe key, can be either the index of the header record (Integer) or the header keyword (String).\n\n\n\n"
+    "text": "read_key(hdu, key::String) -> (value, comment)\nread_key(hdu, key::Integer) -> (keyname, value, comment)\n\nRead the HDU header record specified by keyword or position.\n\n\n\n"
+},
+
+{
+    "location": "api.html#FITSIO.write_key",
+    "page": "API Reference",
+    "title": "FITSIO.write_key",
+    "category": "Function",
+    "text": "write_key(hdu, key::String, value[, comment])\n\nWrite a keyword value the HDU's header. value can be a standard header type (String, Bool, Integer, AbstractFloat) or nothing, in which case the value part of the record will be empty. If the keyword already exists, the value will be overwritten. The comment will only be overwritten if given. If the keyword does not already exist, a new record will be appended at the end of the header.\n\n\n\n"
+},
+
+{
+    "location": "api.html#FITSIO.read_header",
+    "page": "API Reference",
+    "title": "FITSIO.read_header",
+    "category": "Function",
+    "text": "read_header(hdu) -> FITSHeader\n\nRead the entire header from the given HDU and return a FITSHeader object. The value of each header record is parsed as Int, Float64, String, Bool or nothing according to the FITS standard.\n\nIf the value cannot be parsed according to the FITS standard, the value is stored as the raw unparsed String.\n\n\n\nread_header(hdu, String) -> String\n\nRead the entire header from the given HDU as a single string.\n\n\n\n"
 },
 
 {
@@ -101,7 +109,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Reference",
     "title": "FITSIO.FITSHeader",
     "category": "Type",
-    "text": "FITSHeader(keys, values, comments)\n\nCreate a FITSHeader from arrays of keywords, values and comments.\n\n\n\n"
+    "text": "FITSHeader(keys::Vector{String}, values::Vector, comments::Vector{String})\n\nAn in-memory representation of the header of an HDU. It stores the (key, value, comment) information for each 80-character \"card\" in a header.\n\nNote that this structure is not linked to a FITS file in any way; it is just a convenient structure for storing the header contents after reading from a file. (This is similar to how an Array returned by read(f[1]) is not linked to the FITS file f.)  Manipulating a FITSHeader will therefore have no immediate impact on any file, even if it was created by read_header(::HDU).  You can, however, write a FITSHeader to a file using the write(::FITS, ...) methods that append a new HDU to a file.\n\n\n\n"
 },
 
 {
@@ -157,7 +165,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Reference",
     "title": "Header operations",
     "category": "section",
-    "text": "read_header\nread_key\nFITSHeader\nlength(::FITSHeader)\nhaskey(::FITSHeader, ::String)\nkeys(::FITSHeader)\nvalues(::FITSHeader)\nget_comment\nset_comment!"
+    "text": "read_key\nwrite_key\nread_header\nFITSHeader\nlength(::FITSHeader)\nhaskey(::FITSHeader, ::String)\nkeys(::FITSHeader)\nvalues(::FITSHeader)\nget_comment\nset_comment!"
 },
 
 {

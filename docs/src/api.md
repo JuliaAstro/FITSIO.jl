@@ -11,8 +11,9 @@ close(::FITS)
 ## Header operations
 
 ```@docs
-read_header
 read_key
+write_key
+read_header
 FITSHeader
 length(::FITSHeader)
 haskey(::FITSHeader, ::String)

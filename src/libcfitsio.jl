@@ -511,13 +511,14 @@ function fits_write_history(f::FITSFile, history::String)
 end
 
 # update key: if already present, update it, otherwise add it.
-for (a,T,S) in (("ffukys", :(String), :(Ptr{UInt8})),
+for (a,T,S) in (("ffukys", :String, :(Ptr{UInt8})),
                 ("ffukyl", :Bool,        :Cint),
                 ("ffukyj", :Integer,     :Int64))
     @eval begin
         function fits_update_key(f::FITSFile, key::String, value::$T,
                                  comment::Union{String, Ptr{Void}}=C_NULL)
             isa(value, String) && fits_assert_isascii(value)
+            isa(comment, String) && fits_assert_isascii(comment)
             status = Ref{Cint}(0)
             ccall(($a, libcfitsio), Cint,
                   (Ptr{Void}, Ptr{UInt8}, $S, Ptr{UInt8}, Ref{Cint}),

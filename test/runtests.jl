@@ -48,25 +48,24 @@ using Base.Test
 
     # copy_section()
     fname1 = tempname() * ".fits"
-    f1 = FITS(fname1, "w")
-    indata = reshape(Float32[1:400;], 20, 20)
-    write(f1, indata)
-
     fname2 = tempname() * ".fits"
-    f2 = FITS(fname2, "w")
-    copy_section(f1[1], f2, 1:10, 1:10)
-    copy_section(f1[1], f2, 1:10, 1:2:20)
-    outdata = read(f2[1])
-    @test outdata == indata[1:10, 1:10]
-    outdata = read(f2[2])
-    @test outdata == indata[1:10, 1:2:20]
-    close(f1)
-    close(f2)
-    if isfile(fname1)
-        rm(fname1)
-    end
-    if isfile(fname2)
-        rm(fname2)
+    try
+        f1 = FITS(fname1, "w")
+        indata = reshape(Float32[1:400;], 20, 20)
+        write(f1, indata)
+
+        f2 = FITS(fname2, "w")
+        copy_section(f1[1], f2, 1:10, 1:10)
+        copy_section(f1[1], f2, 1:10, 1:2:20)
+        outdata = read(f2[1])
+        @test outdata == indata[1:10, 1:10]
+        outdata = read(f2[2])
+        @test outdata == indata[1:10, 1:2:20]
+        close(f1)
+        close(f2)
+    finally
+        rm(fname1, force=true)
+        rm(fname2, force=true)
     end
 end
 
@@ -126,7 +125,7 @@ end
         @test eltype(outcol) == expected_type[eltype(incol)]
     end
     close(f)
-    isfile(fname) && rm(fname)
+    rm(fname, force=true)
 end
 
 @testset "FITSHeader" begin
@@ -190,20 +189,27 @@ HISTORY this is a history"""
     s_reread = read_header(f[1])
     s_reread = read_header(f[2])
     s_reread = read_header(f[1], String)
-    @assert s == s_reread
+    @test s == s_reread
 
-    # Read single keywords
-    @test read_key(f[1], 9) == ("FLTKEY", 2.0, "floating point keyword")
-    @test read_key(f[1], "FLTKEY") == (2.0, "floating point keyword")
+    # update an existing keyword, and read it directly
+    write_key(f[1], "FLTKEY", 3.0)
+    @test read_key(f[1], 9) == ("FLTKEY", 3.0, "floating point keyword")
+    @test read_key(f[1], "FLTKEY") == (3.0, "floating point keyword")
+
+    # Test appending a keyword, then modifying a keyword of different
+    # values with write_key()
+    for value in [1.0, "string value", 42, false, nothing]
+        write_key(f[1], "NEWKEY", value, "new key comment")
+        @test read_key(f[1], "NEWKEY") == (value, "new key comment")
+        @test read_key(f[1], 15) == ("NEWKEY", value, "new key comment")
+    end
 
     # Test that show() works and that the beginning of output is what we expect.
     @test repr(f)[1:6] == "File: "
 
     # Clean up from last test.
     close(f)
-    if isfile(fname)
-        rm(fname)
-    end
+    rm(fname, force=true)
 end
 
 # -----------------------------------------------------------------------------
@@ -247,36 +253,38 @@ function create_test_file(fname::AbstractString, header::String)
     close(f)
 end
 
-# Create a test file with a few non-standard keyword records
-fname = tempname() * ".fits"
-header = "        Warning: CROTA2 is inaccurate due to considerable skew                  SKEW    =  1.9511305786508E+00,  1.9234924037208E+00 /Measure of skew           "
-create_test_file(fname, header)
+@testset "Non-standard keywords" begin
+    fname = tempname() * ".fits"
+    fname2 = tempname() * ".fits"
+    try
+        # Create a test file with a few non-standard keyword records
+        header = "        Warning: CROTA2 is inaccurate due to considerable skew                  SKEW    =  1.9511305786508E+00,  1.9234924037208E+00 /Measure of skew           "
+        create_test_file(fname, header)
 
-# check that we can read the header (and data).
-f = FITS(fname)
-hdr = read_header(f[1])
-data = read(f[1])
-close(f)
+        # check that we can read the header (and data).
+        f = FITS(fname)
+        hdr = read_header(f[1])
+        @test hdr["SKEW"] == "1.9511305786508E+00,"
+        @test get_comment(hdr, "SKEW") == "1.9234924037208E+00 /Measure of skew"
+        data = read(f[1])
+        @test data == zeros(10, 10)
+        close(f)
 
-# Test that we can read is at a memory backed file
-f = FITS(read(fname))
-hdr = read_header(f[1])
-data = read(f[1])
-close(f)
+        # Test that we can read is at a memory backed file
+        f = FITS(read(fname))
+        hdr = read_header(f[1])
+        data = read(f[1])
+        @test data == zeros(10, 10)
+        close(f)
 
-
-# test that we can write it back out.
-fname2 = tempname() * ".fits"
-f2 = FITS(fname2, "w")
-write(f2, data; header=hdr)
-close(f2)
-
-# clean up.
-if isfile(fname)
-    rm(fname)
-end
-if isfile(fname2)
-    rm(fname2)
+        # test that we can write it back out.
+        f2 = FITS(fname2, "w")
+        write(f2, data; header=hdr)
+        close(f2)
+    finally
+        rm(fname, force=true)
+        rm(fname2, force=true)
+    end
 end
 
 # -----------------------------------------------------------------------------

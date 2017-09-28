@@ -1,10 +1,11 @@
-v0.11.0 (unreleased)
+v0.11.0 (2017-09-28)
 ====================
 
 - Drop support for Julia 0.4.
 - Methods now accept `String` and, for strings written to the FITS file,
   an error is raised for non-ASCII strings.
-- Homebrew.jl used for libcfitsio on OS X.
+- New `write_key()` function for writing to an HDU header.
+- Homebrew.jl used for libcfitsio dependency on OS X.
 - Remove extra newline from `show` output.
 - Fix some deprecation warnings on Julia 0.7.
 - Inline docstrings and HTML documentation generated with Documenter.jl.

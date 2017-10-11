@@ -15,7 +15,7 @@ built-in package manager. In a Julia session run the command
 
 ```julia
 julia> Pkg.update()
-julia> Pkg.add("FITSIO.jl")
+julia> Pkg.add("FITSIO")
 ```
 
 On Linux or OS X, if it isn't already installed on your system,

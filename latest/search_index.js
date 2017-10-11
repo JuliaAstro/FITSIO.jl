@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "Installation",
     "category": "section",
-    "text": "FITSIO is available for Julia 0.5 and later versions, and can be installed with Julia's built-in package manager. In a Julia session run the commandjulia> Pkg.update()\njulia> Pkg.add(\"FITSIO.jl\")On Linux or OS X, if it isn't already installed on your system, the cfitsio library is automatically downloaded and compiled (in your Julia packages directory). On Windows, a compiled dll will be downloaded."
+    "text": "FITSIO is available for Julia 0.5 and later versions, and can be installed with Julia's built-in package manager. In a Julia session run the commandjulia> Pkg.update()\njulia> Pkg.add(\"FITSIO\")On Linux or OS X, if it isn't already installed on your system, the cfitsio library is automatically downloaded and compiled (in your Julia packages directory). On Windows, a compiled dll will be downloaded."
 },
 
 {

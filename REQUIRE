@@ -1,4 +1,4 @@
-julia 0.5
+julia 0.6
 BinDeps 0.3.12
-Compat 0.29.0
+Compat 0.41.0
 @osx Homebrew

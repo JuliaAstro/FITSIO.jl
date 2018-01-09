@@ -168,7 +168,7 @@ end
 # -----------------------------------------------------------------------------
 # FITSFile type
 
-type FITSFile
+mutable struct FITSFile
     ptr::Ptr{Void}
 
     function FITSFile(ptr::Ptr{Void})
@@ -180,7 +180,7 @@ end
 
 # FITS wants to be able to update the ptr, so keep them
 # in a mutable struct
-type FITSMemoryHandle
+mutable struct FITSMemoryHandle
     ptr::Ptr{Void}
     size::Csize_t
 end

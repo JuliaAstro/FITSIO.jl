@@ -134,7 +134,31 @@ fits_tform(::Type{ASCIITableHDU}, A::Array) = error("only 1-d arrays supported: 
 table_type_code(::Type{ASCIITableHDU}) = Cint(1)
 table_type_code(::Type{TableHDU}) = Cint(2)
 
-function show(io::IO, hdu::TableHDU)
+function fits_read_table_header!(hdu::TableHDU, ncols, nrows,
+                                 colnames_in, coltforms_in, status)
+    # fits_read_btblhdrll (Can pass NULL for return fields not needed.)
+    ccall(("ffghbnll", libcfitsio), Cint,
+          (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
+           Ref{Int64}, Ptr{Cint}, Ptr{Ptr{UInt8}},  # nrows, tfields, ttype
+           Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Ptr{UInt8},  # tform,tunit,extname
+           Ptr{Clong}, Ref{Cint}),  # pcount, status
+          hdu.fitsfile.ptr, ncols, nrows, C_NULL, colnames_in, coltforms_in,
+          C_NULL, C_NULL, C_NULL, status)
+end
+
+function fits_read_table_header!(hdu::ASCIITableHDU, ncols, nrows,
+                                 colnames_in, coltforms_in, status)
+    # fits_read_atblhdrll (Can pass NULL for return fields not needed)
+    ccall(("ffghtbll", libcfitsio), Cint,
+          (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
+           Ptr{Int64}, Ref{Int64}, Ptr{Cint},  # rowlen, nrows, tfields
+           Ptr{Ptr{UInt8}}, Ptr{Clong}, Ptr{Ptr{UInt8}},  # ttype, tbcol, tform
+           Ptr{Ptr{UInt8}}, Ptr{UInt8}, Ref{Cint}),  # tunit, extname, status
+          hdu.fitsfile.ptr, ncols, C_NULL, nrows, C_NULL, colnames_in,
+          C_NULL, coltforms_in, C_NULL, C_NULL, status)
+end
+
+function columns_names_tforms(hdu::Union{ASCIITableHDU,TableHDU})
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     ncols = fits_get_num_cols(hdu.fitsfile)
@@ -145,20 +169,19 @@ function show(io::IO, hdu::TableHDU)
     nrows = Ref{Int64}()
     status = Ref{Cint}(0)
 
-    # fits_read_btblhdrll (Can pass NULL for return fields not needed.)
-    ccall(("ffghbnll", libcfitsio), Cint,
-          (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
-           Ref{Int64}, Ptr{Cint}, Ptr{Ptr{UInt8}},  # nrows, tfields, ttype
-           Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Ptr{UInt8},  # tform,tunit,extname
-           Ptr{Clong}, Ref{Cint}),  # pcount, status
-          hdu.fitsfile.ptr, ncols, nrows, C_NULL, colnames_in, coltforms_in,
-          C_NULL, C_NULL, C_NULL, status)
+    fits_read_table_header!(hdu, ncols, nrows, colnames_in, coltforms_in, status)
     fits_assert_ok(status[])
 
     # parse out results
     colnames = [unsafe_string(pointer(item)) for item in colnames_in]
     coltforms = [unsafe_string(pointer(item)) for item in coltforms_in]
+    return colnames, coltforms, ncols, nrows
+end
 
+colnames(hdu::Union{ASCIITableHDU,TableHDU}) = columns_names_tforms(hdu)[1]
+
+function show(io::IO, hdu::TableHDU)
+    colnames, coltforms, ncols, nrows = columns_names_tforms(hdu)
     # get some more information for all the columns
     coltypes    = Vector{String}(ncols)
     colrowsizes = Vector{String}(ncols)
@@ -189,32 +212,7 @@ function show(io::IO, hdu::TableHDU)
 end
 
 function show(io::IO, hdu::ASCIITableHDU)
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    ncols = fits_get_num_cols(hdu.fitsfile)
-
-    # allocate return arrays for column names & types
-    colnames_in  = [Vector{UInt8}(70) for i=1:ncols]
-    coltforms_in = [Vector{UInt8}(70) for i=1:ncols]
-    nrows  = Ref{Int64}()
-    status = Ref{Cint}(0)
-
-    # fits_read_atblhdrll (Can pass NULL for return fields not needed)
-    ccall(("ffghtbll", libcfitsio), Cint,
-          (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
-           Ptr{Int64}, Ref{Int64}, Ptr{Cint},  # rowlen, nrows, tfields
-           Ptr{Ptr{UInt8}}, Ptr{Clong}, Ptr{Ptr{UInt8}},  # ttype, tbcol, tform
-           Ptr{Ptr{UInt8}}, Ptr{UInt8}, Ref{Cint}),  # tunit, extname, status
-          hdu.fitsfile.ptr, ncols,
-          C_NULL, nrows, C_NULL,
-          colnames_in, C_NULL, coltforms_in,
-          C_NULL, C_NULL, status)
-    fits_assert_ok(status[])
-
-    # parse out results
-    colnames = [unsafe_string(pointer(item)) for item in colnames_in]
-    coltforms = [unsafe_string(pointer(item)) for item in coltforms_in]
-
+    colnames, coltforms, ncols, nrows = columns_names_tforms(hdu)
     # Get additional info
     coltypes = Vector{String}(ncols)
     for i in 1:ncols

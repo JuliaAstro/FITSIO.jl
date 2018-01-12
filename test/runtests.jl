@@ -94,10 +94,12 @@ end
     write(f, indata; varcols=["vcol1", "vcol2"])
 
     # test reading
+    colnames = FITSIO.colnames(f[2])
     for (colname, incol) in indata
         outcol = read(f[2], colname)  # table is in extension 2 (1 = primary hdr)
         @test outcol == incol
         @test eltype(outcol) == eltype(incol)
+        @test colname in colnames
     end
 
     # Test representation

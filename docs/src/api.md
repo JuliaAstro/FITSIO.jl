@@ -40,6 +40,7 @@ copy_section
 write(::FITS, ::Dict{String})
 write(::FITS, ::Vector{String}, ::Vector)
 read(::TableHDU, ::String)
+FITSIO.colnames(hdu::Union{ASCIITableHDU,TableHDU})
 ```
 
 ## Miscellaneous

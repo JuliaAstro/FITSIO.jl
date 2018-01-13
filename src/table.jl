@@ -178,6 +178,11 @@ function columns_names_tforms(hdu::Union{ASCIITableHDU,TableHDU})
     return colnames, coltforms, ncols, nrows
 end
 
+"""
+    colnames(hdu=Union{ASCIITableHDU,TableHDU})
+
+Return a vector with the names of the columns in the `hdu` table.
+"""
 colnames(hdu::Union{ASCIITableHDU,TableHDU}) = columns_names_tforms(hdu)[1]
 
 function show(io::IO, hdu::TableHDU)
@@ -345,8 +350,8 @@ end
 
 Same as `write(f::FITS, data::Dict; ...)` but providing column names
 and column data as a separate arrays. This is useful for specifying
-the order of the columns. Column names must be `Array{ASCIIString}`
-and column data must be an array of arrays.
+the order of the columns. Column names must be `Vector{String}`
+and column data must be a vector of arrays.
 """
 function write(f::FITS, colnames::Vector{String}, coldata::Vector;
                units=nothing, header=nothing, hdutype=TableHDU,
@@ -365,11 +370,11 @@ end
 Create a new table extension and write data to it. If the FITS file is
 currently empty then a dummy primary array will be created before
 appending the table extension to it. `data` should be a dictionary
-with ASCIIString keys (giving the column names) and Array values
+with String keys (giving the column names) and Array values
 (giving data to write to each column). The following types are
 supported in binary tables: `Uint8`, `Int8`, `Uint16`, `Int16`,
-`Uint32`, `Int32`, `Int64`, `Float32`, `Float64`, `Complex64`,
-`Complex128`, `ASCIIString`, `Bool`.
+`Uint32`, `Int32`, `Int64`, `Float32`, `Float64`, `Complex{Float32}`,
+`Complex{Float64}`, `String`, `Bool`.
 
 Optional inputs:
 
@@ -388,7 +393,7 @@ Optional inputs:
     arrays of different lengths. They can potentially save diskspace
     when the rows of a column vary greatly in length, as the column
     data is all written to a contiguous heap area at the end of the
-    table. Only column data of type `Vector{ASCIIString}` or types
+    table. Only column data of type `Vector{String}` or types
     such as `Vector{Vector{UInt8}}` can be written as variable
     length columns. In the second case, ensure that the column data
     type is a *leaf type*. That is, the type cannot be

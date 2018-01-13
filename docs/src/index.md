@@ -9,7 +9,7 @@ The interface is inspired by Erin Sheldon's
 
 ## Installation
 
-FITSIO is available for Julia 0.5 and later versions, and can be
+FITSIO is available for Julia 0.6 and later versions, and can be
 installed with [Julia](https://github.com/julialang/julia.jl)'s
 built-in package manager. In a Julia session run the command
 

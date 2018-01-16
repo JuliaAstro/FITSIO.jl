@@ -202,7 +202,7 @@ of the section.
 
 # Examples
 
-Copy the lower-left 200 x 200 pixel section of the image in ``hdu``
+Copy the lower-left 200 x 200 pixel section of the image in `hdu`
 to an open file, `f`
 
 ```

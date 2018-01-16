@@ -134,7 +134,31 @@ fits_tform(::Type{ASCIITableHDU}, A::Array) = error("only 1-d arrays supported: 
 table_type_code(::Type{ASCIITableHDU}) = Cint(1)
 table_type_code(::Type{TableHDU}) = Cint(2)
 
-function show(io::IO, hdu::TableHDU)
+function fits_read_table_header!(hdu::TableHDU, ncols, nrows,
+                                 colnames_in, coltforms_in, status)
+    # fits_read_btblhdrll (Can pass NULL for return fields not needed.)
+    ccall(("ffghbnll", libcfitsio), Cint,
+          (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
+           Ref{Int64}, Ptr{Cint}, Ptr{Ptr{UInt8}},  # nrows, tfields, ttype
+           Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Ptr{UInt8},  # tform,tunit,extname
+           Ptr{Clong}, Ref{Cint}),  # pcount, status
+          hdu.fitsfile.ptr, ncols, nrows, C_NULL, colnames_in, coltforms_in,
+          C_NULL, C_NULL, C_NULL, status)
+end
+
+function fits_read_table_header!(hdu::ASCIITableHDU, ncols, nrows,
+                                 colnames_in, coltforms_in, status)
+    # fits_read_atblhdrll (Can pass NULL for return fields not needed)
+    ccall(("ffghtbll", libcfitsio), Cint,
+          (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
+           Ptr{Int64}, Ref{Int64}, Ptr{Cint},  # rowlen, nrows, tfields
+           Ptr{Ptr{UInt8}}, Ptr{Clong}, Ptr{Ptr{UInt8}},  # ttype, tbcol, tform
+           Ptr{Ptr{UInt8}}, Ptr{UInt8}, Ref{Cint}),  # tunit, extname, status
+          hdu.fitsfile.ptr, ncols, C_NULL, nrows, C_NULL, colnames_in,
+          C_NULL, coltforms_in, C_NULL, C_NULL, status)
+end
+
+function columns_names_tforms(hdu::Union{ASCIITableHDU,TableHDU})
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     ncols = fits_get_num_cols(hdu.fitsfile)
@@ -145,20 +169,24 @@ function show(io::IO, hdu::TableHDU)
     nrows = Ref{Int64}()
     status = Ref{Cint}(0)
 
-    # fits_read_btblhdrll (Can pass NULL for return fields not needed.)
-    ccall(("ffghbnll", libcfitsio), Cint,
-          (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
-           Ref{Int64}, Ptr{Cint}, Ptr{Ptr{UInt8}},  # nrows, tfields, ttype
-           Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}}, Ptr{UInt8},  # tform,tunit,extname
-           Ptr{Clong}, Ref{Cint}),  # pcount, status
-          hdu.fitsfile.ptr, ncols, nrows, C_NULL, colnames_in, coltforms_in,
-          C_NULL, C_NULL, C_NULL, status)
+    fits_read_table_header!(hdu, ncols, nrows, colnames_in, coltforms_in, status)
     fits_assert_ok(status[])
 
     # parse out results
     colnames = [unsafe_string(pointer(item)) for item in colnames_in]
     coltforms = [unsafe_string(pointer(item)) for item in coltforms_in]
+    return colnames, coltforms, ncols, nrows
+end
 
+"""
+    colnames(hdu=Union{ASCIITableHDU,TableHDU})
+
+Return a vector with the names of the columns in the `hdu` table.
+"""
+colnames(hdu::Union{ASCIITableHDU,TableHDU}) = columns_names_tforms(hdu)[1]
+
+function show(io::IO, hdu::TableHDU)
+    colnames, coltforms, ncols, nrows = columns_names_tforms(hdu)
     # get some more information for all the columns
     coltypes    = Vector{String}(ncols)
     colrowsizes = Vector{String}(ncols)
@@ -189,32 +217,7 @@ function show(io::IO, hdu::TableHDU)
 end
 
 function show(io::IO, hdu::ASCIITableHDU)
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    ncols = fits_get_num_cols(hdu.fitsfile)
-
-    # allocate return arrays for column names & types
-    colnames_in  = [Vector{UInt8}(70) for i=1:ncols]
-    coltforms_in = [Vector{UInt8}(70) for i=1:ncols]
-    nrows  = Ref{Int64}()
-    status = Ref{Cint}(0)
-
-    # fits_read_atblhdrll (Can pass NULL for return fields not needed)
-    ccall(("ffghtbll", libcfitsio), Cint,
-          (Ptr{Void}, Cint,  # Inputs: fitsfile, maxdim
-           Ptr{Int64}, Ref{Int64}, Ptr{Cint},  # rowlen, nrows, tfields
-           Ptr{Ptr{UInt8}}, Ptr{Clong}, Ptr{Ptr{UInt8}},  # ttype, tbcol, tform
-           Ptr{Ptr{UInt8}}, Ptr{UInt8}, Ref{Cint}),  # tunit, extname, status
-          hdu.fitsfile.ptr, ncols,
-          C_NULL, nrows, C_NULL,
-          colnames_in, C_NULL, coltforms_in,
-          C_NULL, C_NULL, status)
-    fits_assert_ok(status[])
-
-    # parse out results
-    colnames = [unsafe_string(pointer(item)) for item in colnames_in]
-    coltforms = [unsafe_string(pointer(item)) for item in coltforms_in]
-
+    colnames, coltforms, ncols, nrows = columns_names_tforms(hdu)
     # Get additional info
     coltypes = Vector{String}(ncols)
     for i in 1:ncols
@@ -347,8 +350,8 @@ end
 
 Same as `write(f::FITS, data::Dict; ...)` but providing column names
 and column data as a separate arrays. This is useful for specifying
-the order of the columns. Column names must be `Array{ASCIIString}`
-and column data must be an array of arrays.
+the order of the columns. Column names must be `Vector{String}`
+and column data must be a vector of arrays.
 """
 function write(f::FITS, colnames::Vector{String}, coldata::Vector;
                units=nothing, header=nothing, hdutype=TableHDU,
@@ -367,11 +370,11 @@ end
 Create a new table extension and write data to it. If the FITS file is
 currently empty then a dummy primary array will be created before
 appending the table extension to it. `data` should be a dictionary
-with ASCIIString keys (giving the column names) and Array values
+with String keys (giving the column names) and Array values
 (giving data to write to each column). The following types are
 supported in binary tables: `Uint8`, `Int8`, `Uint16`, `Int16`,
-`Uint32`, `Int32`, `Int64`, `Float32`, `Float64`, `Complex64`,
-`Complex128`, `ASCIIString`, `Bool`.
+`Uint32`, `Int32`, `Int64`, `Float32`, `Float64`, `Complex{Float32}`,
+`Complex{Float64}`, `String`, `Bool`.
 
 Optional inputs:
 
@@ -390,7 +393,7 @@ Optional inputs:
     arrays of different lengths. They can potentially save diskspace
     when the rows of a column vary greatly in length, as the column
     data is all written to a contiguous heap area at the end of the
-    table. Only column data of type `Vector{ASCIIString}` or types
+    table. Only column data of type `Vector{String}` or types
     such as `Vector{Vector{UInt8}}` can be written as variable
     length columns. In the second case, ensure that the column data
     type is a *leaf type*. That is, the type cannot be

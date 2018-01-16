@@ -179,9 +179,9 @@ function columns_names_tforms(hdu::Union{ASCIITableHDU,TableHDU})
 end
 
 """
-    colnames(hdu=Union{ASCIITableHDU,TableHDU})
+    colnames(hdu) -> Vector{String}
 
-Return a vector with the names of the columns in the `hdu` table.
+Return the names of columns in a table HDU.
 """
 colnames(hdu::Union{ASCIITableHDU,TableHDU}) = columns_names_tforms(hdu)[1]
 
@@ -372,8 +372,8 @@ currently empty then a dummy primary array will be created before
 appending the table extension to it. `data` should be a dictionary
 with String keys (giving the column names) and Array values
 (giving data to write to each column). The following types are
-supported in binary tables: `Uint8`, `Int8`, `Uint16`, `Int16`,
-`Uint32`, `Int32`, `Int64`, `Float32`, `Float64`, `Complex{Float32}`,
+supported in binary tables: `UInt8`, `Int8`, `UInt16`, `Int16`,
+`UInt32`, `Int32`, `Int64`, `Float32`, `Float64`, `Complex{Float32}`,
 `Complex{Float64}`, `String`, `Bool`.
 
 Optional inputs:

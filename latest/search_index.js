@@ -225,11 +225,19 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "api.html#FITSIO.colnames",
+    "page": "API Reference",
+    "title": "FITSIO.colnames",
+    "category": "Function",
+    "text": "colnames(hdu) -> Vector{String}\n\nReturn the names of columns in a table HDU.\n\n\n\n"
+},
+
+{
     "location": "api.html#Base.write-Tuple{FITSIO.FITS,Dict{String,V} where V}",
     "page": "API Reference",
     "title": "Base.write",
     "category": "Method",
-    "text": "write(f::FITS, data::Dict; hdutype=TableHDU, name=nothing, ver=nothing, header=nothing, units=nothing, varcols=nothing)\n\nCreate a new table extension and write data to it. If the FITS file is currently empty then a dummy primary array will be created before appending the table extension to it. data should be a dictionary with String keys (giving the column names) and Array values (giving data to write to each column). The following types are supported in binary tables: Uint8, Int8, Uint16, Int16, Uint32, Int32, Int64, Float32, Float64, Complex{Float32}, Complex{Float64}, String, Bool.\n\nOptional inputs:\n\nhdutype: Type of table extension to create. Can be either TableHDU (binary table) or ASCIITableHDU (ASCII table).\nname: Name of extension.\nver: Version of extension (Int).\nheader: FITSHeader instance to write to new extension.\nunits: Dictionary mapping column name to units (as a string).\nvarcols: An array giving the column names or column indicies to write as \"variable-length columns\".\n\nnote: Variable length columns\nVariable length columns allow a column's row entries to contain arrays of different lengths. They can potentially save diskspace when the rows of a column vary greatly in length, as the column data is all written to a contiguous heap area at the end of the table. Only column data of type Vector{String} or types such as Vector{Vector{UInt8}} can be written as variable length columns. In the second case, ensure that the column data type is a leaf type. That is, the type cannot be Vector{Vector{T}}, which would be an array of arrays having potentially non-uniform element types (which would not be writable as a FITS table column).\n\n\n\n"
+    "text": "write(f::FITS, data::Dict; hdutype=TableHDU, name=nothing, ver=nothing, header=nothing, units=nothing, varcols=nothing)\n\nCreate a new table extension and write data to it. If the FITS file is currently empty then a dummy primary array will be created before appending the table extension to it. data should be a dictionary with String keys (giving the column names) and Array values (giving data to write to each column). The following types are supported in binary tables: UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64, Float32, Float64, Complex{Float32}, Complex{Float64}, String, Bool.\n\nOptional inputs:\n\nhdutype: Type of table extension to create. Can be either TableHDU (binary table) or ASCIITableHDU (ASCII table).\nname: Name of extension.\nver: Version of extension (Int).\nheader: FITSHeader instance to write to new extension.\nunits: Dictionary mapping column name to units (as a string).\nvarcols: An array giving the column names or column indicies to write as \"variable-length columns\".\n\nnote: Variable length columns\nVariable length columns allow a column's row entries to contain arrays of different lengths. They can potentially save diskspace when the rows of a column vary greatly in length, as the column data is all written to a contiguous heap area at the end of the table. Only column data of type Vector{String} or types such as Vector{Vector{UInt8}} can be written as variable length columns. In the second case, ensure that the column data type is a leaf type. That is, the type cannot be Vector{Vector{T}}, which would be an array of arrays having potentially non-uniform element types (which would not be writable as a FITS table column).\n\n\n\n"
 },
 
 {
@@ -249,19 +257,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "api.html#FITSIO.colnames-Tuple{Union{FITSIO.ASCIITableHDU, FITSIO.TableHDU}}",
-    "page": "API Reference",
-    "title": "FITSIO.colnames",
-    "category": "Method",
-    "text": "colnames(hdu=Union{ASCIITableHDU,TableHDU})\n\nReturn a vector with the names of the columns in the hdu table.\n\n\n\n"
-},
-
-{
     "location": "api.html#Table-operations-1",
     "page": "API Reference",
     "title": "Table operations",
     "category": "section",
-    "text": "write(::FITS, ::Dict{String})\nwrite(::FITS, ::Vector{String}, ::Vector)\nread(::TableHDU, ::String)\nFITSIO.colnames(hdu::Union{ASCIITableHDU,TableHDU})"
+    "text": "FITSIO.colnames\nwrite(::FITS, ::Dict{String})\nwrite(::FITS, ::Vector{String}, ::Vector)\nread(::TableHDU, ::String)"
 },
 
 {

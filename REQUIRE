@@ -1,4 +1,3 @@
 julia 0.6
-BinDeps 0.3.12
+BinaryProvider
 Compat 0.41.0
-@osx Homebrew

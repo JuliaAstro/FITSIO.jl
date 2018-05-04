@@ -929,7 +929,7 @@ for (a,b,T) in ((:fits_get_num_cols,  "ffgncl",  :Cint),
     end
 end
 
-function fits_get_colnum(f::FITSFile, tmplt::String)
+function fits_get_colnum(f::FITSFile, tmplt::String; case_sensitive::Bool=true)
     result = Ref{Cint}(0)
     status = Ref{Cint}(0)
 
@@ -937,7 +937,7 @@ function fits_get_colnum(f::FITSFile, tmplt::String)
     #                                                1 = case-sensitive
     ccall(("ffgcno", libcfitsio), Cint,
           (Ptr{Void}, Cint, Ptr{UInt8}, Ref{Cint}, Ref{Cint}),
-          f.ptr, 0, tmplt, result, status)
+          f.ptr, case_sensitive, tmplt, result, status)
     fits_assert_ok(status[])
     return result[]
 end

@@ -87,11 +87,11 @@ end
     indata["col$i"] = reshape([1:40;], (2, 20))  # vector Int64 column
     i += 1
     indata["col$i"] = [randstring(5) for j=1:2, k=1:20]  # vector ASCIIString col
-    indata["vcol1"] = [randstring(j) for j=1:20]  # variable length column
-    indata["vcol2"] = [collect(1.:j) for j=1.:20.] # variable length
+    indata["vcol"] = [randstring(j) for j=1:20]  # variable length column
+    indata["VCOL"] = [collect(1.:j) for j=1.:20.] # variable length
 
     # test writing
-    write(f, indata; varcols=["vcol1", "vcol2"])
+    write(f, indata; varcols=["vcol", "VCOL"])
 
     # test reading
     colnames = FITSIO.colnames(f[2])
@@ -101,6 +101,8 @@ end
         @test eltype(outcol) == eltype(incol)
         @test colname in colnames
     end
+
+    @test_throws ErrorException read(f[2], "vcol", case_sensitive=false)
 
     # Test representation
     @test repr(f[2])[end-38:end] == "\n\n         (*) = variable-length column"

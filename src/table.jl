@@ -447,12 +447,12 @@ function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{String})
 end
 
 # Read a table column
-function read(hdu::ASCIITableHDU, colname::String)
+function read(hdu::ASCIITableHDU, colname::String; case_sensitive::Bool=true)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     nrows = fits_get_num_rows(hdu.fitsfile)
-    colnum = fits_get_colnum(hdu.fitsfile, colname)
+    colnum = fits_get_colnum(hdu.fitsfile, colname, case_sensitive=case_sensitive)
 
     typecode, repcnt, width = fits_get_eqcoltype(hdu.fitsfile, colnum)
     T = CFITSIO_COLTYPE[typecode]
@@ -465,7 +465,7 @@ end
 
 
 """
-    read(hdu, colname)
+    read(hdu, colname; case_sensitive=true)
 
 Read a column as an array from the given table HDU.
 
@@ -474,14 +474,16 @@ The column name may contain wild card characters (`*`, `?`, or
 characters (including zero characters) and the `?` character
 matches any single character. The `#` wildcard will match any
 consecutive string of decimal digits (0-9). The string must match a
-unique column.
+unique column.  The optional boolean keyword `case_sensitive`,
+`true` by default, specifies whether the column name is to be
+considered case sensitive.
 """
-function read(hdu::TableHDU, colname::String)
+function read(hdu::TableHDU, colname::String; case_sensitive::Bool=true)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     nrows = fits_get_num_rows(hdu.fitsfile)
-    colnum = fits_get_colnum(hdu.fitsfile, colname)
+    colnum = fits_get_colnum(hdu.fitsfile, colname, case_sensitive=case_sensitive)
 
     T, rowsize, isvariable = fits_get_col_info(hdu.fitsfile, colnum)
 

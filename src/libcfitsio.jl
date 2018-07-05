@@ -153,7 +153,7 @@ for (T, code) in ((UInt8,       11),
                   (Int64,       81),
                   (Float32,     42),
                   (Float64,     82),
-                  (ComplexF32,   83),
+                  (ComplexF32,  83),
                   (ComplexF64, 163))
     @eval cfitsio_typecode(::Type{$T}) = Cint($code)
 end

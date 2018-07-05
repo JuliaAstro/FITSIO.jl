@@ -25,7 +25,7 @@ for (T, tform, code) in ((UInt8,       'B',  11),
                          (Int64,       'K',  81),
                          (Float32,     'E',  42),
                          (Float64,     'D',  82),
-                         (ComplexF32,   'C',  83),
+                         (ComplexF32,  'C',  83),
                          (ComplexF64,  'M', 163))
     @eval fits_tform_char(::Type{$T}) = $tform
     CFITSIO_COLTYPE[code] = T

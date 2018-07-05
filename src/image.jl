@@ -90,15 +90,15 @@ end
 # _checkbounds methods copied from Julia v0.4 Base.
 _checkbounds(sz, i::Integer) = 1 <= i <= sz
 _checkbounds(sz, i::Colon) = true
-_checkbounds(sz, r::Range{Int}) =
+_checkbounds(sz, r::AbstractRange{Int}) =
     (isempty(r) || (minimum(r) >= 1 && maximum(r) <= sz))
 
 # helper functions for constructing cfitsio indexing vectors in read(hdu, ...)
-_first(i::Union{Integer, Range}) = first(i)
+_first(i::Union{Integer, AbstractRange}) = first(i)
 _first(::Colon) = 1
-_last(sz, i::Union{Integer, Range}) = last(i)
+_last(sz, i::Union{Integer, AbstractRange}) = last(i)
 _last(sz, ::Colon) = sz
-_step(r::Range) = step(r)
+_step(r::AbstractRange) = step(r)
 _step(::Union{Integer, Colon}) = 1
 
 # Shape of array to create for read(hdu, ...), dropping trailing
@@ -107,16 +107,16 @@ _step(::Union{Integer, Colon}) = 1
 @inline _index_shape(sz, I...) = _index_shape_dim(sz, 1, I...)
 _index_shape_dim(sz, dim, I::Integer...) = ()
 _index_shape_dim(sz, dim, ::Colon) = (sz[dim],)
-_index_shape_dim(sz, dim, r::Range) = (length(r),)
+_index_shape_dim(sz, dim, r::AbstractRange) = (length(r),)
 @inline _index_shape_dim(sz, dim, ::Colon, I...) =
     tuple(sz[dim], _index_shape_dim(sz, dim+1, I...)...)
 @inline _index_shape_dim(sz, dim, ::Integer, I...) =
     _index_shape_dim(sz, dim+1, I...)
-@inline _index_shape_dim(sz, dim, r::Range, I...) =
+@inline _index_shape_dim(sz, dim, r::AbstractRange, I...) =
     tuple(length(r), _index_shape_dim(sz, dim+1, I...)...)
 
 # Read a subset of an ImageHDU
-function read_internal(hdu::ImageHDU, I::Union{Range{Int}, Integer, Colon}...)
+function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colon}...)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
@@ -145,7 +145,7 @@ function read_internal(hdu::ImageHDU, I::Union{Range{Int}, Integer, Colon}...)
 end
 
 # general method and version that returns a single value rather than 0-d array
-read(hdu::ImageHDU, I::Union{Range{Int}, Int, Colon}...) =
+read(hdu::ImageHDU, I::Union{AbstractRange{Int}, Int, Colon}...) =
     read_internal(hdu, I...)
 read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 
@@ -159,10 +159,10 @@ following array element types are supported: `UInt8`, `Int8`,
 `Float64`. If a `FITSHeader` object is passed as the `header` keyword
 argument, the header will also be added to the new HDU.
 """
-function write{T}(f::FITS, data::Array{T};
-                  header::Union{Void, FITSHeader}=nothing,
-                  name::Union{Void, String}=nothing,
-                  ver::Union{Void, Integer}=nothing)
+function write(f::FITS, data::Array{T};
+               header::Union{Nothing, FITSHeader}=nothing,
+               name::Union{Nothing, String}=nothing,
+               ver::Union{Nothing, Integer}=nothing) where T
     fits_assert_open(f.fitsfile)
     s = size(data)
     fits_create_img(f.fitsfile, T, [s...])
@@ -215,7 +215,7 @@ Same as above but only copy odd columns in y:
 copy_section(hdu, f, 1:200, 1:2:200)
 ```
 """
-function copy_section(hdu::ImageHDU, dest::FITS, r::Range{Int}...)
+function copy_section(hdu::ImageHDU, dest::FITS, r::AbstractRange{Int}...)
     fits_assert_open(hdu.fitsfile)
     fits_assert_open(dest.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)

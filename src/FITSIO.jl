@@ -1,8 +1,9 @@
-isdefined(Base, :__precompile__) && __precompile__()
+__precompile__()
+
 
 module FITSIO
 
-using Compat.Printf
+using Printf
 
 export FITS,
        HDU,

@@ -1,5 +1,5 @@
 using FITSIO
-using Base.Test
+using Test
 
 @testset "Images" begin
     # Create a FITS instance and loop over supported types.

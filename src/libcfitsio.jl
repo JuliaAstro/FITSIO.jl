@@ -119,11 +119,13 @@ export FITSFile,
        fits_write_record,
        fits_write_tdim
 
-if isfile(joinpath(dirname(@__FILE__),"..","deps","deps.jl"))
-    include("../deps/deps.jl")
-else
-    error("FITSIO not properly installed. Please run Pkg.build(\"FITSIO\")")
+const depsjl_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
+if !isfile(depsjl_path)
+    @error "FITSIO not properly installed. " *
+           "Please run `Pkg.build(\"FITSIO\")`, and restart Julia"
 end
+include(depsjl_path)
+__init__() = check_deps()
 
 const TYPE_FROM_BITPIX = Dict{Cint, DataType}()
 for (T, code) in ((UInt8,     8), # BYTE_IMG

@@ -77,7 +77,7 @@ end
     ## Binary table
     indata = Dict{String, Array}()
     for (i, T) in enumerate([UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
-                             Float32, Float64, Complex64, Complex128])
+                             Float32, Float64, ComplexF32, ComplexF64])
         indata["col$i"] = T[1:20;]
     end
     i = length(indata) + 1

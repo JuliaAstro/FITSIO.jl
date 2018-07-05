@@ -258,9 +258,9 @@ function read_header(hdu::HDU)
     nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
 
     # Initialize output arrays
-    keys = Vector{String}(nkeys)
-    values = Vector{Any}(nkeys)
-    comments = Vector{String}(nkeys)
+    keys = Vector{String}(undef, nkeys)
+    values = Vector{Any}(undef, nkeys)
+    comments = Vector{String}(undef, nkeys)
     for i=1:nkeys
         ccall((:ffgkyn,libcfitsio), Cint,
               (Ptr{Cvoid},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),

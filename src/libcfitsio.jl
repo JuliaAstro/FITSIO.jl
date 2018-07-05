@@ -410,7 +410,7 @@ end
 
 function fits_read_keys_lng(f::FITSFile, keyname::String,
                             nstart::Integer, nmax::Integer)
-    value = Vector{Clong}(nmax - nstart + 1)
+    value = Vector{Clong}(undef, nmax - nstart + 1)
     nfound = Ref{Cint}(0)
     status = Ref{Cint}(0)
     ccall((:ffgknj, libcfitsio), Cint,
@@ -1097,7 +1097,7 @@ function fits_read_col(f::FITSFile,
     abs(typecode) == 16 || error("not a string column")
 
     # create an array of character buffers of the correct width
-    buffers = [Vector{UInt8}(width) for i in 1:length(data)]
+    buffers = [Vector{UInt8}(undef, width) for i in 1:length(data)]
 
     # Call the CFITSIO function
     anynull = Ref{Cint}(0)

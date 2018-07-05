@@ -96,7 +96,7 @@ end
 fits_tdim(A::Array) = (ndims(A) == 1) ? [1] : [size(A, i) for i=1:ndims(A)-1]
 function fits_tdim(A::Array{String})
     n = ndims(A)
-    tdim = Vector{Int}(n)
+    tdim = Vector{Int}(undef, n)
     tdim[1] = maximum(length, A)
     for i=2:n
         tdim[n] = size(A, n-1)
@@ -188,8 +188,8 @@ colnames(hdu::Union{ASCIITableHDU,TableHDU}) = columns_names_tforms(hdu)[1]
 function show(io::IO, hdu::TableHDU)
     colnames, coltforms, ncols, nrows = columns_names_tforms(hdu)
     # get some more information for all the columns
-    coltypes    = Vector{String}(ncols)
-    colrowsizes = Vector{String}(ncols)
+    coltypes    = Vector{String}(undef, ncols)
+    colrowsizes = Vector{String}(undef, ncols)
     showlegend = false
     for i in 1:ncols
         T, rowsize, isvariable = fits_get_col_info(hdu.fitsfile, i)
@@ -219,7 +219,7 @@ end
 function show(io::IO, hdu::ASCIITableHDU)
     colnames, coltforms, ncols, nrows = columns_names_tforms(hdu)
     # Get additional info
-    coltypes = Vector{String}(ncols)
+    coltypes = Vector{String}(undef, ncols)
     for i in 1:ncols
         eqtypecode, repeat, width = fits_get_eqcoltype(hdu.fitsfile, i)
         T = CFITSIO_COLTYPE[eqtypecode]
@@ -418,7 +418,7 @@ function fits_read_var_col(f::FITSFile, colnum::Integer,
     nrows = length(data)
     for i=1:nrows
         repeat, offset = fits_read_descript(f, colnum, i)
-        data[i] = Vector{T}(repeat)
+        data[i] = Vector{T}(undef, repeat)
         fits_read_col(f, colnum, i, 1, data[i])
     end
 end
@@ -440,7 +440,7 @@ function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{String})
         fits_assert_ok(status[])
 
         # Create string out of the buffer, terminating at null characters
-        zeropos = search(buffer, 0x00)
+        zeropos = something(findfirst(isequal(0x00), buffer), 0)
         data[i] = (zeropos >= 1) ? String(buffer[1:(zeropos-1)]) :
                                    String(buffer)
     end
@@ -457,7 +457,7 @@ function read(hdu::ASCIITableHDU, colname::String; case_sensitive::Bool=true)
     typecode, repcnt, width = fits_get_eqcoltype(hdu.fitsfile, colnum)
     T = CFITSIO_COLTYPE[typecode]
 
-    result = Vector{T}(nrows)
+    result = Vector{T}(undef, nrows)
     fits_read_col(hdu.fitsfile, colnum, 1, 1, result)
 
     return result
@@ -487,7 +487,7 @@ function read(hdu::TableHDU, colname::String; case_sensitive::Bool=true)
 
     T, rowsize, isvariable = fits_get_col_info(hdu.fitsfile, colnum)
 
-    result = Array{T}(rowsize..., nrows)
+    result = Array{T}(undef, rowsize..., nrows)
 
     if isvariable
         fits_read_var_col(hdu.fitsfile, colnum, result)

@@ -1,5 +1,6 @@
 using FITSIO
 using Test
+using Random # for `randstring`
 
 @testset "Images" begin
     # Create a FITS instance and loop over supported types.

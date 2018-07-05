@@ -176,7 +176,7 @@ mutable struct FITSFile
 
     function FITSFile(ptr::Ptr{Cvoid})
         f = new(ptr)
-        finalizer(f, fits_close_file)
+        finalizer(fits_close_file, f)
         f
     end
 end
@@ -1009,7 +1009,7 @@ function fits_get_coltype end
 
     function fits_get_img_size(f::FITSFile)
         ndim = fits_get_img_dim(f)
-        naxes = Vector{$T}(ndim)
+        naxes = Vector{$T}(undef, ndim)
         status = Ref{Cint}(0)
         ccall(($ffgisz, libcfitsio), Cint,
               (Ptr{Cvoid}, Cint, Ptr{$T}, Ref{Cint}),
@@ -1112,7 +1112,7 @@ function fits_read_col(f::FITSFile,
     # Create strings out of the buffers, terminating at null characters.
     # Note that `String(x)` does not copy the buffer x.
     for i in 1:length(data)
-        zeropos = search(buffers[i], 0x00)
+        zeropos = something(findfirst(isequal(0x00), buffers[i]), 0)
         data[i] = (zeropos >= 1) ? String(buffers[i][1:(zeropos-1)]) :
                                    String(buffers[i])
     end

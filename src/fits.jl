@@ -39,7 +39,7 @@ function length(f::FITS)
     Int(fits_get_num_hdus(f.fitsfile))
 end
 
-endof(f::FITS) = length(f)
+Base.lastindex(f::FITS) = length(f)
 
 # Iteration
 start(f::FITS) = 1
@@ -60,9 +60,9 @@ function show(io::IO, f::FITS)
     else
         print(io, "HDUs: ")
 
-        names = Vector{String}(nhdu)
-        vers = Vector{String}(nhdu)
-        types = Vector{String}(nhdu)
+        names = Vector{String}(undef, nhdu)
+        vers  = Vector{String}(undef, nhdu)
+        types = Vector{String}(undef, nhdu)
         for i = 1:nhdu
             t = fits_movabs_hdu(f.fitsfile, i)
             types[i] = (t == :image_hdu ? "Image" :
@@ -70,9 +70,9 @@ function show(io::IO, f::FITS)
                         t == :ascii_table ? "ASCIITable" :
                         error("unknown HDU type"))
             nname = fits_try_read_extname(f.fitsfile)
-            names[i] = get(nname, "")
+            names[i] = something(nname, "")
             nver = fits_try_read_extver(f.fitsfile)
-            vers[i] = isnull(nver) ? "" : string(get(nver))
+            vers[i] = nver === nothing ? "" : string(nver)
         end
 
         nums = [string(i) for i=1:nhdu]

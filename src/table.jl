@@ -290,7 +290,7 @@ function write_internal(f::FITS, colnames::Vector{String},
     end
 
     # create an array of tform strings (which we will create pointers to)
-    tform_str = Vector{String}(ncols)
+    tform_str = Vector{String}(undef, ncols)
     for i in 1:ncols
         if isvarcol[i]
             tform_str[i] = fits_tform_v(hdutype, coldata[i])
@@ -431,7 +431,7 @@ function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{String})
     bufptr = Ref{Ptr{UInt8}}()  # holds a pointer to the current row buffer
     for i=1:length(data)
         repeat, offset = fits_read_descript(f, colnum, i)
-        buffer = Vector{UInt8}(repeat)
+        buffer = Vector{UInt8}(undef, repeat)
         bufptr[] = pointer(buffer)
         ccall((:ffgcvs, libcfitsio), Cint,
               (Ptr{Cvoid}, Cint, Int64, Int64, Int64,

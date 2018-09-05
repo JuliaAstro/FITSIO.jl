@@ -200,7 +200,7 @@ function reserved_key_indices(hdr::FITSHeader)
     # Note that this removes anything matching NAXIS\d regardless of # of axes.
     if in("NAXIS", hdr.keys)
         for i=1:nhdr
-            if ismatch(r"^NAXIS\d*$", hdr.keys[i])
+            if occursin(r"^NAXIS\d*$", hdr.keys[i])
                 push!(indices, i)
             end
         end
@@ -208,10 +208,10 @@ function reserved_key_indices(hdr::FITSHeader)
 
     if in("ZNAXIS", hdr.keys)
         for i=1:nhdr
-            if (ismatch(r"^ZNAXIS\d*$", hdr.keys[i]) ||
-                ismatch(r"^ZTILE\d*$", hdr.keys[i]) ||
-                ismatch(r"^ZNAME\d*$", hdr.keys[i]) ||
-                ismatch(r"^ZVAL\d*$", hdr.keys[i]))
+            if (occursin(r"^ZNAXIS\d*$", hdr.keys[i]) ||
+                occursin(r"^ZTILE\d*$", hdr.keys[i]) ||
+                occursin(r"^ZNAME\d*$", hdr.keys[i]) ||
+                occursin(r"^ZVAL\d*$", hdr.keys[i]))
                 push!(indices, i)
             end
         end
@@ -225,7 +225,7 @@ function reserved_key_indices(hdr::FITSHeader)
                        r"^TDMAX\d*$", r"^TDESC\d*$", r"^TROTA\d*$",
                        r"^TRPIX\d*$", r"^TRVAL\d*$", r"^TDELT\d*$",
                        r"^TCUNI\d*$", r"^TFIELDS$"]
-                if ismatch(re, hdr.keys[i])
+                if occursin(re, hdr.keys[i])
                     push!(indices, i)
                 end
             end

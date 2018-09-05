@@ -82,10 +82,11 @@ end
 # Parse max length from tform for a variable column
 function var_col_maxlen(tform::String)
     maxlen = -1
-    i = search(tform, '(')
+    i = something(findfirst(isequal('('), tform), 0)
     if i > 0
-        j = search(tform, ')', i)
-        if j > 0
+        j = something(findnext(isequal(')'), tform, i), 0)
+        if j > i
+            # FIXME: use `tryparse`
             try maxlen = parseint(tform[i+1:j-1]) catch end
         end
     end
@@ -441,7 +442,7 @@ function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{String})
         fits_assert_ok(status[])
 
         # Create string out of the buffer, terminating at null characters
-        zeropos = search(buffer, 0x00)
+        zeropos = something(findfirst(isequal(0x00), buffer), 0)
         data[i] = (zeropos >= 1) ? String(buffer[1:(zeropos-1)]) :
                                    String(buffer)
     end

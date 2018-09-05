@@ -27,7 +27,7 @@ function try_parse_hdrval(::Type{String}, s::String)
         return Nullable{String}()
     end
 
-    i = endof(s) - 1
+    i = lastindex(s) - 1
     while i > 2
         if s[i] != ' '
             return Nullable(s[2:i])
@@ -73,12 +73,12 @@ end
 
 # Try to read the raw keys in order given; returns Nullable.
 # (null if no key exists or if parsing an existing key is unsuccessful.)
-function fits_try_read_keys{T}(f::FITSFile, ::Type{T}, keys)
+function fits_try_read_keys(f::FITSFile, ::Type{T}, keys) where {T}
     status = Cint[0]
-    value = Vector{UInt8}(71)
+    value = Vector{UInt8}(undef, 71)
     for key in keys
         ccall((:ffgkey, libcfitsio), Cint,
-              (Ptr{Void},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+              (Ptr{Cvoid},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
               f.ptr, key, value, C_NULL, status)
 
         # If the key is found, return it. If there was some other error
@@ -226,8 +226,8 @@ keyword does not already exist, a new record will be appended at the
 end of the header.
 """
 function write_key(hdu::HDU, key::String,
-                   value::Union{String, Bool, Integer, AbstractFloat, Void},
-                   comment::Union{String, Ptr{Void}}=C_NULL)
+                   value::Union{String, Bool, Integer, AbstractFloat, Nothing},
+                   comment::Union{String, Ptr{Cvoid}}=C_NULL)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     fits_update_key(hdu.fitsfile, key, value, comment)
@@ -250,20 +250,20 @@ function read_header(hdu::HDU)
 
     # Below, we use a direct call to ffgkyn so that we can keep reusing the
     # same buffers.
-    key = Vector{UInt8}(81)
-    value = Vector{UInt8}(81)
-    comment = Vector{UInt8}(81)
+    key = Vector{UInt8}(undef, 81)
+    value = Vector{UInt8}(undef, 81)
+    comment = Vector{UInt8}(undef, 81)
     status = Cint[0]
 
     nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
 
     # Initialize output arrays
-    keys = Vector{String}(nkeys)
-    values = Vector{Any}(nkeys)
-    comments = Vector{String}(nkeys)
+    keys = Vector{String}(undef, nkeys)
+    values = Vector{Any}(undef, nkeys)
+    comments = Vector{String}(undef, nkeys)
     for i=1:nkeys
         ccall((:ffgkyn,libcfitsio), Cint,
-              (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+              (Ptr{Cvoid},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
               hdu.fitsfile.ptr, i, key, value, comment, status)
         keys[i] = unsafe_string(pointer(key))
         values[i] = parse_header_val(unsafe_string(pointer(value)))

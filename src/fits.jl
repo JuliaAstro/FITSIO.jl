@@ -75,10 +75,10 @@ function show(io::IO, f::FITS)
                         t == :binary_table ? "Table" :
                         t == :ascii_table ? "ASCIITable" :
                         error("unknown HDU type"))
-            nname = fits_try_read_extname(f.fitsfile)
-            names[i] = get(nname, "")
-            nver = fits_try_read_extver(f.fitsfile)
-            vers[i] = isnull(nver) ? "" : string(get(nver))
+            name = fits_try_read_extname(f.fitsfile)
+            names[i] = (name === nothing ? "" : name)
+            ver = fits_try_read_extver(f.fitsfile)
+            vers[i] = (ver === nothing ? "" : string(ver))
         end
 
         nums = [string(i) for i=1:nhdu]

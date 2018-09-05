@@ -318,7 +318,9 @@ function fits_close_file end
 """
     fits_delete_file(f::FITSFile)
 
-Close an opened FITS file (like [`fits_close_file`](@ref)) and removes it from the disk.
+Close an opened FITS file (like [`fits_close_file`](@ref)) and removes it
+from the disk.
+
 """
 function fits_delete_file end
 
@@ -329,14 +331,13 @@ for (a,b) in ((:fits_close_file, "ffclos"),
 
             # fits_close_file() is called during garbage collection, but file
             # may already be closed by user, so we need to check if it is open.
-            if f.ptr != C_NULL
+            if (ptr = f.ptr) != C_NULL
+                f.ptr = C_NULL # avoid closing twice
                 status = Ref{Cint}(0)
-                ccall(($b,libcfitsio), Cint,
-                      (Ptr{Cvoid},Ref{Cint}),
-                      f.ptr, status)
+                ccall(($b, libcfitsio), Cint, (Ptr{Cvoid}, Ref{Cint}),
+                      ptr, status)
                 fits_assert_ok(status[])
-                f.ptr = C_NULL
-            end
+           end
         end
     end
 end
@@ -425,7 +426,9 @@ end
 """
     fits_read_keyword(f::FITSFile, keyname::String) -> (value, comment)
 
-Return the specified keyword.
+yields the specified keyword value and commend (as a tuple of strings),
+throws and error if the keyword is not found.
+
 """
 function fits_read_keyword(f::FITSFile, keyname::String)
     value = Vector{UInt8}(undef, 71)
@@ -740,7 +743,7 @@ function fits_create_img(f::FITSFile, ::Type{T},
     ccall((:ffcrimll, libcfitsio), Cint,
           (Ptr{Cvoid}, Cint, Cint, Ptr{Int64}, Ref{Cint}),
           f.ptr, bitpix_from_type(T), length(naxes),
-          Vector{Int64}(undef, naxes), status)
+          convert(Vector{Int64}, naxes), status)
     fits_assert_ok(status[])
 end
 
@@ -754,7 +757,7 @@ function fits_write_pix(f::FITSFile, fpixel::Vector{S}, nelements::Integer,
     status = Ref{Cint}(0)
     ccall((:ffppxll, libcfitsio), Cint,
           (Ptr{Cvoid}, Cint, Ptr{Int64}, Int64, Ptr{Cvoid}, Ref{Cint}),
-          f.ptr, cfitsio_typecode(T), Vector{Int64}(undef, fpixel),
+          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, data, status)
     fits_assert_ok(status[])
 end
@@ -770,7 +773,7 @@ function fits_read_pix(f::FITSFile, fpixel::Vector{S},  nelements::Int,
     ccall((:ffgpxvll, libcfitsio), Cint,
           (Ptr{Cvoid}, Cint, Ptr{Int64}, Int64, Ref{T}, Ptr{T},
            Ref{Cint}, Ref{Cint}),
-          f.ptr, cfitsio_typecode(T), Vector{Int64}(undef, fpixel),
+          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, nullval, data, anynull, status)
     fits_assert_ok(status[])
     anynull[]
@@ -788,7 +791,7 @@ function fits_read_pix(f::FITSFile, fpixel::Vector{S},
     ccall((:ffgpxvll, libcfitsio), Cint,
           (Ptr{Cvoid}, Cint, Ptr{Int64}, Int64, Ptr{Cvoid}, Ptr{Cvoid},
            Ref{Cint}, Ref{Cint}),
-          f.ptr, cfitsio_typecode(T), Vector{Int64}(undef, fpixel),
+          f.ptr, cfitsio_typecode(T), convert(Vector{Int64}, fpixel),
           nelements, C_NULL, data, anynull, status)
     fits_assert_ok(status[])
     anynull[]
@@ -808,9 +811,9 @@ function fits_read_subset(f::FITSFile, fpixel::Vector{S1}, lpixel::Vector{S2},
           (Ptr{Cvoid}, Cint, Ptr{Clong}, Ptr{Clong}, Ptr{Clong}, Ptr{Cvoid},
            Ptr{Cvoid}, Ref{Cint}, Ref{Cint}),
           f.ptr, cfitsio_typecode(T),
-          Vector{Clong}(undef, fpixel),
-          Vector{Clong}(undef, lpixel),
-          Vector{Clong}(undef, inc),
+          convert(Vector{Clong}, fpixel),
+          convert(Vector{Clong}, lpixel),
+          convert(Vector{Clong}, inc),
           C_NULL, data, anynull, status)
     fits_assert_ok(status[])
     anynull[]
@@ -1114,7 +1117,7 @@ function fits_read_col(f::FITSFile,
     # Create strings out of the buffers, terminating at null characters.
     # Note that `String(x)` does not copy the buffer x.
     for i in 1:length(data)
-        zeropos = search(buffers[i], 0x00)
+        zeropos = something(findfirst(isequal(0x00), buffers[i]), 0)
         data[i] = (zeropos >= 1) ? String(buffers[i][1:(zeropos-1)]) :
                                    String(buffers[i])
     end

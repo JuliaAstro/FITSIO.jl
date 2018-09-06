@@ -1,12 +1,16 @@
 using FITSIO
-using Base.Test
+
+# Dela with compatibility issues.
+using Compat
+using Compat.Test
+using Compat.Random
 
 @testset "Images" begin
     # Create a FITS instance and loop over supported types.
     fname = tempname() * ".fits"
     FITS(fname, "w") do f
-        for T in [UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
-                  Float32, Float64]
+        for T in (UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
+                  Float32, Float64)
             indata = reshape(T[1:100;], 5, 20)
 
             # Test writing the data to a new extension
@@ -76,7 +80,7 @@ end
     ## Binary table
     indata = Dict{String, Array}()
     for (i, T) in enumerate([UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
-                             Float32, Float64, Complex64, Complex128])
+                             Float32, Float64, ComplexF32, ComplexF64])
         indata["col$i"] = T[1:20;]
     end
     i = length(indata) + 1

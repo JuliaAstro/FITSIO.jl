@@ -39,12 +39,18 @@ function length(f::FITS)
     Int(fits_get_num_hdus(f.fitsfile))
 end
 
-Base.lastindex(f::FITS) = length(f)
+lastindex(f::FITS) = length(f)
 
 # Iteration
-start(f::FITS) = 1
-next(f::FITS, state) = (f[state], state + 1)
-done(f::FITS, state) = state > length(f)
+@static if isdefined(Base,:iterate)
+    iterate(f::FITS) = iterate(f, 1)
+    iterate(f::FITS, state) =
+        (state ≤ length(f) ? (f[state], state + 1) : nothing)
+else
+    start(f::FITS) = 1
+    next(f::FITS, state) = (f[state], state + 1)
+    done(f::FITS, state) = state > length(f)
+end
 
 function show(io::IO, f::FITS)
     fits_assert_open(f.fitsfile)
@@ -69,10 +75,9 @@ function show(io::IO, f::FITS)
                         t == :binary_table ? "Table" :
                         t == :ascii_table ? "ASCIITable" :
                         error("unknown HDU type"))
-            nname = fits_try_read_extname(f.fitsfile)
-            names[i] = something(nname, "")
-            nver = fits_try_read_extver(f.fitsfile)
-            vers[i] = nver === nothing ? "" : string(nver)
+            names[i] = something(fits_try_read_extname(f.fitsfile), "")
+            ver = fits_try_read_extver(f.fitsfile)
+            vers[i] = ver === nothing ? "" : string(ver)
         end
 
         nums = [string(i) for i=1:nhdu]

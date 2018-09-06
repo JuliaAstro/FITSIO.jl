@@ -1,13 +1,16 @@
 using FITSIO
-using Test
-using Random # for `randstring`
+
+# Deal with compatibility issues.
+using Compat
+using Compat.Test
+using Compat.Random # for `randstring`
 
 @testset "Images" begin
     # Create a FITS instance and loop over supported types.
     fname = tempname() * ".fits"
     FITS(fname, "w") do f
-        for T in [UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
-                  Float32, Float64]
+        for T in (UInt8, Int8, UInt16, Int16, UInt32, Int32, Int64,
+                  Float32, Float64)
             indata = reshape(T[1:100;], 5, 20)
 
             # Test writing the data to a new extension

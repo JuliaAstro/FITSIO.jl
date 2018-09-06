@@ -52,8 +52,7 @@
 #     -------------------------------------------------
 #
 
-__precompile__()
-
+isdefined(Base, :__precompile__) && __precompile__()
 
 module Libcfitsio
 
@@ -119,6 +118,19 @@ export FITSFile,
        fits_write_record,
        fits_write_tdim
 
+# Deal with compatibility issues.
+using Compat
+using Compat.Libdl
+@static if VERSION < v"0.7.0-DEV.2562"
+    @inline function Base.finalizer(func::Function, obj)
+        finalizer(obj, func)
+        return obj
+    end
+end
+@static if !isdefined(Base,Symbol("@error"))
+    using Compat: @error
+end
+
 const depsjl_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
 if !isfile(depsjl_path)
     @error "FITSIO not properly installed. " *
@@ -174,11 +186,7 @@ end
 mutable struct FITSFile
     ptr::Ptr{Cvoid}
 
-    function FITSFile(ptr::Ptr{Cvoid})
-        f = new(ptr)
-        finalizer(fits_close_file, f)
-        f
-    end
+    FITSFile(ptr::Ptr{Cvoid}) = finalizer(fits_close_file, new(ptr))
 end
 
 # FITS wants to be able to update the ptr, so keep them
@@ -214,7 +222,7 @@ end
 fits_assert_isascii(str::String) =
     !isascii(str) && error("FITS file format accepts ASCII strings only")
 
-fits_get_version() = ccall((:ffvers, libcfitsio), Cfloat, (Ref{Cfloat},), 0.)
+fits_get_version() = ccall((:ffvers, libcfitsio), Cfloat, (Ref{Cfloat},), 0.0)
 
 # -----------------------------------------------------------------------------
 # file access & info functions
@@ -316,7 +324,9 @@ function fits_close_file end
 """
     fits_delete_file(f::FITSFile)
 
-Close an opened FITS file (like [`fits_close_file`](@ref)) and removes it from the disk.
+Close an opened FITS file (like [`fits_close_file`](@ref)) and removes it
+from the disk.
+
 """
 function fits_delete_file end
 
@@ -327,14 +337,13 @@ for (a,b) in ((:fits_close_file, "ffclos"),
 
             # fits_close_file() is called during garbage collection, but file
             # may already be closed by user, so we need to check if it is open.
-            if f.ptr != C_NULL
+            if (ptr = f.ptr) != C_NULL
+                f.ptr = C_NULL # avoid closing twice even if an error occurs
                 status = Ref{Cint}(0)
-                ccall(($b,libcfitsio), Cint,
-                      (Ptr{Cvoid},Ref{Cint}),
-                      f.ptr, status)
+                ccall(($b, libcfitsio), Cint, (Ptr{Cvoid}, Ref{Cint}),
+                      ptr, status)
                 fits_assert_ok(status[])
-                f.ptr = C_NULL
-            end
+           end
         end
     end
 end
@@ -423,7 +432,9 @@ end
 """
     fits_read_keyword(f::FITSFile, keyname::String) -> (value, comment)
 
-Return the specified keyword.
+yields the specified keyword value and commend (as a tuple of strings),
+throws and error if the keyword is not found.
+
 """
 function fits_read_keyword(f::FITSFile, keyname::String)
     value = Vector{UInt8}(undef, 71)

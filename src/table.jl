@@ -82,11 +82,12 @@ end
 # Parse max length from tform for a variable column
 function var_col_maxlen(tform::String)
     maxlen = -1
-    i = search(tform, '(')
+    i = something(findfirst(isequal('('), tform), 0)
     if i > 0
-        j = search(tform, ')', i)
-        if j > 0
-            try maxlen = parseint(tform[i+1:j-1]) catch; end
+        j = something(findnext(isequal(')'), tform, i), 0)
+        if j > i
+            # FIXME: use `tryparse`
+            try maxlen = parseint(tform[i+1:j-1]) catch end
         end
     end
     return maxlen
@@ -106,7 +107,8 @@ end
 
 # Helper function for getting fits tform string for given table type
 # and data array.
-fits_tform(::Type{TableHDU}, A::Array{T}) where {T} = "$(prod(fits_tdim(A)))$(fits_tform_char(T))"
+fits_tform(::Type{TableHDU}, A::Array{T}) where {T} =
+    "$(prod(fits_tdim(A)))$(fits_tform_char(T))"
 
 # For string arrays with 2+ dimensions, write tform as rAw. Otherwise,
 # cfitsio doesn't recognize that multiple strings should be written to

@@ -66,7 +66,7 @@ length(hdu::ImageHDU) = prod(size(hdu))
 
 # `lastindex` is needed so that hdu[:] can throw DimensionMismatch
 # when ndim != 1, rather than no method.
-Base.lastindex(hdu::ImageHDU) = length(hdu::ImageHDU)
+lastindex(hdu::ImageHDU) = length(hdu::ImageHDU)
 
 # Read a full image from an HDU
 """

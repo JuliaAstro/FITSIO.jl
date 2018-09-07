@@ -2,8 +2,6 @@ isdefined(Base, :__precompile__) && __precompile__()
 
 module FITSIO
 
-using Compat.Printf
-
 export FITS,
        HDU,
        ImageHDU,
@@ -26,13 +24,19 @@ import Base: getindex,
              close,
              ndims,
              size,
-             endof,
              haskey,
              keys,
-             values,
-             start,
-             next,
-             done
+             values
+
+# Deal with compatibility issues.
+using Compat
+using Compat.Printf
+import Compat: lastindex
+@static if isdefined(Base, :iterate)
+    import Base: iterate
+else
+    import Base: start, next, done
+end
 
 # Libcfitsio submodule
 include("libcfitsio.jl")

@@ -6,57 +6,59 @@
 # Used here and in other files. Functions that operate on FITSFile
 # start with `fits_`.
 
+"""
+```julia
+try_parse_hdrval(T, s) -> x::Union{T,Nothing}
+```
+
+attempts to parse string `s` for a FITS card value of type `T` (`String`,
+`Bool`, `Int` or `Float64`) and yields either a value of type `T` or
+[`nothing`](@ref) if parsing is unsuccessful.
+
+See also: [`tryparse`](@ref), [`parse_header_val`](@ref).
+
+"""
 function try_parse_hdrval(::Type{Bool}, s::String)
     if length(s) == 1
         if s[1] == 'T'
-            return Nullable(true)
+            return true
         elseif s[1] == 'F'
-            return Nullable(false)
+            return false
         end
     end
-    return Nullable{Bool}()
+    return nothing
 end
 
-# Note that trailing whitespace is not significant in FITS header
-# keywords, but *leading* whitespace is, so "'    '" parses as " " (a
+# Note that trailing whitespaces are not significant in FITS header
+# keywords, but *leading* whitespaces are, so "'    '" parses as " " (a
 # single space).  See CFITSIO manual section 4.5 for details.
 #
 # TODO: parse '' within the string as a single '.
 function try_parse_hdrval(::Type{String}, s::String)
     if length(s) < 2 || s[1] != '\'' || s[end] != '\''
-        return Nullable{String}()
+        return nothing
     end
 
-    i = endof(s) - 1
+    i = lastindex(s) - 1
     while i > 2
         if s[i] != ' '
-            return Nullable(s[2:i])
+            return s[2:i]
         end
         i -= 1
     end
-    return Nullable(s[2:i])
+    return s[2:i]
 end
 
-try_parse_hdrval(::Type{Float64}, s::String) = tryparse(Float64, s)
-try_parse_hdrval(::Type{Int}, s::String) = tryparse(Int, s)
-
-# Try to parse the header value as any type
-function try_parse_hdrval(s::String)
-    length(s) == 0 && return Nullable(nothing)
-
-    nb = try_parse_hdrval(Bool, s)
-    isnull(nb) || return nb
-
-    ns = try_parse_hdrval(String, s)
-    isnull(ns) || return ns
-
-    ni = try_parse_hdrval(Int, s)
-    isnull(ni) || return ni
-
-    nf = try_parse_hdrval(Float64, s)
-    isnull(nf) || return nf
-
-    return Nullable{Any}()
+@static if isdefined(Base, :Some)
+    try_parse_hdrval(::Type{T}, s::String) where {T<:Union{Int,Float64}} =
+        tryparse(T, s)
+else
+    # The tryparse method returns a Nullable in old versions of Julia.
+    function try_parse_hdrval(::Type{T},
+                              s::String) where {T<:Union{Int,Float64}}
+        x = tryparse(T, s)
+        return isnull(x) ? nothing : get(x)
+    end
 end
 
 # functions for displaying header values in show(io, header)
@@ -64,21 +66,55 @@ hdrval_repr(v::Bool) = v ? "T" : "F"
 hdrval_repr(v::String) = @sprintf "'%s'" v
 hdrval_repr(v::Union{AbstractFloat, Integer}) = string(v)
 
-# returns one of: String, Bool, Int, Float64, nothing
-# (never error)
+"""
+```julia
+parse_header_val(s) -> x::Union{String,Bool,Int,Float64,Nothing}
+```
+
+parses the FITS card value in the string `s` and returns a value of type
+`String`, `Bool`, `Int`, `Float64` or `Nothing`.  The latter indicates an
+empty value.  This method never throws an error; if the value cannot be
+parsed it is returned as it.
+
+See also: [`try_parse_hdrval`](@ref).
+"""
 function parse_header_val(s::String)
-    nval = try_parse_hdrval(s)
-    return isnull(nval) ? s : get(nval)
+    length(s) == 0 && return nothing
+
+    vb = try_parse_hdrval(Bool, s)
+    vb === nothing || return vb
+
+    vs = try_parse_hdrval(String, s)
+    vs === nothing || return vs
+
+    vi = try_parse_hdrval(Int, s)
+    vi === nothing || return vi
+
+    vf = try_parse_hdrval(Float64, s)
+    vf === nothing || return vf
+
+    # FIXME: error("invalid FITS keyword value")
+    return s
 end
 
-# Try to read the raw keys in order given; returns Nullable.
-# (null if no key exists or if parsing an existing key is unsuccessful.)
-function fits_try_read_keys{T}(f::FITSFile, ::Type{T}, keys)
+"""
+```julia
+fits_try_read_keys(f, T, keys)
+```
+
+tries to read the raw FITS keys in given order if FITS handle `f` and
+returns a value of type `T` or [`nothing`](@ref) if no key exists or if
+parsing an existing key is unsuccessful.
+
+See also: [`try_parse_hdrval`](@ref).
+
+"""
+function fits_try_read_keys(f::FITSFile, ::Type{T}, keys) where T
     status = Cint[0]
-    value = Vector{UInt8}(71)
+    value = Vector{UInt8}(undef, 71)
     for key in keys
         ccall((:ffgkey, libcfitsio), Cint,
-              (Ptr{Void},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+              (Ptr{Cvoid},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
               f.ptr, key, value, C_NULL, status)
 
         # If the key is found, return it. If there was some other error
@@ -89,28 +125,29 @@ function fits_try_read_keys{T}(f::FITSFile, ::Type{T}, keys)
             error(fits_get_errstatus(status[1]))
         end
     end
-    return Nullable{T}()
+    return nothing
 end
 
 # Build a string with extension keywords, if present.
 # This is a helper function for show(::HDU).
 const EXTNAME_KEYS = ["EXTNAME", "HDUNAME"]
 const EXTVER_KEYS = ["EXTVER", "HDUVER"]
-fits_try_read_extname(f::FITSFile) =
+fits_try_read_extname(f::FITSFile) :: Union{String,Nothing} =
     fits_try_read_keys(f, String, EXTNAME_KEYS)
-fits_try_read_extver(f::FITSFile) = fits_try_read_keys(f, Int, EXTVER_KEYS)
+fits_try_read_extver(f::FITSFile) :: Union{Int,Nothing} =
+    fits_try_read_keys(f, Int, EXTVER_KEYS)
 
 function fits_get_ext_info_string(f::FITSFile)
     extname = fits_try_read_extname(f)
     extver = fits_try_read_extver(f)
-    if !isnull(extname) && !isnull(extver)
-        return " (name=$(repr(get(extname))), ver=$(get(extver)))"
-    elseif !isnull(extname)
-        return " (name=$(repr(get(extname))))"
+    if extname === nothing
+        return ""
+    elseif extver === nothing
+        return " (name=$extname)"
+    else
+        return " (name=$extname, ver=$extver)"
     end
-    return ""
 end
-
 
 # Return indices of reserved keys in a header.
 # This is more complex than you would think because some reserved keys
@@ -133,7 +170,7 @@ function reserved_key_indices(hdr::FITSHeader)
     # Note that this removes anything matching NAXIS\d regardless of # of axes.
     if in("NAXIS", hdr.keys)
         for i=1:nhdr
-            if ismatch(r"^NAXIS\d*$", hdr.keys[i])
+            if occursin(r"^NAXIS\d*$", hdr.keys[i])
                 push!(indices, i)
             end
         end
@@ -141,10 +178,10 @@ function reserved_key_indices(hdr::FITSHeader)
 
     if in("ZNAXIS", hdr.keys)
         for i=1:nhdr
-            if (ismatch(r"^ZNAXIS\d*$", hdr.keys[i]) ||
-                ismatch(r"^ZTILE\d*$", hdr.keys[i]) ||
-                ismatch(r"^ZNAME\d*$", hdr.keys[i]) ||
-                ismatch(r"^ZVAL\d*$", hdr.keys[i]))
+            if (occursin(r"^ZNAXIS\d*$", hdr.keys[i]) ||
+                occursin(r"^ZTILE\d*$", hdr.keys[i]) ||
+                occursin(r"^ZNAME\d*$", hdr.keys[i]) ||
+                occursin(r"^ZVAL\d*$", hdr.keys[i]))
                 push!(indices, i)
             end
         end
@@ -158,7 +195,7 @@ function reserved_key_indices(hdr::FITSHeader)
                        r"^TDMAX\d*$", r"^TDESC\d*$", r"^TROTA\d*$",
                        r"^TRPIX\d*$", r"^TRVAL\d*$", r"^TDELT\d*$",
                        r"^TCUNI\d*$", r"^TFIELDS$"]
-                if ismatch(re, hdr.keys[i])
+                if occursin(re, hdr.keys[i])
                     push!(indices, i)
                 end
             end
@@ -194,10 +231,22 @@ end
 # Public API
 
 """
-    read_key(hdu, key::String) -> (value, comment)
-    read_key(hdu, key::Integer) -> (keyname, value, comment)
+```julia
+read_key(hdu, key::String) -> (value, comment)
+```
 
-Read the HDU header record specified by keyword or position.
+reads the HDU header record specified by keyword and returns a tuple where
+`value` is the keyword parsed value (of type `String`, `Bool`, `Int`,
+`Float64` or `Nothing`), `comment` is the keyword comment (as a string).
+An error is thrown if `key` is not found.
+
+```julia
+read_key(hdu, key::Integer) -> (keyname, value, comment)
+```
+
+same as above but FITS card is specified by its position and returns a 3
+element tuple where `keyname` is the keyword name (a string).
+
 """
 function read_key(hdu::HDU, key::Integer)
     fits_assert_open(hdu.fitsfile)
@@ -226,8 +275,8 @@ keyword does not already exist, a new record will be appended at the
 end of the header.
 """
 function write_key(hdu::HDU, key::String,
-                   value::Union{String, Bool, Integer, AbstractFloat, Void},
-                   comment::Union{String, Ptr{Void}}=C_NULL)
+                   value::Union{String, Bool, Integer, AbstractFloat, Nothing},
+                   comment::Union{String, Ptr{Cvoid}}=C_NULL)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     fits_update_key(hdu.fitsfile, key, value, comment)
@@ -250,20 +299,20 @@ function read_header(hdu::HDU)
 
     # Below, we use a direct call to ffgkyn so that we can keep reusing the
     # same buffers.
-    key = Vector{UInt8}(81)
-    value = Vector{UInt8}(81)
-    comment = Vector{UInt8}(81)
+    key = Vector{UInt8}(undef, 81)
+    value = Vector{UInt8}(undef, 81)
+    comment = Vector{UInt8}(undef, 81)
     status = Cint[0]
 
     nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
 
     # Initialize output arrays
-    keys = Vector{String}(nkeys)
-    values = Vector{Any}(nkeys)
-    comments = Vector{String}(nkeys)
+    keys = Vector{String}(undef, nkeys)
+    values = Vector{Any}(undef, nkeys)
+    comments = Vector{String}(undef, nkeys)
     for i=1:nkeys
         ccall((:ffgkyn,libcfitsio), Cint,
-              (Ptr{Void},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+              (Ptr{Cvoid},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
               hdu.fitsfile.ptr, i, key, value, comment, status)
         keys[i] = unsafe_string(pointer(key))
         values[i] = parse_header_val(unsafe_string(pointer(value)))

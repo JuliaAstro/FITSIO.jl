@@ -85,7 +85,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API Reference",
     "title": "FITSIO.read_key",
     "category": "function",
-    "text": "read_key(hdu, key::String) -> (value, comment)\nread_key(hdu, key::Integer) -> (keyname, value, comment)\n\nRead the HDU header record specified by keyword or position.\n\n\n\n"
+    "text": "read_key(hdu, key::String) -> (value, comment)\n\nreads the HDU header record specified by keyword and returns a tuple where value is the keyword parsed value (of type String, Bool, Int, Float64 or Nothing), comment is the keyword comment (as a string). An error is thrown if key is not found.\n\nread_key(hdu, key::Integer) -> (keyname, value, comment)\n\nsame as above but FITS card is specified by its position and returns a 3 element tuple where keyname is the keyword name (a string).\n\n\n\n"
 },
 
 {
@@ -429,7 +429,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Libcfitsio Submodule",
     "title": "FITSIO.Libcfitsio.fits_read_keyword",
     "category": "function",
-    "text": "fits_read_keyword(f::FITSFile, keyname::String) -> (value, comment)\n\nReturn the specified keyword.\n\n\n\n"
+    "text": "fits_read_keyword(f::FITSFile, keyname::String) -> (value, comment)\n\nyields the specified keyword value and commend (as a tuple of strings), throws and error if the keyword is not found.\n\n\n\n"
 },
 
 {

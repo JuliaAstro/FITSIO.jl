@@ -43,8 +43,7 @@ lastindex(f::FITS) = length(f)
 
 # Iteration
 @static if isdefined(Base,:iterate)
-    iterate(f::FITS) = iterate(f, 1)
-    iterate(f::FITS, state) =
+    iterate(f::FITS, state=1) =
         (state ≤ length(f) ? (f[state], state + 1) : nothing)
 else
     start(f::FITS) = 1

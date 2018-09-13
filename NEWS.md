@@ -1,6 +1,7 @@
-v0.12.0 (2018-??-??)
+v0.12.0 (2018-09-13)
 ====================
 
+- Drop support for Julia 0.5.
 - Column names in FITS files are now case sensitive by default.  Functions
   `read(hdu, colname)` and `Libcfitsio.fits_get_colnum` have a new optional
   keyword, `case_sensitive`, which is `true` by default.

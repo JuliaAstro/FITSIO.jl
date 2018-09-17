@@ -106,7 +106,13 @@ end
         @test colname in colnames
     end
 
-    @test_throws ErrorException read(f[2], "vcol", case_sensitive=false)
+    # TODO: remove the tests for deprecation warnings when we don't issue them, but keep the
+    # `@test_throws` test.
+    @test_throws ErrorException @test_nowarn(read(f[2], "vcol", case_sensitive=false))
+    @test_nowarn read(f[2], "col2")
+    @static if VERSION >= v"0.7"
+        @test_logs (:warn, r"case_sensitive") read(f[2], "COL2")
+    end
 
     # Test representation
     @test repr(f[2])[end-38:end] == "\n\n         (*) = variable-length column"

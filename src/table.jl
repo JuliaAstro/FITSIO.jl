@@ -454,7 +454,26 @@ function read(hdu::ASCIITableHDU, colname::String; case_sensitive::Bool=true)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     nrows = fits_get_num_rows(hdu.fitsfile)
-    colnum = fits_get_colnum(hdu.fitsfile, colname, case_sensitive=case_sensitive)
+    ### TODO: the following `if` is a deprecation warning for the case-sensitivity change.
+    ### Remove it when we want to remove the deprecation.
+    # `case_sensitive=true` is the default behavior, the only case where the deprecation is
+    # necessary.
+    if case_sensitive
+        colnum = try
+            fits_get_colnum(hdu.fitsfile, colname, case_sensitive=true)
+        catch
+            # This temporary variable is to allow showing the depwarn only if the function
+            # didn't error.
+            tmp = fits_get_colnum(hdu.fitsfile, colname, case_sensitive=false)
+            Base.depwarn("The new default behavior of `read(::ASCIITableHDU, ::String)`\n" *
+                         "is to require case-sensitive column names.  Either pass the column name\n"*
+                         "with proper capitalization or use `read(hdu, \"$(colname)\", case_sensitive=false)`",
+                         :read)
+            tmp
+        end
+    else
+        colnum = fits_get_colnum(hdu.fitsfile, colname, case_sensitive=case_sensitive)
+    end
 
     typecode, repcnt, width = fits_get_eqcoltype(hdu.fitsfile, colnum)
     T = CFITSIO_COLTYPE[typecode]
@@ -485,7 +504,27 @@ function read(hdu::TableHDU, colname::String; case_sensitive::Bool=true)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     nrows = fits_get_num_rows(hdu.fitsfile)
-    colnum = fits_get_colnum(hdu.fitsfile, colname, case_sensitive=case_sensitive)
+    ### TODO: the following `if` is a deprecation warning for the case-sensitivity change.
+    ### Remove it when we want to remove the deprecation.
+    # `case_sensitive=true` is the default behavior, the only case where the deprecation is
+    # necessary.
+    if case_sensitive
+        colnum = try
+            fits_get_colnum(hdu.fitsfile, colname, case_sensitive=true)
+        catch
+            # This temporary variable is to allow showing the depwarn only if the function
+            # didn't error.
+            tmp = fits_get_colnum(hdu.fitsfile, colname, case_sensitive=false)
+            Base.depwarn("The new default behavior of `read(::TableHDU, ::String)`\n" *
+                         "is to require case-sensitive column names.  Either pass the column name\n"*
+                         "with proper capitalization or use `read(hdu, \"$(colname)\", case_sensitive=false)`",
+                         :read)
+            tmp
+        end
+    else
+        colnum = fits_get_colnum(hdu.fitsfile, colname, case_sensitive=case_sensitive)
+    end
+    
 
     T, rowsize, isvariable = fits_get_col_info(hdu.fitsfile, colnum)
 

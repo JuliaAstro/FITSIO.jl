@@ -49,17 +49,8 @@ function try_parse_hdrval(::Type{String}, s::String)
     return s[2:i]
 end
 
-@static if isdefined(Base, :Some)
-    try_parse_hdrval(::Type{T}, s::String) where {T<:Union{Int,Float64}} =
-        tryparse(T, s)
-else
-    # The tryparse method returns a Nullable in old versions of Julia.
-    function try_parse_hdrval(::Type{T},
-                              s::String) where {T<:Union{Int,Float64}}
-        x = tryparse(T, s)
-        return isnull(x) ? nothing : get(x)
-    end
-end
+try_parse_hdrval(::Type{T}, s::String) where {T<:Union{Int,Float64}} =
+    tryparse(T, s)
 
 # functions for displaying header values in show(io, header)
 hdrval_repr(v::Bool) = v ? "T" : "F"

@@ -1,5 +1,3 @@
-isdefined(Base, :__precompile__) && __precompile__()
-
 module FITSIO
 
 export FITS,
@@ -29,15 +27,8 @@ import Base: getindex,
              values
 
 # Deal with compatibility issues.
-using Compat
-using Compat.Printf
-import Compat: lastindex
-@static if isdefined(Base, :iterate)
-    import Base: iterate
-else
-    import Base: start, next, done
-end
-
+using Printf
+import Base: iterate, lastindex
 # Libcfitsio submodule
 include("libcfitsio.jl")
 

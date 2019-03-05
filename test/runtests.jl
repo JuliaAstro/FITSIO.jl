@@ -1,9 +1,8 @@
 using FITSIO
 
 # Deal with compatibility issues.
-using Compat
-using Compat.Test
-using Compat.Random # for `randstring`
+using Test
+using Random # for `randstring`
 
 @testset "Images" begin
     # Create a FITS instance and loop over supported types.
@@ -110,9 +109,7 @@ end
     # `@test_throws` test.
     @test_throws ErrorException @test_nowarn(read(f[2], "vcol", case_sensitive=false))
     @test_nowarn read(f[2], "col2")
-    @static if VERSION >= v"0.7"
-        @test_logs (:warn, r"case_sensitive") read(f[2], "COL2")
-    end
+    @test_logs (:warn, r"case_sensitive") read(f[2], "COL2")
 
     # Test representation
     @test repr(f[2])[end-38:end] == "\n\n         (*) = variable-length column"

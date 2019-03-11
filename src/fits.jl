@@ -42,14 +42,8 @@ end
 lastindex(f::FITS) = length(f)
 
 # Iteration
-@static if isdefined(Base,:iterate)
-    iterate(f::FITS, state=1) =
-        (state ≤ length(f) ? (f[state], state + 1) : nothing)
-else
-    start(f::FITS) = 1
-    next(f::FITS, state) = (f[state], state + 1)
-    done(f::FITS, state) = state > length(f)
-end
+iterate(f::FITS, state=1) =
+    (state ≤ length(f) ? (f[state], state + 1) : nothing)
 
 function show(io::IO, f::FITS)
     fits_assert_open(f.fitsfile)

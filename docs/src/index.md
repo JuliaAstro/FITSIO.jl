@@ -9,19 +9,15 @@ The interface is inspired by Erin Sheldon's
 
 ## Installation
 
-FITSIO is available for Julia 0.6 and later versions, and can be
-installed with [Julia](https://github.com/julialang/julia.jl)'s
-built-in package manager. In a Julia session run the command
+The latest version of `FITSIO.jl` is available for Julia 1.0 and later
+versions, and can be installed with
+[Julia](https://github.com/julialang/julia.jl)'s built-in package
+manager. After entering the package manager by pressing `]`, run the
+command
 
 ```julia
-julia> Pkg.update()
-julia> Pkg.add("FITSIO")
+pkg> add FITSIO
 ```
-
-On Linux or OS X, if it isn't already installed on your system,
-the cfitsio library is automatically downloaded and compiled
-(in your Julia packages directory). On Windows, a compiled dll will be
-downloaded.
 
 ## Usage
 

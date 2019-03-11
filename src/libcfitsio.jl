@@ -52,8 +52,6 @@
 #     -------------------------------------------------
 #
 
-isdefined(Base, :__precompile__) && __precompile__()
-
 module Libcfitsio
 
 export FITSFile,
@@ -119,17 +117,7 @@ export FITSFile,
        fits_write_tdim
 
 # Deal with compatibility issues.
-using Compat
-using Compat.Libdl
-@static if VERSION < v"0.7.0-DEV.2562"
-    @inline function Base.finalizer(func::Function, obj)
-        finalizer(obj, func)
-        return obj
-    end
-end
-@static if !isdefined(Base,Symbol("@error"))
-    using Compat: @error
-end
+using Libdl
 
 const depsjl_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
 if !isfile(depsjl_path)

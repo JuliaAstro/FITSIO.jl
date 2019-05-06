@@ -1,0 +1,19 @@
+name = "FITSIO"
+uuid = "525bcba6-941b-5504-bd06-fd0dc1a4d2eb"
+version = "0.13.1-DEV"
+
+[deps]
+BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[compat]
+BinaryProvider = "≥ 0.4.0"
+julia = "≥ 1.0.0"
+
+[extras]
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Random", "Test"]

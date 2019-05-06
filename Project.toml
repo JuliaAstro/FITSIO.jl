@@ -1,6 +1,6 @@
 name = "FITSIO"
 uuid = "525bcba6-941b-5504-bd06-fd0dc1a4d2eb"
-version = "0.13.1-DEV"
+version = "0.14.0"
 
 [deps]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"

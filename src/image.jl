@@ -179,6 +179,17 @@ function write(f::FITS, data::Array{T};
     nothing
 end
 
+"""
+    write(hdu::ImageHDU, data::Array)
+
+Write data to an existing image HDU.
+"""
+function write(hdu::ImageHDU, data::Array{T}) where T
+    fits_assert_open(hdu.fitsfile)
+    fits_write_pix(hdu.fitsfile, ones(Int, length(size(data))), length(data), data)
+    nothing
+end
+
 # Copy a rectangular section of an image and write it to a new FITS
 # primary image or image extension. The new image HDU is appended to
 # the end of the output file; all the keywords in the input image will

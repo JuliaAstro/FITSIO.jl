@@ -72,6 +72,27 @@ using Random # for `randstring`
     end
 end
 
+@testset "Write data to an existing image HDU" begin
+    # Create a file with an image
+    fname = tempname() * ".fits"
+    FITS(fname, "w") do f
+        indata = [[1 2 3]; [4 5 6]]
+        write(f, indata)
+    end
+
+    FITS(fname, "r+") do f
+        image_hdu = f[1]
+        @test read(image_hdu) == [[1 2 3]; [4 5 6]]
+
+        # Write data into the image HDU
+        write(image_hdu, [[11 12 13]; [14 15 16]])
+
+        @test read(image_hdu) == [[11 12 13]; [14 15 16]]
+    end
+
+    rm(fname, force=true)
+end
+
 @testset "Tables" begin
     fname = tempname() * ".fits"
     f = FITS(fname, "w")

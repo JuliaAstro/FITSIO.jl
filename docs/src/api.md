@@ -27,6 +27,7 @@ set_comment!
 
 ```@docs
 write{T}(::FITS, ::Array{T})
+write{T}(::ImageHDU, ::Array{T})
 read(::ImageHDU)
 ndims(::ImageHDU)
 size(::ImageHDU)

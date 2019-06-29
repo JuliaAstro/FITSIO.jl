@@ -73,24 +73,43 @@ using Random # for `randstring`
 end
 
 @testset "Write data to an existing image HDU" begin
-    # Create a file with an image
-    fname = tempname() * ".fits"
-    FITS(fname, "w") do f
-        indata = [[1 2 3]; [4 5 6]]
-        write(f, indata)
+    @testset "Overwrite an image" begin
+        # Create a file with two images
+        fname = tempname() * ".fits"
+        FITS(fname, "w") do f
+            write(f, [[1 2 3]; [4 5 6]])
+            write(f, [[7 8 9]; [17 52 10]])
+        end
+
+        # Open the file in read-write mode
+        FITS(fname, "r+") do f
+            @test read(f[1]) == [[1 2 3]; [4 5 6]]
+            @test read(f[2]) == [[7 8 9]; [17 52 10]]
+
+            # Write data into the first image HDU
+            write(f[1], [[11 12 13]; [14 15 16]])
+
+            @test read(f[1]) == [[11 12 13]; [14 15 16]]  # First HDU is updated
+            @test read(f[2]) == [[7 8 9]; [17 52 10]]  # Second HDU is untouched
+        end
+
+        rm(fname, force=true)
     end
 
-    FITS(fname, "r+") do f
-        image_hdu = f[1]
-        @test read(image_hdu) == [[1 2 3]; [4 5 6]]
+    @testset "Show size mismatch error" begin
+        fname = tempname() * ".fits"
+        FITS(fname, "w") do f
+            write(f, [[1 2 3]; [4 5 6]])
+        end
 
-        # Write data into the image HDU
-        write(image_hdu, [[11 12 13]; [14 15 16]])
+        # Attempt to write data array of incorrect size
+        FITS(fname, "r+") do f
+            exception = ErrorException("size of HDU [2, 3] not equal to size of data [2, 4].")
+            @test_throws exception write(f[1], [[11 12 13 14]; [15 16 17 18]])
+        end
 
-        @test read(image_hdu) == [[11 12 13]; [14 15 16]]
+        rm(fname, force=true)
     end
-
-    rm(fname, force=true)
 end
 
 @testset "Tables" begin

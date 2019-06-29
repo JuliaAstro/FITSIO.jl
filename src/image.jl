@@ -186,6 +186,16 @@ Write data to an existing image HDU.
 """
 function write(hdu::ImageHDU, data::Array{T}) where T
     fits_assert_open(hdu.fitsfile)
+
+    # Ensure sizes are equal
+    hdu_size = fits_get_img_size(hdu.fitsfile)
+    data_size = collect(size(data))
+
+    if hdu_size != data_size
+        error("size of HDU $(hdu_size) not equal to size of data $(data_size).")
+    end
+
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     fits_write_pix(hdu.fitsfile, ones(Int, length(size(data))), length(data), data)
     nothing
 end

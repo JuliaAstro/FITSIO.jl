@@ -179,6 +179,27 @@ function write(f::FITS, data::Array{T};
     nothing
 end
 
+"""
+    write(hdu::ImageHDU, data::Array)
+
+Write data to an existing image HDU.
+"""
+function write(hdu::ImageHDU, data::Array{T}) where T
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+
+    # Ensure sizes are equal
+    hdu_size = fits_get_img_size(hdu.fitsfile)
+    data_size = collect(size(data))
+
+    if hdu_size != data_size
+        error("size of HDU $(hdu_size) not equal to size of data $(data_size).")
+    end
+
+    fits_write_pix(hdu.fitsfile, ones(Int, length(size(data))), length(data), data)
+    nothing
+end
+
 # Copy a rectangular section of an image and write it to a new FITS
 # primary image or image extension. The new image HDU is appended to
 # the end of the output file; all the keywords in the input image will

@@ -156,12 +156,22 @@ the same name is overwritten.
 
 Write an image to the file:
 ```julia
-julia> data = reshape([1:100], 5, 20);
+julia> data = reshape([1:100;], 5, 20)
 
 julia> write(f, data)  # Write a new image extension with the data
+julia> close(f)
 ```
 To write some header keywords in the new extension, pass a
 `FITSHeader` instance as a keyword: `write(f, data; header=header)`
+
+
+Overwrite image data in an existing file:
+```julia
+julia> f = FITS("newfile.fits", "r+")  # Reopen the file in read-write mode
+julia> data = reshape([101:200;], 5, 20)  # Prepare new image data
+julia> image_hdu = f[1]
+julia> write(image_hdu, data)  # Overwrite the image
+```
 
 
 Write a table to the file:

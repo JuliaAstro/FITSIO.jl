@@ -1,19 +1,24 @@
 # ImageHDU methods
 
+function ImageHDU(fitsfile::FITSFile, ext::Int)
+    fits_assert_open(fitsfile)
+    fits_movabs_hdu(fitsfile, ext)
+    T = TYPE_FROM_BITPIX[fits_get_img_equivtype(fitsfile)]
+    N = length(fits_get_img_size(fitsfile))
+    return ImageHDU{T,N}(fitsfile, ext)
+end
+
 # Display the image datatype and dimensions
-function show(io::IO, hdu::ImageHDU)
+function show(io::IO, hdu::ImageHDU{T,N}) where {T,N}
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    bitpix = fits_get_img_type(hdu.fitsfile)
-    equivbitpix = fits_get_img_equivtype(hdu.fitsfile)
+    bitpix_type = TYPE_FROM_BITPIX[fits_get_img_type(hdu.fitsfile)]
     sz = fits_get_img_size(hdu.fitsfile)
 
-    if bitpix == equivbitpix
-        datainfo = string(TYPE_FROM_BITPIX[equivbitpix])
+    if bitpix_type == T
+        datainfo = string(T)
     else
-        datainfo = @sprintf("%s (physical: %s)",
-                            TYPE_FROM_BITPIX[equivbitpix],
-                            TYPE_FROM_BITPIX[bitpix])
+        datainfo = @sprintf("%s (physical: %s)", T, bitpix_type)
     end
 
     print(io, """
@@ -77,12 +82,11 @@ Read the data array or a subset thereof from disk. The first form
 reads the entire data array. The second form reads a slice of the array
 given by the specified ranges or integers.
 """
-function read(hdu::ImageHDU)
+function read(hdu::ImageHDU{T,N}) where {T,N}
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
-    bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    data = Array{TYPE_FROM_BITPIX[bitpix]}(undef, sz...)
+    data = Array{T,N}(undef, sz...)
     fits_read_pix(hdu.fitsfile, data)
     data
 end
@@ -116,7 +120,8 @@ _index_shape_dim(sz, dim, r::AbstractRange) = (length(r),)
     tuple(length(r), _index_shape_dim(sz, dim+1, I...)...)
 
 # Read a subset of an ImageHDU
-function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colon}...)
+function read_internal(hdu::ImageHDU{T,N},
+                       I::Union{AbstractRange{Int}, Integer, Colon}...) where {T,N}
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
@@ -137,8 +142,7 @@ function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colo
     steps = Clong[_step(idx) for idx in I]
 
     # construct output array
-    bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    data = Array{TYPE_FROM_BITPIX[bitpix]}(undef, _index_shape(sz, I...))
+    data = Array{T}(undef, _index_shape(sz, I...))
 
     fits_read_subset(hdu.fitsfile, firsts, lasts, steps, data)
     data

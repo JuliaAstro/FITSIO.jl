@@ -17,7 +17,8 @@ using Random # for `randstring`
             write(f, indata)
 
             # test reading the full array
-            outdata = read(f[end])
+            @test f[end] isa ImageHDU{T,length(size(indata))}
+            outdata = @inferred read(f[end])
             @test indata == outdata
             @test eltype(indata) == eltype(outdata)
 

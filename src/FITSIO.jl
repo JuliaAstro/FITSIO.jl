@@ -46,7 +46,7 @@ import .Libcfitsio: libcfitsio,
 # HDU Types
 abstract type HDU end
 
-mutable struct ImageHDU <: HDU
+mutable struct ImageHDU{T,N} <: HDU
     fitsfile::FITSFile
     ext::Int
 end

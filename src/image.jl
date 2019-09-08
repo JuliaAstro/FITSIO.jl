@@ -97,7 +97,7 @@ The first form reads the entire data array.
 The second form reads a slice of the array given by the specified ranges or integers.
 The output array needs to have the same shape as the data range to be read in.
 """
-function read!(hdu::ImageHDU,data::AbstractArray{T,N}) where {T,N}
+function read!(hdu::ImageHDU, output::AbstractArray{T,N}) where {T,N}
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
@@ -113,14 +113,14 @@ function read!(hdu::ImageHDU,data::AbstractArray{T,N}) where {T,N}
     end
     
     # Maybe this can be a ShapeMismatch when there's a decision on #16717
-    if Tuple(sz) != size(data)
+    if Tuple(sz) != size(output)
         throw(DimensionMismatch("size of the array does not "*
         "match the data. Data has a size of $(Tuple(sz)) whereas the output array "*
-        "has a size of $(size(data))"))
+        "has a size of $(size(output))"))
     end
 
-    fits_read_pix(hdu.fitsfile, data)
-    data
+    fits_read_pix(hdu.fitsfile, output)
+    output
 end
 
 # _checkbounds methods copied from Julia v0.4 Base.
@@ -180,7 +180,7 @@ function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colo
     data
 end
 
-function read_internal!(hdu::ImageHDU, data::AbstractArray{T,N}, 
+function read_internal!(hdu::ImageHDU, output::AbstractArray{T,N}, 
     I::Union{AbstractRange{Int}, Integer, Colon}...) where {T,N}
 
     # check that the output array has the right type
@@ -210,9 +210,9 @@ function read_internal!(hdu::ImageHDU, data::AbstractArray{T,N},
             "number of dimensions of the output array"))
     end
 
-    if size(data) != ninds
+    if size(output) != ninds
         throw(DimensionMismatch("size of the data slice must match that of the output array. "*
-            "Data has a size of $ndims whereas the output array has a size of $(size(data))"))
+            "Data has a size of $ninds whereas the output array has a size of $(size(output))"))
     end
 
     # construct first, last and step vectors
@@ -220,8 +220,8 @@ function read_internal!(hdu::ImageHDU, data::AbstractArray{T,N},
     lasts = Clong[_last(sz[i], I[i]) for i=1:length(sz)]
     steps = Clong[_step(idx) for idx in I]
 
-    fits_read_subset(hdu.fitsfile, firsts, lasts, steps, data)
-    data
+    fits_read_subset(hdu.fitsfile, firsts, lasts, steps, output)
+    output
 end
 
 # general method and version that returns a single value rather than 0-d array
@@ -229,9 +229,9 @@ read(hdu::ImageHDU, I::Union{AbstractRange{Int}, Int, Colon}...) =
     read_internal(hdu, I...)
 read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 
-read!(hdu::ImageHDU, data::AbstractArray, I::Union{AbstractRange{Int}, Int, Colon}...) =
-    read_internal!(hdu, data, I...)
-read!(hdu::ImageHDU, data::AbstractArray, I::Int...) = read_internal!(hdu, data, I...)[1]
+read!(hdu::ImageHDU, output::AbstractArray, I::Union{AbstractRange{Int}, Int, Colon}...) =
+    read_internal!(hdu, output, I...)
+read!(hdu::ImageHDU, output::AbstractArray, I::Int...) = read_internal!(hdu, output, I...)[1]
 
 """
     write(f::FITS, data::Array; header=nothing, name=nothing, ver=nothing)

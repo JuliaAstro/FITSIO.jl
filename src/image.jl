@@ -104,7 +104,7 @@ function read!(hdu::ImageHDU,data::AbstractArray{T,N}) where {T,N}
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
     
     if TYPE_FROM_BITPIX[bitpix] != T
-        throw(TypeError(:read!,TYPE_FROM_BITPIX[bitpix],T))
+        throw(TypeError(:read!,"",TYPE_FROM_BITPIX[bitpix],T))
     end
     
     if ndims(hdu) != N
@@ -186,7 +186,7 @@ function read_internal!(hdu::ImageHDU, data::AbstractArray{T,N},
     # check that the output array has the right type
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
     if TYPE_FROM_BITPIX[bitpix] != T
-        throw(TypeError(:read!,TYPE_FROM_BITPIX[bitpix],T))
+        throw(TypeError(:read!,"",TYPE_FROM_BITPIX[bitpix],T))
     end
 
     fits_assert_open(hdu.fitsfile)

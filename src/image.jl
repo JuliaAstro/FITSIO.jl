@@ -183,14 +183,15 @@ end
 function read_internal!(hdu::ImageHDU, output::AbstractArray{T,N}, 
     I::Union{AbstractRange{Int}, Integer, Colon}...) where {T,N}
 
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+
     # check that the output array has the right type
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
     if TYPE_FROM_BITPIX[bitpix] != T
         throw(TypeError(:read!,"",TYPE_FROM_BITPIX[bitpix],T))
     end
-
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    
     sz = fits_get_img_size(hdu.fitsfile)
 
     # check number of indices and bounds. Note that number of indices and
@@ -206,7 +207,7 @@ function read_internal!(hdu::ImageHDU, output::AbstractArray{T,N},
 
     ninds = _index_shape(sz, I...)
     if length(ninds) != N
-        throw(DimensionMismatch("number of indices must match the "*
+        throw(DimensionMismatch("number of dimensions to be read must match the "*
             "number of dimensions of the output array"))
     end
 

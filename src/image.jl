@@ -87,6 +87,42 @@ function read(hdu::ImageHDU)
     data
 end
 
+"""
+    read!(hdu::ImageHDU, output::AbstractArray)
+    read!(hdu::ImageHDU, output::AbstractArray, range...)
+
+Read the data array or a subset thereof from disk, and save it in the 
+preallocated output array.
+The first form reads the entire data array. 
+The second form reads a slice of the array given by the specified ranges or integers.
+The output array needs to have the same shape as the data range to be read in.
+"""
+function read!(hdu::ImageHDU, output::AbstractArray{T,N}) where {T,N}
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    sz = fits_get_img_size(hdu.fitsfile)
+    bitpix = fits_get_img_equivtype(hdu.fitsfile)
+    
+    if TYPE_FROM_BITPIX[bitpix] != T
+        throw(TypeError(:read!,"",TYPE_FROM_BITPIX[bitpix],T))
+    end
+    
+    if ndims(hdu) != N
+        throw(DimensionMismatch("array dimensions do not match the data. "*
+        "Data has $(ndims(hdu)) dimensions whereas the output array has $N dimensions."))
+    end
+    
+    # Maybe this can be a ShapeMismatch when there's a decision on #16717
+    if Tuple(sz) != size(output)
+        throw(DimensionMismatch("size of the array does not "*
+        "match the data. Data has a size of $(Tuple(sz)) whereas the output array "*
+        "has a size of $(size(output))"))
+    end
+
+    fits_read_pix(hdu.fitsfile, output)
+    output
+end
+
 # _checkbounds methods copied from Julia v0.4 Base.
 _checkbounds(sz, i::Integer) = 1 <= i <= sz
 _checkbounds(sz, i::Colon) = true
@@ -144,11 +180,59 @@ function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colo
     data
 end
 
+function read_internal!(hdu::ImageHDU, output::AbstractArray{T,N}, 
+    I::Union{AbstractRange{Int}, Integer, Colon}...) where {T,N}
+
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+
+    # check that the output array has the right type
+    bitpix = fits_get_img_equivtype(hdu.fitsfile)
+    if TYPE_FROM_BITPIX[bitpix] != T
+        throw(TypeError(:read!,"",TYPE_FROM_BITPIX[bitpix],T))
+    end
+    
+    sz = fits_get_img_size(hdu.fitsfile)
+
+    # check number of indices and bounds. Note that number of indices and
+    # array dimension must match, unlike in Arrays. Array-like behavior could
+    # be supported in the future with care taken in constructing first, last,
+    if length(I) != length(sz)
+        throw(DimensionMismatch("number of indices must match dimensions"))
+    end
+
+    for i=1:length(sz)
+        _checkbounds(sz[i], I[i]) || throw(BoundsError())
+    end
+
+    ninds = _index_shape(sz, I...)
+    if length(ninds) != N
+        throw(DimensionMismatch("number of dimensions to be read must match the "*
+            "number of dimensions of the output array"))
+    end
+
+    if size(output) != ninds
+        throw(DimensionMismatch("size of the data slice must match that of the output array. "*
+            "Data has a size of $ninds whereas the output array has a size of $(size(output))"))
+    end
+
+    # construct first, last and step vectors
+    firsts = Clong[_first(idx) for idx in I]
+    lasts = Clong[_last(sz[i], I[i]) for i=1:length(sz)]
+    steps = Clong[_step(idx) for idx in I]
+
+    fits_read_subset(hdu.fitsfile, firsts, lasts, steps, output)
+    output
+end
+
 # general method and version that returns a single value rather than 0-d array
 read(hdu::ImageHDU, I::Union{AbstractRange{Int}, Int, Colon}...) =
     read_internal(hdu, I...)
 read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 
+read!(hdu::ImageHDU, output::AbstractArray, I::Union{AbstractRange{Int}, Int, Colon}...) =
+    read_internal!(hdu, output, I...)
+read!(hdu::ImageHDU, output::AbstractArray, I::Int...) = read_internal!(hdu, output, I...)[1]
 
 """
     write(f::FITS, data::Array; header=nothing, name=nothing, ver=nothing)

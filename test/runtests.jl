@@ -71,6 +71,91 @@ using Random # for `randstring`
         rm(fname1, force=true)
         rm(fname2, force=true)
     end
+
+    @testset "non-allocating read" begin
+        fname1 = tempname() * ".fits"
+        try
+            FITS(fname1, "r+") do f
+
+                indata = reshape(Float32[1:400;], 20, 20)
+                write(f, indata)
+
+                # Read the entire array using read to compare with read!
+                a = read(f[1])
+                
+                # Read the entire array
+                b = zeros(eltype(indata),size(indata))
+                read!(f[1],b)
+                @test a == b
+                read!(f[1],b,:,:)
+                @test a == b
+
+                # Read a 2D slice
+                b = zeros(eltype(indata),2,2)
+                read!(f[1],b,1:2,1:2)
+                @test a[1:2,1:2] == b
+                
+                # Read an entire 1D slice
+                b = zeros(eltype(indata),size(indata,1))
+                read!(f[1],b,:,1)
+                @test a[:,1] == b
+                
+                b = zeros(eltype(indata),size(indata,2))
+                read!(f[1],b,1,:)
+                @test a[1,:] == b
+                
+                # Read a part of a 1D slice
+                b = zeros(eltype(indata),1)
+                read!(f[1],b,1:1,1)
+                @test a[1,1] == b[1]
+                read!(f[1],b,1,1:1)
+                @test a[1,1] == b[1]
+
+                # Read a single element into a 0-dim array
+                b = zeros(eltype(indata))
+                read!(f[1],b,1,1)
+                @test a[1,1] == first(b)
+
+                # Test for errors
+                b = zeros(Float64)
+                # Type is checked before dimensions
+                @test_throws TypeError read!(f[1],b,1,1)
+                @test_throws TypeError read!(f[1],b)
+
+                b = zeros(eltype(indata))
+                @test_throws DimensionMismatch read!(f[1],b,1:10,1)
+                @test_throws DimensionMismatch read!(f[1],b,1:10,1:10)
+                @test_throws DimensionMismatch read!(f[1],b)
+                @test_throws DimensionMismatch read!(f[1],b,:,1)
+                @test_throws DimensionMismatch read!(f[1],b,1,:)
+                @test_throws DimensionMismatch read!(f[1],b,:,:)
+
+                b = zeros(eltype(indata),1)
+                @test_throws DimensionMismatch read!(f[1],b,1,1)
+
+                @testset "read into views" begin
+                    b = zeros(eltype(indata),size(indata))
+
+                    # Entire array
+                    b_view = view(b,:,:)
+                    read!(f[1],b_view)
+                    @test a == b
+
+                    for ax2 in axes(b,2)
+                        b_view = view(b,:,ax2)
+                        read!(f[1],b_view,:,ax2)
+                        @test a[:,ax2] == b[:,ax2]
+                    end
+
+                    # Non-contiguous views can not be read into 
+                    b_view = view(b,1,:)
+                    @test_throws MethodError read!(f[1],b_view,1,:)
+                end
+            end
+        finally
+            rm(fname1, force=true)
+        end
+    end
 end
 
 @testset "Write data to an existing image HDU" begin

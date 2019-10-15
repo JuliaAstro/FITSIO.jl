@@ -23,6 +23,7 @@ import Base: getindex,
              close,
              ndims,
              size,
+             getkey,
              haskey,
              keys,
              values

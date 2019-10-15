@@ -354,6 +354,9 @@ Array of values (not a copy).
 """
 values(hdr::FITSHeader) = hdr.values
 
+getkey(hdr::FITSHeader, key::String, def) =
+    (haskey(hdr, key) ? getindex(hdr, key) : def)
+
 getindex(hdr::FITSHeader, key::String) = hdr.values[hdr.map[key]]
 getindex(hdr::FITSHeader, i::Integer) = hdr.values[i]
 

@@ -82,7 +82,7 @@ using Random # for `randstring`
 
                 # Read the entire array using read to compare with read!
                 a = read(f[1])
-                
+
                 # Read the entire array
                 b = zeros(eltype(indata),size(indata))
                 read!(f[1],b)
@@ -94,16 +94,16 @@ using Random # for `randstring`
                 b = zeros(eltype(indata),2,2)
                 read!(f[1],b,1:2,1:2)
                 @test a[1:2,1:2] == b
-                
+
                 # Read an entire 1D slice
                 b = zeros(eltype(indata),size(indata,1))
                 read!(f[1],b,:,1)
                 @test a[:,1] == b
-                
+
                 b = zeros(eltype(indata),size(indata,2))
                 read!(f[1],b,1,:)
                 @test a[1,:] == b
-                
+
                 # Read a part of a 1D slice
                 b = zeros(eltype(indata),1)
                 read!(f[1],b,1:1,1)
@@ -147,7 +147,7 @@ using Random # for `randstring`
                         @test a[:,ax2] == b[:,ax2]
                     end
 
-                    # Non-contiguous views can not be read into 
+                    # Non-contiguous views can not be read into
                     b_view = view(b,1,:)
                     @test_throws MethodError read!(f[1],b_view,1,:)
                 end
@@ -312,6 +312,11 @@ HISTORY this is a history"""
     inhdr["INTKEY"] = 2  # test setting by key
     inhdr[1] = 2.0  # test settting by index
     set_comment!(inhdr, "INTKEY", "integer keyword") # test setting a comment
+
+    # Test reading possibly missing keyword
+    @test_throws KeyError inhdr["BADKEY"]
+    @test getkey(inhdr, "BADKEY", nothing) === nothing
+    @test getkey(inhdr, "INTKEY", nothing) == inhdr["INTKEY"]
 
     indata = reshape(Float32[1:100;], 5, 20)
     write(f, indata; header=inhdr)

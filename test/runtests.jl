@@ -156,6 +156,162 @@ using Random # for `randstring`
             rm(fname1, force=true)
         end
     end
+
+    @testset "reinterpreted complex" begin
+        @testset "read" begin
+            fname = tempname() * ".fits"
+
+            function _testreadcomplex(arr::AbstractArray{Complex{T}}) where T
+                FITS(fname,"w") do f
+                    write(f, collect(reinterpret(T,arr)) )
+                end
+                b = similar(arr)
+                FITS(fname,"r") do f
+                    read!(f[1], reinterpret(T,b))
+                end
+                @test b == arr
+                c = FITS(fname,"r") do f
+                    read(f[1])
+                end
+                @test c == reinterpret(T,arr)
+            end
+
+            function testreadcomplex(arr::Array{Complex{T}}) where T
+                # Given a complex array, reinterpret it as float and write to file
+                # Read it back and compare
+                _testreadcomplex(arr)
+
+                # Write a contiguous subsection instead of the entire array
+                region = 1:size(arr,1)
+                arrv = @view arr[region]
+                _testreadcomplex(arrv)
+            end
+
+            try
+                testreadcomplex(ones(ComplexF64,3))
+                testreadcomplex(ones(ComplexF64,3,4))
+                testreadcomplex(ones(ComplexF64,3,4,5))
+            finally
+                rm(fname,force=true)
+            end
+        end
+
+        @testset "write" begin
+            fname = tempname() * ".fits"
+
+            function _testwritecomplex(arr::AbstractArray{Complex{T}}) where T
+                FITS(fname,"w") do f
+                    write(f, reinterpret(T,arr) )
+                end
+                a = FITS(fname,"r") do f
+                    read(f[1])
+                end
+                b = collect(reinterpret(T,arr))
+                @test b == a
+                c = FITS(fname,"r") do f
+                    reinterpret(Complex{T},read(f[1]))
+                end
+                @test c == arr
+            end
+
+            function testwritecomplex(arr::Array{Complex{T}}) where T
+                # Given a complex array, reinterpret it as float and write to file
+                # Read it back and compare
+                _testwritecomplex(arr)
+
+                # Write a subsection instead of the entire array
+                region = 1:size(arr,1)
+                arrv = @view arr[region]
+                _testwritecomplex(arrv)
+            end
+
+            try
+                testwritecomplex(ones(ComplexF64,3))
+                testwritecomplex(ones(ComplexF64,3,4))
+                testwritecomplex(ones(ComplexF64,3,4,5))
+            finally
+                rm(fname,force=true)
+            end
+        end
+    end
+
+    @testset "reinterpreted complex" begin
+        @testset "read" begin
+            fname = tempname() * ".fits"
+
+            function _testreadcomplex(arr::AbstractArray{Complex{T}}) where T
+                FITS(fname,"w") do f
+                    write(f, collect(reinterpret(T,arr)) )
+                end
+                b = similar(arr)
+                FITS(fname,"r") do f
+                    read!(f[1], reinterpret(T,b))
+                end
+                @test b == arr
+                c = FITS(fname,"r") do f
+                    read(f[1])
+                end
+                @test c == reinterpret(T,arr)
+            end
+
+            function testreadcomplex(arr::Array{Complex{T}}) where T
+                # Given a complex array, reinterpret it as float and write to file
+                # Read it back and compare
+                _testreadcomplex(arr)
+
+                # Write a contiguous subsection instead of the entire array
+                region = 1:size(arr,1)
+                arrv = @view arr[region]
+                _testreadcomplex(arrv)
+            end
+
+            try
+                testreadcomplex(ones(ComplexF64,3))
+                testreadcomplex(ones(ComplexF64,3,4))
+                testreadcomplex(ones(ComplexF64,3,4,5))
+            finally
+                rm(fname,force=true)
+            end
+        end
+
+        @testset "write" begin
+            fname = tempname() * ".fits"
+
+            function _testwritecomplex(arr::AbstractArray{Complex{T}}) where T
+                FITS(fname,"w") do f
+                    write(f, reinterpret(T,arr) )
+                end
+                a = FITS(fname,"r") do f
+                    read(f[1])
+                end
+                b = collect(reinterpret(T,arr))
+                @test b == a
+                c = FITS(fname,"r") do f
+                    reinterpret(Complex{T},read(f[1]))
+                end
+                @test c == arr
+            end
+
+            function testwritecomplex(arr::Array{Complex{T}}) where T
+                # Given a complex array, reinterpret it as float and write to file
+                # Read it back and compare
+                _testwritecomplex(arr)
+
+                # Write a subsection instead of the entire array
+                region = 1:size(arr,1)
+                arrv = @view arr[region]
+                _testwritecomplex(arrv)
+            end
+
+            try
+                testwritecomplex(ones(ComplexF64,3))
+                testwritecomplex(ones(ComplexF64,3,4))
+                testwritecomplex(ones(ComplexF64,3,4,5))
+            finally
+                rm(fname,force=true)
+            end
+        end
+    end
 end
 
 @testset "Write data to an existing image HDU" begin

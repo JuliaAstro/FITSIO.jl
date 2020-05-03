@@ -1,17 +1,47 @@
 language: julia
+
 os:
-    - linux
-    - osx
+  - linux
+  - osx
+  - freebsd
+
 julia:
-    - 1.0
-    - 1.1
-    - nightly
+  - 1.0
+  - 1.4
+  - nightly
+
 notifications:
-    email: false
-#script: # use the default script which is equivalent to the following
-#    - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-#    - julia -e 'VERSION >= v"0.7.0-DEV.5183" && using Pkg; Pkg.clone(pwd()); Pkg.build("FITSIO"); Pkg.test("FITSIO"; coverage=true)';
+  email: false
+
+cache:
+  directories:
+    - $HOME/.julia/artifacts
+
+branches:
+  only:
+  - master
+  - gh-pages # For building documentation
+  - /^testing-.*$/ # testing branches
+  - /^v[0-9]+\.[0-9]+\.[0-9]+$/ # version tags
+
+jobs:
+  allow_failures:
+    - julia: nightly
+  include:
+    - stage: "Documentation"
+      julia: 1.4
+      os: linux
+      script:
+        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));
+                                               Pkg.instantiate();
+                                               Pkg.build("FITSIO");
+                                               include("docs/make.jl")'
+      after_success: skip
+
 after_success:
-    - julia -e 'VERSION >= v"0.7.0-DEV.5183" && using Pkg; Pkg.add("Documenter")'
-    - julia -e 'VERSION >= v"0.7.0-DEV.5183" && using Pkg; cd(Pkg.dir("FITSIO")); include(joinpath("docs", "make.jl"))'
-    - julia -e 'VERSION >= v"0.7.0-DEV.5183" && using Pkg; cd(Pkg.dir("FITSIO")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())';
+  - |
+    julia -e '
+      using Pkg
+      Pkg.add("Coverage")
+      using Coverage
+      Coveralls.submit(Coveralls.process_folder())'

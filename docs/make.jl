@@ -2,19 +2,13 @@ using Documenter, FITSIO
 
 makedocs(
     modules = [FITSIO],
-    format = :html,
     sitename = "FITSIO.jl",
-    pages    = Any[
+    format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
+    pages    = [
         "Introduction" => "index.md",
         "API Reference" => "api.md",
         "Libcfitsio Submodule" => "libcfitsio.md"
     ]
 )
 
-deploydocs(
-    repo = "github.com/JuliaAstro/FITSIO.jl.git",
-    target = "build",
-    deps = nothing,
-    make = nothing,
-    julia  = "1.0",
-)
+deploydocs(repo = "github.com/JuliaAstro/FITSIO.jl.git", push_preview=true)

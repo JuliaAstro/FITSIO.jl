@@ -119,14 +119,6 @@ export FITSFile,
 # Deal with compatibility issues.
 using Libdl
 
-import Base: FastContiguousSubArray
-
-const ArrayOrFastContiguousSubArray{T,N} = Union{Array{T,N},
-      FastContiguousSubArray{T,N,<:Array{T}}}
-
-const ContiguousAbstractArray{T,N} = Union{ArrayOrFastContiguousSubArray{T,N},
-      Base.ReinterpretArray{T,N,Complex{T},<:ArrayOrFastContiguousSubArray{Complex{T},N}}}
-
 const depsjl_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
 if !isfile(depsjl_path)
     @error "FITSIO not properly installed. " *
@@ -750,13 +742,14 @@ function fits_create_img(f::FITSFile, ::Type{T},
 end
 
 """
-    fits_write_pix(f::FITSFile, fpixel::Vector{Int}, nelements::Int, data::Array)
+    fits_write_pix(f::FITSFile, fpixel::Vector{Int}, nelements::Int, data::StridedArray)
 
 Write pixels from `data` into the FITS file.
+The data needs to be stored contiguously in memory.
 """
 function fits_write_pix(f::FITSFile, fpixel::Vector{S},
     nelements::Integer, 
-    data::Union{Array{T},Base.ReinterpretArray{T}}) where {S<:Integer,T}
+    data::StridedArray{T}) where {S<:Integer,T}
 
     status = Ref{Cint}(0)
     ccall((:ffppxll, libcfitsio), Cint,
@@ -766,13 +759,13 @@ function fits_write_pix(f::FITSFile, fpixel::Vector{S},
     fits_assert_ok(status[])
 end
 
-function fits_write_pix(f::FITSFile, data::Array)
+function fits_write_pix(f::FITSFile, data::StridedArray)
     fits_write_pix(f, ones(Int64, length(size(data))), length(data), data)
 end
 
 function fits_read_pix(f::FITSFile, fpixel::Vector{S},
                        nelements::Int, nullval::T,
-                       data::ContiguousAbstractArray{T}) where {S<:Integer,T}
+                       data::StridedArray{T}) where {S<:Integer,T}
     anynull = Ref{Cint}(0)
     status = Ref{Cint}(0)
     ccall((:ffgpxvll, libcfitsio), Cint,
@@ -791,7 +784,7 @@ Read pixels from the FITS file into `data`.
 """
 function fits_read_pix(f::FITSFile, fpixel::Vector{S},
                        nelements::Int, 
-                       data::ContiguousAbstractArray{T}) where {S<:Integer,T}
+                       data::StridedArray{T}) where {S<:Integer,T}
     anynull = Ref{Cint}(0)
     status = Ref{Cint}(0)
     ccall((:ffgpxvll, libcfitsio), Cint,
@@ -803,14 +796,14 @@ function fits_read_pix(f::FITSFile, fpixel::Vector{S},
     anynull[]
 end
 
-function fits_read_pix(f::FITSFile, data::ContiguousAbstractArray)
+function fits_read_pix(f::FITSFile, data::StridedArray)
     fits_read_pix(f, ones(Int64,length(size(data))), length(data), data)
 end
 
 function fits_read_subset(
     f::FITSFile, fpixel::Vector{S1}, lpixel::Vector{S2},
     inc::Vector{S3},
-    data::ContiguousAbstractArray{T}) where {S1<:Integer,S2<:Integer,S3<:Integer,T}
+    data::StridedArray{T}) where {S1<:Integer,S2<:Integer,S3<:Integer,T}
     
     anynull = Ref{Cint}(0)
     status = Ref{Cint}(0)

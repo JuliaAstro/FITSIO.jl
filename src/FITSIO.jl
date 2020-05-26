@@ -43,9 +43,7 @@ using .Libcfitsio
 import .Libcfitsio: libcfitsio,
                     fits_assert_ok,
                     fits_assert_isascii,
-                    TYPE_FROM_BITPIX,
-                    ContiguousAbstractArray
-
+                    TYPE_FROM_BITPIX
 
 # HDU Types
 abstract type HDU end

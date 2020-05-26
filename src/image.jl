@@ -243,10 +243,11 @@ following array element types are supported: `UInt8`, `Int8`,
 `Float64`. If a `FITSHeader` object is passed as the `header` keyword
 argument, the header will also be added to the new HDU.
 """
-function write(f::FITS, data::Array{T};
+function write(f::FITS, data::ContiguousAbstractArray{T};
                header::Union{Nothing, FITSHeader}=nothing,
                name::Union{Nothing, String}=nothing,
-               ver::Union{Nothing, Integer}=nothing) where T
+               ver::Union{Nothing, Integer}=nothing) where {T<:Real}
+
     fits_assert_open(f.fitsfile)
     s = size(data)
     fits_create_img(f.fitsfile, T, [s...])
@@ -268,7 +269,8 @@ end
 
 Write data to an existing image HDU.
 """
-function write(hdu::ImageHDU, data::Array{T}) where T
+function write(hdu::ImageHDU, data::ContiguousAbstractArray{T}) where {T<:Real}
+
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 

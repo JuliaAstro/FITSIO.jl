@@ -120,8 +120,12 @@ export FITSFile,
 using Libdl
 
 import Base: FastContiguousSubArray
-const ArrayOrFastContiguousSubArray{T} = 
-      Union{Array{T},FastContiguousSubArray{T,N,<:Array{T}} where N}
+
+const ArrayOrFastContiguousSubArray{T,N} = Union{Array{T,N},
+      FastContiguousSubArray{T,N,<:Array{T}}}
+
+const ContiguousAbstractArray{T,N} = Union{ArrayOrFastContiguousSubArray{T,N},
+      Base.ReinterpretArray{T,N,Complex{T},<:ArrayOrFastContiguousSubArray{Complex{T},N}}}
 
 const depsjl_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
 if !isfile(depsjl_path)
@@ -751,7 +755,9 @@ end
 Write pixels from `data` into the FITS file.
 """
 function fits_write_pix(f::FITSFile, fpixel::Vector{S},
-                        nelements::Integer, data::Array{T}) where {S<:Integer,T}
+    nelements::Integer, 
+    data::Union{Array{T},Base.ReinterpretArray{T}}) where {S<:Integer,T}
+
     status = Ref{Cint}(0)
     ccall((:ffppxll, libcfitsio), Cint,
           (Ptr{Cvoid}, Cint, Ptr{Int64}, Int64, Ptr{Cvoid}, Ref{Cint}),
@@ -766,7 +772,7 @@ end
 
 function fits_read_pix(f::FITSFile, fpixel::Vector{S},
                        nelements::Int, nullval::T,
-                       data::ArrayOrFastContiguousSubArray{T}) where {S<:Integer,T}
+                       data::ContiguousAbstractArray{T}) where {S<:Integer,T}
     anynull = Ref{Cint}(0)
     status = Ref{Cint}(0)
     ccall((:ffgpxvll, libcfitsio), Cint,
@@ -785,7 +791,7 @@ Read pixels from the FITS file into `data`.
 """
 function fits_read_pix(f::FITSFile, fpixel::Vector{S},
                        nelements::Int, 
-                       data::ArrayOrFastContiguousSubArray{T}) where {S<:Integer,T}
+                       data::ContiguousAbstractArray{T}) where {S<:Integer,T}
     anynull = Ref{Cint}(0)
     status = Ref{Cint}(0)
     ccall((:ffgpxvll, libcfitsio), Cint,
@@ -797,14 +803,14 @@ function fits_read_pix(f::FITSFile, fpixel::Vector{S},
     anynull[]
 end
 
-function fits_read_pix(f::FITSFile, data::ArrayOrFastContiguousSubArray)
+function fits_read_pix(f::FITSFile, data::ContiguousAbstractArray)
     fits_read_pix(f, ones(Int64,length(size(data))), length(data), data)
 end
 
 function fits_read_subset(
     f::FITSFile, fpixel::Vector{S1}, lpixel::Vector{S2},
     inc::Vector{S3},
-    data::ArrayOrFastContiguousSubArray{T}) where {S1<:Integer,S2<:Integer,S3<:Integer,T}
+    data::ContiguousAbstractArray{T}) where {S1<:Integer,S2<:Integer,S3<:Integer,T}
     
     anynull = Ref{Cint}(0)
     status = Ref{Cint}(0)

@@ -87,17 +87,40 @@ function read(hdu::ImageHDU)
     data
 end
 
-"""
-    read!(hdu::ImageHDU, output::AbstractArray)
-    read!(hdu::ImageHDU, output::AbstractArray, range...)
+#= Inplace read
+This requires a contiguous array. Lacking a type to dispatch upon, 
+we rely on runtime checks.
+=#
 
-Read the data array or a subset thereof from disk, and save it in the 
-preallocated output array.
-The first form reads the entire data array. 
-The second form reads a slice of the array given by the specified ranges or integers.
-The output array needs to have the same shape as the data range to be read in.
+iscontiguous(array::Union{Array,StridedArray{<:Any,0}}) = true
+function iscontiguous(array)
+    strd = strides(array)
+    sz = size(array)
+    isone(strd[1]) && checkcontiguous(Base.tail(strd),sz[1],Base.tail(sz)...)
+end
+
+function checkcontiguous(strd,s,d,sz...)
+    strd[1] == s && checkcontiguous(Base.tail(strd),s*d,sz...)
+end
+checkcontiguous(::Tuple{},args...) = true
+
 """
-function read!(hdu::ImageHDU, output::AbstractArray{T,N}) where {T,N}
+    read!(hdu::ImageHDU, array::StridedArray)
+    read!(hdu::ImageHDU, array::StridedArray, range...)
+
+Read the data or a subset thereof from disk, and save it in a 
+pre-allocated output array.
+The first form reads the entire data from disk. 
+The second form reads a slice of the array given by the specified ranges or integers.
+The output array needs to have the same shape as the data range to be read in. 
+Additionally the output array needs to be contiguously stored in memory.
+"""
+function read!(hdu::ImageHDU, array::StridedArray{T,N}) where {T,N}
+
+    if !iscontiguous(array)
+        throw(ArgumentError("output array needs to be contiguously stored"))
+    end
+
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
@@ -113,14 +136,14 @@ function read!(hdu::ImageHDU, output::AbstractArray{T,N}) where {T,N}
     end
     
     # Maybe this can be a ShapeMismatch when there's a decision on #16717
-    if Tuple(sz) != size(output)
+    if Tuple(sz) != size(array)
         throw(DimensionMismatch("size of the array does not "*
         "match the data. Data has a size of $(Tuple(sz)) whereas the output array "*
-        "has a size of $(size(output))"))
+        "has a size of $(size(array))"))
     end
 
-    fits_read_pix(hdu.fitsfile, output)
-    output
+    fits_read_pix(hdu.fitsfile, array)
+    array
 end
 
 # _checkbounds methods copied from Julia v0.4 Base.
@@ -180,8 +203,12 @@ function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colo
     data
 end
 
-function read_internal!(hdu::ImageHDU, output::AbstractArray{T,N}, 
+function read_internal!(hdu::ImageHDU, array::StridedArray{T,N}, 
     I::Union{AbstractRange{Int}, Integer, Colon}...) where {T,N}
+
+    if !iscontiguous(array)
+        throw(ArgumentError("output array needs to be contiguously stored"))
+    end
 
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
@@ -211,7 +238,7 @@ function read_internal!(hdu::ImageHDU, output::AbstractArray{T,N},
             "number of dimensions of the output array"))
     end
 
-    if size(output) != ninds
+    if size(array) != ninds
         throw(DimensionMismatch("size of the data slice must match that of the output array. "*
             "Data has a size of $ninds whereas the output array has a size of $(size(output))"))
     end
@@ -221,8 +248,8 @@ function read_internal!(hdu::ImageHDU, output::AbstractArray{T,N},
     lasts = Clong[_last(sz[i], I[i]) for i=1:length(sz)]
     steps = Clong[_step(idx) for idx in I]
 
-    fits_read_subset(hdu.fitsfile, firsts, lasts, steps, output)
-    output
+    fits_read_subset(hdu.fitsfile, firsts, lasts, steps, array)
+    array
 end
 
 # general method and version that returns a single value rather than 0-d array
@@ -230,12 +257,12 @@ read(hdu::ImageHDU, I::Union{AbstractRange{Int}, Int, Colon}...) =
     read_internal(hdu, I...)
 read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 
-read!(hdu::ImageHDU, output::AbstractArray, I::Union{AbstractRange{Int}, Int, Colon}...) =
-    read_internal!(hdu, output, I...)
-read!(hdu::ImageHDU, output::AbstractArray, I::Int...) = read_internal!(hdu, output, I...)[1]
+read!(hdu::ImageHDU, array::StridedArray, I::Union{AbstractRange{Int}, Int, Colon}...) =
+    read_internal!(hdu, array, I...)
+read!(hdu::ImageHDU, array::StridedArray, I::Int...) = read_internal!(hdu, array, I...)[1]
 
 """
-    write(f::FITS, data::Array; header=nothing, name=nothing, ver=nothing)
+    write(f::FITS, data::StridedArray; header=nothing, name=nothing, ver=nothing)
 
 Add a new image HDU to FITS file `f` with contents `data`. The
 following array element types are supported: `UInt8`, `Int8`,
@@ -243,10 +270,14 @@ following array element types are supported: `UInt8`, `Int8`,
 `Float64`. If a `FITSHeader` object is passed as the `header` keyword
 argument, the header will also be added to the new HDU.
 """
-function write(f::FITS, data::ContiguousAbstractArray{T};
+function write(f::FITS, data::StridedArray{T};
                header::Union{Nothing, FITSHeader}=nothing,
                name::Union{Nothing, String}=nothing,
                ver::Union{Nothing, Integer}=nothing) where {T<:Real}
+
+    if !iscontiguous(data)
+        throw(ArgumentError("data to be written out needs to be contiguously stored"))
+    end
 
     fits_assert_open(f.fitsfile)
     s = size(data)
@@ -265,11 +296,16 @@ function write(f::FITS, data::ContiguousAbstractArray{T};
 end
 
 """
-    write(hdu::ImageHDU, data::Array)
+    write(hdu::ImageHDU, data::StridedArray)
 
-Write data to an existing image HDU.
+Write data to an existing image HDU. 
+The data to be written out must be stored contiguously in memory.
 """
-function write(hdu::ImageHDU, data::ContiguousAbstractArray{T}) where {T<:Real}
+function write(hdu::ImageHDU, data::StridedArray{<:Real})
+
+    if !iscontiguous(data)
+        throw(ArgumentError("data to be written out needs to be contiguously stored"))
+    end
 
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)

@@ -223,21 +223,20 @@ end
 
 """
 ```julia
-read_key(hdu, key::String) -> (value, comment)
+read_key(hdu::HDU, key::String) -> (value, comment)
 ```
 
-reads the HDU header record specified by keyword and returns a tuple where
+Reads the HDU header record specified by keyword and returns a tuple where
 `value` is the keyword parsed value (of type `String`, `Bool`, `Int`,
 `Float64` or `Nothing`), `comment` is the keyword comment (as a string).
 An error is thrown if `key` is not found.
 
 ```julia
-read_key(hdu, key::Integer) -> (keyname, value, comment)
+read_key(hdu::HDU, key::Integer) -> (keyname, value, comment)
 ```
 
 same as above but FITS card is specified by its position and returns a 3
 element tuple where `keyname` is the keyword name (a string).
-
 """
 function read_key(hdu::HDU, key::Integer)
     fits_assert_open(hdu.fitsfile)
@@ -255,7 +254,7 @@ end
 
 
 """
-    write_key(hdu, key::String, value[, comment])
+    write_key(hdu::HDU, key::String, value[, comment])
 
 Write a keyword value the HDU's header. `value` can be a standard
 header type (`String`, `Bool`, `Integer`, `AbstractFloat`) or
@@ -275,7 +274,7 @@ end
 
 
 """
-    read_header(hdu) -> FITSHeader
+    read_header(hdu::HDU) -> FITSHeader
 
 Read the entire header from the given HDU and return a `FITSHeader` object.
 The value of each header record is parsed as `Int`, `Float64`, `String`,
@@ -315,7 +314,7 @@ end
 
 
 """
-    read_header(hdu, String) -> String
+    read_header(hdu::HDU, String) -> String
 
 Read the entire header from the given HDU as a single string.
 """
@@ -327,30 +326,30 @@ end
 
 
 """
-    length(hdr)
+    length(hdr::FITSHeader)
 
-Number of records.
+Number of records in header of HDU.
 """
 length(hdr::FITSHeader) = length(hdr.keys)
 
 """
-    haskey(hdr)
+    haskey(hdr::FITSHeader, key::String)
 
-Header keyword exists.
+Returns true if `key` exists in header, otherwise false.
 """
 haskey(hdr::FITSHeader, key::String) = in(key, hdr.keys)
 
 """
-    keys(hdr)
+    keys(hdr::FITSHeader)
 
-Array of keywords (not a copy).
+Array of keywords in header of HDU (not a copy).
 """
 keys(hdr::FITSHeader) = hdr.keys
 
 """
-    values(hdr)
+    values(hdr::FITSHeader)
 
-Array of values (not a copy).
+Array of values in header of HDU (not a copy).
 """
 values(hdr::FITSHeader) = hdr.values
 
@@ -378,7 +377,7 @@ end
 
 # Comments
 """
-    get_comment(hdr, key)
+    get_comment(hdr::FITSHeader, key)
 
 Get the comment based on keyword or index.
 """
@@ -386,9 +385,9 @@ get_comment(hdr::FITSHeader, key::String) = hdr.comments[hdr.map[key]]
 get_comment(hdr::FITSHeader, i::Integer) = hdr.comments[i]
 
 """
-    set_comment!(hdr, key, comment)
+    set_comment!(hdr::FITSHeader, key, comment::String)
 
-Set the comment baed on keyword or index.
+Set the comment based on keyword or index.
 """
 function set_comment!(hdr::FITSHeader, key::String, comment::String)
     fits_assert_isascii(comment)

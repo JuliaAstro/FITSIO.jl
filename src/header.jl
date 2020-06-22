@@ -385,7 +385,7 @@ get_comment(hdr::FITSHeader, key::String) = hdr.comments[hdr.map[key]]
 get_comment(hdr::FITSHeader, i::Integer) = hdr.comments[i]
 
 """
-    set_comment!(hdr::FITSHeader, key, comment::String)
+    set_comment!(hdr::FITSHeader, key_or_index::Union{String,Integer}, comment::String)
 
 Set the comment based on keyword or index.
 """

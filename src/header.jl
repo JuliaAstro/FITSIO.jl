@@ -377,7 +377,7 @@ end
 
 # Comments
 """
-    get_comment(hdr::FITSHeader, key)
+    get_comment(hdr::FITSHeader, key_or_index::Union{String,Integer})
 
 Get the comment based on keyword or index.
 """

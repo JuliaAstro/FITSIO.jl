@@ -1,5 +1,10 @@
 # FITSIO.jl
 
+[![GitHub](https://img.shields.io/badge/Code-GitHub-black.svg)](https://github.com/JuliaAstro/FITSIO.jl)
+[![Build Status](https://img.shields.io/travis/JuliaAstro/FITSIO.jl.svg?style=flat-square&label=linux)](https://travis-ci.org/JuliaAstro/FITSIO.jl)
+[![Build status](https://img.shields.io/appveyor/ci/kbarbary/fitsio-jl.svg?style=flat-square&label=windows)](https://ci.appveyor.com/project/kbarbary/fitsio-jl/branch/master)
+[![Coverage Status](http://img.shields.io/coveralls/JuliaAstro/FITSIO.jl.svg?style=flat-square)](https://coveralls.io/r/JuliaAstro/FITSIO.jl?branch=master)
+
 A [Julia](http://julialang.org) package for reading and writing
 Flexible Image Transport System (FITS) files, based on the
 [cfitsio](http://heasarc.gsfc.nasa.gov/fitsio/) library.
@@ -7,13 +12,12 @@ Flexible Image Transport System (FITS) files, based on the
 The interface is inspired by Erin Sheldon's
 [fitsio](https://github.com/esheldon/fitsio) Python package.
 
+!!! warning
+    The `Libcfitsio` submodule has been moved to [CFITSIO.jl](https://github.com/JuliaAstro/CFITSIO.jl) and will be deprecated in a future release.
+
 ## Installation
 
-The latest version of `FITSIO.jl` is available for Julia 1.0 and later
-versions, and can be installed with
-[Julia](https://github.com/julialang/julia.jl)'s built-in package
-manager. After entering the package manager by pressing `]`, run the
-command
+`FITSIO.jl` can be installed using the built-in package manager
 
 ```julia
 pkg> add FITSIO

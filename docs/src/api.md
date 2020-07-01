@@ -43,9 +43,3 @@ write(::FITS, ::Dict{String})
 write(::FITS, ::Vector{String}, ::Vector)
 read(::TableHDU, ::String)
 ```
-
-## Miscellaneous
-
-```@docs
-FITSIO.libcfitsio_version
-```

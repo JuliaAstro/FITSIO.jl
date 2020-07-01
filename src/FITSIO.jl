@@ -32,18 +32,17 @@ import Base: getindex,
 using Printf
 import Base: iterate, lastindex
 # Libcfitsio submodule
-include("libcfitsio.jl")
 
-using .Libcfitsio
+using CFITSIO
 
 # There are a few direct `ccall`s to libcfitsio in this module. For this, we
 # need a few non-exported things from Libcfitsio: the shared library handle,
-# and a helper function for raising errors. TYPE_FROM_BITPIX is awkwardly
-# defined in Libcfitsio, even though it is not used there.
-import .Libcfitsio: libcfitsio,
-                    fits_assert_ok,
-                    fits_assert_isascii,
-                    TYPE_FROM_BITPIX
+# and a helper function for raising errors.
+import CFITSIO: libcfitsio,
+                fits_assert_ok,
+                fits_assert_isascii,
+                libcfitsio_version
+@deprecate libcfitsio_version CFITSIO.libcfitsio_version
 
 # HDU Types
 abstract type HDU end
@@ -179,28 +178,5 @@ include("fits.jl")  # FITS methods
 include("header.jl")  # FITSHeader methods
 include("image.jl")  # ImageHDU methods
 include("table.jl")  # TableHDU & ASCIITableHDU methods
-
-"""
-    libcfitsio_version() -> VersionNumber
-
-Return the version of the underlying CFITSIO library
-
-# Example
-
-```julia
-julia> FITSIO.libcfitsio_version()
-v"3.37.0"
-```
-
-"""
-function libcfitsio_version(version=fits_get_version())
-    # fits_get_version returns a float. e.g., 3.341f0. We parse that
-    # into a proper version number. E.g., 3.341 -> v"3.34.1"
-    v = Int(round(1000 * version))
-    x = div(v, 1000)
-    y = div(rem(v, 1000), 10)
-    z = rem(v, 10)
-    VersionNumber(x, y, z)
-end
 
 end # module

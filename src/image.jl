@@ -9,11 +9,11 @@ function show(io::IO, hdu::ImageHDU)
     sz = fits_get_img_size(hdu.fitsfile)
 
     if bitpix == equivbitpix
-        datainfo = string(TYPE_FROM_BITPIX[equivbitpix])
+        datainfo = string(type_from_bitpix(equivbitpix))
     else
         datainfo = @sprintf("%s (physical: %s)",
-                            TYPE_FROM_BITPIX[equivbitpix],
-                            TYPE_FROM_BITPIX[bitpix])
+                            type_from_bitpix(equivbitpix),
+                            type_from_bitpix(bitpix))
     end
 
     print(io, """
@@ -82,7 +82,7 @@ function read(hdu::ImageHDU)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    data = Array{TYPE_FROM_BITPIX[bitpix]}(undef, sz...)
+    data = Array{type_from_bitpix(bitpix)}(undef, sz...)
     fits_read_pix(hdu.fitsfile, data)
     data
 end
@@ -126,8 +126,8 @@ function read!(hdu::ImageHDU, array::StridedArray{T,N}) where {T,N}
     sz = fits_get_img_size(hdu.fitsfile)
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
     
-    if TYPE_FROM_BITPIX[bitpix] != T
-        throw(TypeError(:read!,"",TYPE_FROM_BITPIX[bitpix],T))
+    if type_from_bitpix(bitpix) != T
+        throw(TypeError(:read!,"",type_from_bitpix(bitpix),T))
     end
     
     if ndims(hdu) != N
@@ -197,7 +197,7 @@ function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colo
 
     # construct output array
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    data = Array{TYPE_FROM_BITPIX[bitpix]}(undef, _index_shape(sz, I...))
+    data = Array{type_from_bitpix(bitpix)}(undef, _index_shape(sz, I...))
 
     fits_read_subset(hdu.fitsfile, firsts, lasts, steps, data)
     data
@@ -215,8 +215,8 @@ function read_internal!(hdu::ImageHDU, array::StridedArray{T,N},
 
     # check that the output array has the right type
     bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    if TYPE_FROM_BITPIX[bitpix] != T
-        throw(TypeError(:read!,"",TYPE_FROM_BITPIX[bitpix],T))
+    if type_from_bitpix(bitpix) != T
+        throw(TypeError(:read!,"",type_from_bitpix(bitpix),T))
     end
     
     sz = fits_get_img_size(hdu.fitsfile)

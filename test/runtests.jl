@@ -1,5 +1,5 @@
 using FITSIO
-using FITSIO.Libcfitsio
+using CFITSIO
 
 # Deal with compatibility issues.
 using Test
@@ -640,18 +640,4 @@ end
         rm(fname, force=true)
         rm(fname2, force=true)
     end
-end
-
-# -----------------------------------------------------------------------------
-
-@testset "Miscellaneous" begin
-    # test that this function works and returns the right type.
-    @test typeof(FITSIO.libcfitsio_version()) === VersionNumber
-    # test it parses a number as intended.
-    @test FITSIO.libcfitsio_version(3.341)  === VersionNumber(3, 34, 1)
-    @test FITSIO.libcfitsio_version(3.41f0) === VersionNumber(3, 41, 0)
-end
-
-@testset "Libcfitsio" begin
-    include("libcfitsio.jl")
 end

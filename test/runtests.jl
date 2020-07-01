@@ -641,3 +641,12 @@ end
         rm(fname2, force=true)
     end
 end
+
+@test_deprecated FITSIO.libcfitsio_version()
+
+# test we can still access Libcfitsio
+
+@test begin
+    using FITSIO.Libcfitsio
+    Libcfitsio.libcfitsio_version() isa VersionNumber
+end

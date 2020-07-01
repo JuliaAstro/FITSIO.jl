@@ -33,16 +33,60 @@ using Printf
 import Base: iterate, lastindex
 # Libcfitsio submodule
 
-using CFITSIO
+## Have to manually import while deprecating `libcfitsio_version`. 
+## After removing that, can return to using CFITSIO
+import CFITSIO: FITSFile,
+                FITSMemoryHandle,
+                fits_open_file,
+                fits_create_file,
+                fits_assert_open,
+                fits_create_img,
+                fits_close_file,
+                fits_write_pix,
+                fits_get_num_hdus,
+                fits_movabs_hdu,
+                fits_get_img_size,
+                fits_get_img_type,
+                fits_get_img_equivtype,
+                type_from_bitpix,
+                fits_read_pix,
+                fits_read_subset,
+                fits_copy_image_section,
+                fits_file_name,
+                fits_get_img_dim,
+                fits_read_tdim,
+                fits_write_tdim,
+                fits_read_col,
+                fits_write_col,
+                fits_get_num_cols,
+                fits_get_num_rows,
+                fits_get_colnum,
+                fits_get_eqcoltype,
+                fits_read_descript,
+                fits_update_key,
+                fits_write_comment,
+                fits_write_history,
+                fits_get_hdrspace,
+                fits_hdr2str,
+                fits_read_keyword,
+                fits_read_keyn,
+                fits_open_memfile
 
 # There are a few direct `ccall`s to libcfitsio in this module. For this, we
 # need a few non-exported things from Libcfitsio: the shared library handle,
 # and a helper function for raising errors.
 import CFITSIO: libcfitsio,
                 fits_assert_ok,
-                fits_assert_isascii,
-                libcfitsio_version
+                fits_assert_isascii
+
+import CFITSIO
 @deprecate libcfitsio_version CFITSIO.libcfitsio_version
+
+## DEPRECATED
+module Libcfitsio
+    using Reexport
+    @reexport using CFITSIO
+end
 
 # HDU Types
 abstract type HDU end
@@ -95,7 +139,6 @@ supports the following operations:
   end
   ```
 """
-FITS
 mutable struct FITS
     fitsfile::FITSFile
     filename::AbstractString

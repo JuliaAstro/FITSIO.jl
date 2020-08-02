@@ -32,18 +32,61 @@ import Base: getindex,
 using Printf
 import Base: iterate, lastindex
 # Libcfitsio submodule
-include("libcfitsio.jl")
 
-using .Libcfitsio
+## Have to manually import while deprecating `libcfitsio_version`. 
+## After removing that, can return to using CFITSIO
+import CFITSIO: FITSFile,
+                FITSMemoryHandle,
+                fits_open_file,
+                fits_create_file,
+                fits_assert_open,
+                fits_create_img,
+                fits_close_file,
+                fits_write_pix,
+                fits_get_num_hdus,
+                fits_movabs_hdu,
+                fits_get_img_size,
+                fits_get_img_type,
+                fits_get_img_equivtype,
+                type_from_bitpix,
+                fits_read_pix,
+                fits_read_subset,
+                fits_copy_image_section,
+                fits_file_name,
+                fits_get_img_dim,
+                fits_read_tdim,
+                fits_write_tdim,
+                fits_read_col,
+                fits_write_col,
+                fits_get_num_cols,
+                fits_get_num_rows,
+                fits_get_colnum,
+                fits_get_eqcoltype,
+                fits_read_descript,
+                fits_update_key,
+                fits_write_comment,
+                fits_write_history,
+                fits_get_hdrspace,
+                fits_hdr2str,
+                fits_read_keyword,
+                fits_read_keyn,
+                fits_open_memfile
 
 # There are a few direct `ccall`s to libcfitsio in this module. For this, we
 # need a few non-exported things from Libcfitsio: the shared library handle,
-# and a helper function for raising errors. TYPE_FROM_BITPIX is awkwardly
-# defined in Libcfitsio, even though it is not used there.
-import .Libcfitsio: libcfitsio,
-                    fits_assert_ok,
-                    fits_assert_isascii,
-                    TYPE_FROM_BITPIX
+# and a helper function for raising errors.
+import CFITSIO: libcfitsio,
+                fits_assert_ok,
+                fits_assert_isascii
+
+import CFITSIO
+@deprecate libcfitsio_version CFITSIO.libcfitsio_version
+
+## DEPRECATED
+module Libcfitsio
+    using Reexport
+    @reexport using CFITSIO
+end
 
 # HDU Types
 abstract type HDU end
@@ -96,7 +139,6 @@ supports the following operations:
   end
   ```
 """
-FITS
 mutable struct FITS
     fitsfile::FITSFile
     filename::AbstractString
@@ -179,28 +221,5 @@ include("fits.jl")  # FITS methods
 include("header.jl")  # FITSHeader methods
 include("image.jl")  # ImageHDU methods
 include("table.jl")  # TableHDU & ASCIITableHDU methods
-
-"""
-    libcfitsio_version() -> VersionNumber
-
-Return the version of the underlying CFITSIO library
-
-# Example
-
-```julia
-julia> FITSIO.libcfitsio_version()
-v"3.37.0"
-```
-
-"""
-function libcfitsio_version(version=fits_get_version())
-    # fits_get_version returns a float. e.g., 3.341f0. We parse that
-    # into a proper version number. E.g., 3.341 -> v"3.34.1"
-    v = Int(round(1000 * version))
-    x = div(v, 1000)
-    y = div(rem(v, 1000), 10)
-    z = rem(v, 10)
-    VersionNumber(x, y, z)
-end
 
 end # module

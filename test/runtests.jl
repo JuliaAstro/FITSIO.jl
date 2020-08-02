@@ -1,5 +1,5 @@
 using FITSIO
-using FITSIO.Libcfitsio
+using CFITSIO
 
 # Deal with compatibility issues.
 using Test
@@ -642,16 +642,11 @@ end
     end
 end
 
-# -----------------------------------------------------------------------------
+@test_deprecated FITSIO.libcfitsio_version()
 
-@testset "Miscellaneous" begin
-    # test that this function works and returns the right type.
-    @test typeof(FITSIO.libcfitsio_version()) === VersionNumber
-    # test it parses a number as intended.
-    @test FITSIO.libcfitsio_version(3.341)  === VersionNumber(3, 34, 1)
-    @test FITSIO.libcfitsio_version(3.41f0) === VersionNumber(3, 41, 0)
-end
+# test we can still access Libcfitsio
 
-@testset "Libcfitsio" begin
-    include("libcfitsio.jl")
+@test begin
+    using FITSIO.Libcfitsio
+    Libcfitsio.libcfitsio_version() isa VersionNumber
 end

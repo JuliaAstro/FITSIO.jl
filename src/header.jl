@@ -426,7 +426,7 @@ end
 """
     get_default_header(data::AbstractArray)
 
-Creates a default header from an `AbstractArray` with fields being `SIMPLE`, `BITPIX`, `NAXIS`, axis lengths and `EXTEND`.
+Creates a default header for the given array with the `SIMPLE`, `BITPIX`, `NAXIS`, `NAXIS*`, and `EXTEND` entries.
 """
 function get_default_header(data::AbstractArray{T}) where T <: Number
     # assigning keys

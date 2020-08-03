@@ -12,7 +12,7 @@ export FITS,
        get_comment,
        set_comment!,
        copy_section,
-       get_default_header
+       default_header
 
 import Base: getindex,
              setindex!,

@@ -566,9 +566,9 @@ HISTORY this is a history"""
     close(f)
     rm(fname, force=true)
 
-    # Test for get_default_header
+    # Test for default_header
     data = fill(Int16(2), 5, 6, 2)
-    hdr = get_default_header(data)
+    hdr = default_header(data)
     @test hdr isa FITSHeader
     @test hdr["SIMPLE"] == true
     @test hdr["BITPIX"] == 16

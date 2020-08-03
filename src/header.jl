@@ -424,11 +424,11 @@ function show(io::IO, hdr::FITSHeader)
 end
 
 """
-    get_default_header(data::AbstractArray)
+    default_header(data::AbstractArray)
 
 Creates a default header for the given array with the `SIMPLE`, `BITPIX`, `NAXIS`, `NAXIS*`, and `EXTEND` entries.
 """
-function get_default_header(data::AbstractArray{T}) where T <: Number
+function default_header(data::AbstractArray{T}) where T <: Number
     # assigning keys
     hdu_keys = ["SIMPLE",
                 "BITPIX",

@@ -438,7 +438,7 @@ function default_header(data::AbstractArray{T}) where T <: Number
 
     # assiging values
     hdu_values = [true,                                           # SIMPLE
-                  Libcfitsio.bitpix_from_type(T),                 # BITPIX
+                  CFITSIO.bitpix_from_type(T),                    # BITPIX
                   ndims(data),                                    # NAXIS
                   reverse(size(data))...,                         # size of each axis
                   true]                                           # EXTEND

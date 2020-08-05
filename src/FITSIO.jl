@@ -11,7 +11,8 @@ export FITS,
        read_header,
        get_comment,
        set_comment!,
-       copy_section
+       copy_section,
+       default_header
 
 import Base: getindex,
              setindex!,
@@ -33,7 +34,7 @@ using Printf
 import Base: iterate, lastindex
 # Libcfitsio submodule
 
-## Have to manually import while deprecating `libcfitsio_version`. 
+## Have to manually import while deprecating `libcfitsio_version`.
 ## After removing that, can return to using CFITSIO
 import CFITSIO: FITSFile,
                 FITSMemoryHandle,

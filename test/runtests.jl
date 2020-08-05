@@ -155,7 +155,7 @@ using Random # for `randstring`
                     b_view = @view b[:,:]
                     read!(f[1],b_view)
                     @test a == b
-                    
+
                     b_view = @view b3D[:,:,:]
                     read!(f[2],b_view)
                     @test a3D == b3D
@@ -171,7 +171,7 @@ using Random # for `randstring`
                         # Non-contiguous views can not be read into
                         b .= zero(eltype(b))
                         b_view = @view b[1,:]
-                        @test_throws ArgumentError read!(f[1],b_view,1,:)    
+                        @test_throws ArgumentError read!(f[1],b_view,1,:)
                     end
 
                     @testset "1D slices of a 3D array" begin
@@ -316,7 +316,7 @@ using Random # for `randstring`
                 rm(fname)
             end
         end
-            
+
         @testset "1D slice of a 3D array" begin
             try
                 FITS(fname,"r+") do f
@@ -337,7 +337,7 @@ using Random # for `randstring`
                 FITS(fname,"r+") do f
                     b_view = @view b[:,1,:]
                     @test_throws ArgumentError write(f,b_view)
-                    
+
                     b_view = @view b[1,:,:]
                     @test_throws ArgumentError write(f,b_view)
 
@@ -565,6 +565,18 @@ HISTORY this is a history"""
     # Clean up from last test.
     close(f)
     rm(fname, force=true)
+
+    # Test for default_header
+    data = fill(Int16(2), 5, 6, 2)
+    hdr = default_header(data)
+    @test hdr isa FITSHeader
+    @test hdr["SIMPLE"] == true
+    @test hdr["BITPIX"] == 16
+    @test hdr["NAXIS"] == 3
+    @test hdr["NAXIS1"] == 2
+    @test hdr["NAXIS2"] == 6
+    @test hdr["NAXIS3"] == 5
+    @test hdr["EXTEND"] == true
 end
 
 # -----------------------------------------------------------------------------

@@ -68,6 +68,12 @@ length(hdu::ImageHDU) = prod(size(hdu))
 # when ndim != 1, rather than no method.
 lastindex(hdu::ImageHDU) = length(hdu::ImageHDU)
 
+function fitsread(filename, hduindex = 1, arrayinds...)
+    FITS(filename, "r") do f
+        read(f[hduindex], arrayinds...)
+    end
+end
+
 # Read a full image from an HDU
 """
     read(hdu::ImageHDU)
@@ -260,6 +266,12 @@ read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 read!(hdu::ImageHDU, array::StridedArray, I::Union{AbstractRange{Int}, Int, Colon}...) =
     read_internal!(hdu, array, I...)
 read!(hdu::ImageHDU, array::StridedArray, I::Int...) = read_internal!(hdu, array, I...)[1]
+
+function fitswrite(filename, data; kwargs...)
+    FITS(filename, "w") do f
+        write(f, data; kwargs...)
+    end
+end
 
 """
     write(f::FITS, data::StridedArray; header=nothing, name=nothing, ver=nothing)

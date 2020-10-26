@@ -355,6 +355,20 @@ using Random # for `randstring`
             end
         end
     end
+
+    @testset "fitsread" begin
+        fname = tempname() * ".fits"
+        a = ones(3,3)
+        try
+            FITS(fname, "w") do f
+                write(f, a)
+            end
+            @test FITSIO.fitsread(fname) == a
+            @test FITSIO.fitsread(fname, 1) == a
+        finally
+            rm(fname, force=true)
+        end
+    end
 end
 
 @testset "Write data to an existing image HDU" begin
@@ -402,6 +416,19 @@ end
         end
 
         rm(fname, force=true)
+    end
+
+    @testset "fitswrite" begin
+        fname = tempname() * ".fits"
+        a = ones(3,3)
+        try
+            FITSIO.fitswrite(fname, a)
+            FITS(fname, "r") do f
+                @test read(f[1]) == a
+            end
+        finally
+            rm(fname, force=true)
+        end
     end
 end
 

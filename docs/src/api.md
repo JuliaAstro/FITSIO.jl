@@ -26,9 +26,12 @@ set_comment!
 ## Image operations
 
 ```@docs
-write{T}(::FITS, ::Array{T})
-write{T}(::ImageHDU, ::Array{T})
 read(::ImageHDU)
+read!
+FITSIO.fitsread
+write(::FITS, ::StridedArray{<:Real})
+write(::ImageHDU, ::StridedArray{<:Real})
+FITSIO.fitswrite
 ndims(::ImageHDU)
 size(::ImageHDU)
 length(::ImageHDU)

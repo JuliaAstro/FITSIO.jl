@@ -60,7 +60,7 @@ end
 """
     length(hdu::ImageHDU)
 
-Get total number of pixels in image (product of ``size(hdu)``).
+Get total number of pixels in image (product of `size(hdu)`).
 """
 length(hdu::ImageHDU) = prod(size(hdu))
 
@@ -68,9 +68,31 @@ length(hdu::ImageHDU) = prod(size(hdu))
 # when ndim != 1, rather than no method.
 lastindex(hdu::ImageHDU) = length(hdu::ImageHDU)
 
-function fitsread(filename, hduindex = 1, arrayinds...)
+"""
+    fitsread(filename::AbstractString, hduindex = 1, arrayindices...)
+
+Convenience function to read in an image corresponding to the HDU at index `hduindex` contained in
+the FITS file named `filename`. 
+If `arrayindices` are provided, only a slice of the image corresponding to the indices is read in.
+
+Functionally `fitsread(filename, hduindex, arrayindices...)` is equivalent to
+
+```julia
+FITS(filename, "r") do f
+    read(f[hduindex], arrayindices...)
+end
+```
+
+!!! note
+    Julia follows a column-major array indexing convention, so the indices provided must account for this. 
+    In particular this means that FITS files created externally following a row-major convention (eg. using astropy)
+    will have the sequence of axes flipped when read in using FITSIO.
+
+See also: [`read`](@ref)
+"""
+function fitsread(filename::AbstractString, hduindex = 1, arrayindices...)
     FITS(filename, "r") do f
-        read(f[hduindex], arrayinds...)
+        read(f[hduindex], arrayindices...)
     end
 end
 
@@ -81,7 +103,13 @@ end
 
 Read the data array or a subset thereof from disk. The first form
 reads the entire data array. The second form reads a slice of the array
-given by the specified ranges or integers.
+given by the specified ranges or integers. Dimensions specified by integers will be 
+dropped in the returned array, while those specified by ranges will be retained.
+
+!!! note
+    Julia follows a column-major array indexing convention, so the indices provided must account for this. 
+    In particular this means that FITS files created externally following a row-major convention (eg. using astropy) 
+    will have the sequence of axes flipped when read in using FITSIO.
 """
 function read(hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
@@ -120,6 +148,11 @@ The first form reads the entire data from disk.
 The second form reads a slice of the array given by the specified ranges or integers.
 The output array needs to have the same shape as the data range to be read in. 
 Additionally the output array needs to be contiguously stored in memory.
+
+!!! note
+    Julia follows a column-major array indexing convention, so the indices provided must account for this. 
+    In particular this means that FITS files created externally following a row-major convention (eg. using astropy)
+    will have the sequence of the axes flipped when read in using FITSIO.
 """
 function read!(hdu::ImageHDU, array::StridedArray{T,N}) where {T,N}
 
@@ -267,25 +300,65 @@ read!(hdu::ImageHDU, array::StridedArray, I::Union{AbstractRange{Int}, Int, Colo
     read_internal!(hdu, array, I...)
 read!(hdu::ImageHDU, array::StridedArray, I::Int...) = read_internal!(hdu, array, I...)[1]
 
-function fitswrite(filename, data; kwargs...)
+"""
+    fitswrite(filename::AbstractString, data; kwargs...)
+
+Convenience function to write the image array `data` to a file named `filename`.
+
+Functionally `fitswrite(filename, data; kwargs...)` is equivalent to
+
+```julia
+FITS(filename, "w") do f
+    write(f, data; kwargs...)
+end
+```
+
+!!! warn "Warning"
+    Existing files with the same name will be overwritten.
+
+See also: [`write`](@ref)
+"""
+function fitswrite(filename::AbstractString, data; kwargs...)
     FITS(filename, "w") do f
         write(f, data; kwargs...)
     end
 end
 
 """
-    write(f::FITS, data::StridedArray; header=nothing, name=nothing, ver=nothing)
+    write(f::FITS, data::StridedArray{<:Real}; header=nothing, name=nothing, ver=nothing)
 
 Add a new image HDU to FITS file `f` with contents `data`. The
 following array element types are supported: `UInt8`, `Int8`,
 `UInt16`, `Int16`, `UInt32`, `Int32`, `Int64`, `Float32`,
 `Float64`. If a `FITSHeader` object is passed as the `header` keyword
 argument, the header will also be added to the new HDU.
+The data to be written out must be stored contiguously in memory.
+
+!!! tip "Unsupported element types"
+    It might be possible to write out an array with an element type other than those mentioned above
+    by `reinterpret`ing it as one that is supported. For example, to write out a `Complex` 
+    array and read it back in, we may use
+
+    ```julia
+    julia> a = rand(ComplexF64, 2)
+    2-element Array{Complex{Float64},1}:
+     0.4943325325752195 + 0.2034650017475852im
+     0.2495752009567498 + 0.819163869249041im
+
+    # We may write this out as Float64
+    julia> FITSIO.fitswrite("temp.fits", reinterpret(Float64, a))
+
+    # reinterpret it back as a complex one while reading it in
+    julia> reinterpret(ComplexF64, FITSIO.fitsread("temp.fits"))
+    2-element reinterpret(Complex{Float64}, ::Array{Float64,1}):
+     0.4943325325752195 + 0.2034650017475852im
+     0.2495752009567498 + 0.819163869249041im
+    ```
 """
-function write(f::FITS, data::StridedArray{T};
+function write(f::FITS, data::StridedArray{<:Real};
                header::Union{Nothing, FITSHeader}=nothing,
                name::Union{Nothing, String}=nothing,
-               ver::Union{Nothing, Integer}=nothing) where {T<:Real}
+               ver::Union{Nothing, Integer}=nothing)
 
     if !iscontiguous(data)
         throw(ArgumentError("data to be written out needs to be contiguously stored"))
@@ -293,7 +366,7 @@ function write(f::FITS, data::StridedArray{T};
 
     fits_assert_open(f.fitsfile)
     s = size(data)
-    fits_create_img(f.fitsfile, T, [s...])
+    fits_create_img(f.fitsfile, eltype(data), [s...])
     if isa(header, FITSHeader)
         fits_write_header(f.fitsfile, header, true)
     end
@@ -308,7 +381,7 @@ function write(f::FITS, data::StridedArray{T};
 end
 
 """
-    write(hdu::ImageHDU, data::StridedArray)
+    write(hdu::ImageHDU, data::StridedArray{<:Real})
 
 Write data to an existing image HDU. 
 The data to be written out must be stored contiguously in memory.

@@ -591,6 +591,17 @@ HISTORY this is a history"""
 
     # Clean up from last test.
     close(f)
+
+    hdr = FITS(fname, "r") do f
+        read_header(f[1])
+    end
+    hdrfname = read_header(fname)
+    @test keys(hdr) == keys(hdrfname)
+    @test values(hdr) == values(hdrfname)
+    for k in keys(hdr)
+        @test get_comment(hdr, k) == get_comment(hdrfname, k)
+    end
+
     rm(fname, force=true)
 
     # Test for default_header

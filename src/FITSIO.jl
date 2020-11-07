@@ -27,7 +27,8 @@ import Base: getindex,
              getkey,
              haskey,
              keys,
-             values
+             values,
+             eltype
 
 # Deal with compatibility issues.
 using Printf

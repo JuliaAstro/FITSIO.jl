@@ -29,6 +29,7 @@ set_comment!
 write{T}(::FITS, ::Array{T})
 write{T}(::ImageHDU, ::Array{T})
 read(::ImageHDU)
+eltype(::ImageHDU)
 ndims(::ImageHDU)
 size(::ImageHDU)
 length(::ImageHDU)

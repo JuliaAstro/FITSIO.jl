@@ -68,6 +68,18 @@ length(hdu::ImageHDU) = prod(size(hdu))
 # when ndim != 1, rather than no method.
 lastindex(hdu::ImageHDU) = length(hdu::ImageHDU)
 
+"""
+    eltype(hdu::ImageHDU)
+
+Return the element type of the image in `hdu`.
+"""
+function eltype(hdu::ImageHDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    bitpix = fits_get_img_equivtype(hdu.fitsfile)
+    type_from_bitpix(bitpix)
+end
+
 # Read a full image from an HDU
 """
     read(hdu::ImageHDU)

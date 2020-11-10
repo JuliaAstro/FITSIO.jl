@@ -32,6 +32,7 @@ FITSIO.fitsread
 write(::FITS, ::StridedArray{<:Real})
 write(::ImageHDU, ::StridedArray{<:Real})
 FITSIO.fitswrite
+eltype(::ImageHDU)
 ndims(::ImageHDU)
 size(::ImageHDU)
 length(::ImageHDU)

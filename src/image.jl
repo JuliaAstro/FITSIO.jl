@@ -69,6 +69,18 @@ length(hdu::ImageHDU) = prod(size(hdu))
 lastindex(hdu::ImageHDU) = length(hdu::ImageHDU)
 
 """
+    eltype(hdu::ImageHDU)
+
+Return the element type of the image in `hdu`.
+"""
+function eltype(hdu::ImageHDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    bitpix = fits_get_img_equivtype(hdu.fitsfile)
+    type_from_bitpix(bitpix)
+end
+
+"""
     fitsread(filename::AbstractString, hduindex = 1, arrayindices...)
 
 Convenience function to read in an image corresponding to the HDU at index `hduindex` contained in

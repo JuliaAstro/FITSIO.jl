@@ -19,7 +19,7 @@ using Random # for `randstring`
             # test reading the full array
             outdata = read(f[end])
             @test indata == outdata
-            @test eltype(indata) == eltype(outdata)
+            @test eltype(indata) == eltype(outdata) == eltype(f[end])
 
             # test reading subsets of the array
             @test read(f[end], :, :) == indata

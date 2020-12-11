@@ -87,6 +87,8 @@ import CFITSIO: libcfitsio,
 import CFITSIO
 @deprecate libcfitsio_version CFITSIO.libcfitsio_version
 
+import Tables
+
 ## DEPRECATED
 module Libcfitsio
     using Reexport

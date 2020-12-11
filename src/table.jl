@@ -538,3 +538,23 @@ function read(hdu::TableHDU, colname::String; case_sensitive::Bool=true)
 
     return result
 end
+
+#Tables.jl compatibility 
+#TODO understand how this interracts with TableHDU "private" fields    
+const EitherTableHDU = Union{TableHDU, ASCIITableHDU}
+Tables.istable(::Type{<:EitherTableHDU}) = true    
+Tables.columnaccess(::Type{<:EitherTableHDU}) = true    
+Tables.columns(t::EitherTableHDU) = t    
+Tables.columnnames(t::EitherTableHDU) = Symbol.(FITSIO.colnames(t))    
+#reshape multidimensional array into array of (possibly multidimensional) arrays
+function collapse(col::Array)
+    dim = length(size(col))
+    if dim == 1
+        col
+    else
+        [view(col, vcat(repeat([:], dim-1), i)...) for i in 1:size(col, dim)]
+    end
+end
+Tables.getcolumn(t::EitherTableHDU, i::Int) = collapse(FITSIO.read(t, FITSIO.colnames(t)[i]))
+Tables.getcolumn(t::EitherTableHDU, s::Symbol) = collapse(FITSIO.read(t, String(s)))
+

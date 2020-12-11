@@ -483,7 +483,11 @@ end
         FITS(fname, "w") do f
             col1 = [1., 2., 3.]
             col2 = [1, 2, 3]
-            write(f, ["col1", "col2"], [col1, col2])
+            col3 = [1 2 3
+                    4 5 6]
+            colnames = ["col1", "col2", "col3"]
+            cols = [col1, col2, col3]
+            write(f, colnames, cols)
             tab = f[2]
 
             @testset "types work out" begin
@@ -498,12 +502,14 @@ end
             @testset "columnaccess with getcolumn" begin
                 @test Tables.getcolumn(tab, :col1) == col1
                 @test Tables.getcolumn(tab, :col2) == col2
+                @test all(Tables.getcolumn(tab, :col3) .== eachcol(col3))
                 @test Tables.getcolumn(tab, 1) == col1
                 @test Tables.getcolumn(tab, 2) == col2
+                @test all(Tables.getcolumn(tab, 3) .== eachcol(col3))
             end
 
             @testset "column names match" begin
-                @test Tables.columnnames(tab) == [:col1, :col2]
+                @test Tables.columnnames(tab) == Symbol.(colnames)
             end
 
             @testset "row iteration" begin
@@ -512,7 +518,7 @@ end
                 @test row.col1 == col1[1]
                 @test Tables.getcolumn(row, :col1) == col1[1]
                 @test Tables.getcolumn(row, 1) == col1[1]
-                @test propertynames(row) == [:col1, :col2]
+                @test propertynames(row) == Symbol.(colnames)
             end
         end
         rm(fname, force=true)

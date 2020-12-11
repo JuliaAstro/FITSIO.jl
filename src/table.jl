@@ -539,8 +539,7 @@ function read(hdu::TableHDU, colname::String; case_sensitive::Bool=true)
     return result
 end
 
-#Tables.jl compatibility 
-#TODO understand how this interracts with TableHDU "private" fields    
+#Tables.jl integration
 const EitherTableHDU = Union{TableHDU, ASCIITableHDU}
 Tables.istable(::Type{<:EitherTableHDU}) = true    
 Tables.columnaccess(::Type{<:EitherTableHDU}) = true    

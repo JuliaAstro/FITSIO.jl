@@ -102,6 +102,12 @@ Read a column from the table:
  julia> data = read(f[2], "col1")
 ```
 
+Table HDUs implement the [Tables.jl](https://tables.juliadata.org/stable/) interface, so you can load them into other table types, like [DataFrames](https://dataframes.juliadata.org/stable/).
+```
+julia> df = DataFrame(f[2])
+```
+Variable length columns are not supported by the Tables.jl interface, and `Tables` methods will ignore them.
+
 
 Read the entire header into memory and get values from it:
 ```julia

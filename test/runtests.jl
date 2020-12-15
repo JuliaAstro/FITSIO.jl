@@ -485,9 +485,10 @@ end
             col2 = [1, 2, 3]
             col3 = [1 2 3
                     4 5 6]
+            vcol = [rand(10) for i in 1:2]
             colnames = ["col1", "col2", "col3"]
             cols = [col1, col2, col3]
-            write(f, colnames, cols)
+            write(f, vcat(colnames, ["vcol"]), vcat(cols, [vcol]), varcols=["vcol"])
             tab = f[2]
 
             @testset "types work out" begin
@@ -503,9 +504,11 @@ end
                 @test Tables.getcolumn(tab, :col1) == col1
                 @test Tables.getcolumn(tab, :col2) == col2
                 @test all(Tables.getcolumn(tab, :col3) .== eachcol(col3))
+                @test_throws ErrorException Tables.getcolumn(tab, :vcol)
                 @test Tables.getcolumn(tab, 1) == col1
                 @test Tables.getcolumn(tab, 2) == col2
                 @test all(Tables.getcolumn(tab, 3) .== eachcol(col3))
+                @test_throws BoundsError Tables.getcolumn(tab, 4)
             end
 
             @testset "column names match" begin

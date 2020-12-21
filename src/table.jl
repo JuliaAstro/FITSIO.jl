@@ -486,7 +486,7 @@ end
 
 
 """
-    read(hdu, colname; case_sensitive=true)
+    read(hdu::TableHDU, colname; case_sensitive=true)
 
 Read a column as an array from the given table HDU.
 

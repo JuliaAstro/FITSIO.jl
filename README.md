@@ -4,9 +4,9 @@ FITSIO.jl
 Flexible Image Transport System (FITS) support for Julia
 
 
-[![Build Status](https://img.shields.io/travis/JuliaAstro/FITSIO.jl.svg?style=flat-square&label=linux)](https://travis-ci.org/JuliaAstro/FITSIO.jl)
-[![Build status](https://img.shields.io/appveyor/ci/kbarbary/fitsio-jl.svg?style=flat-square&label=windows)](https://ci.appveyor.com/project/kbarbary/fitsio-jl/branch/master)
-[![Coverage Status](http://img.shields.io/coveralls/JuliaAstro/FITSIO.jl.svg?style=flat-square)](https://coveralls.io/r/JuliaAstro/FITSIO.jl?branch=master)
+[![Build Status](https://github.com/juliaastro/FITSIO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/juliaastro/FITSIO.jl/actions)
+[![PkgEval](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/F/FITSIO.svg)](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html)
+[![codecov](https://codecov.io/gh/juliaastro/fitsio.jl/branch/master/graph/badge.svg?token=SA9EG0z8pt)](https://codecov.io/gh/juliaastro/fitsio.jl)
 
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](http://juliaastro.github.io/FITSIO.jl/stable/)

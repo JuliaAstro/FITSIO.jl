@@ -274,6 +274,24 @@ end
 
 
 """
+    read_header(filename::AbstractString, hduindex = 1) -> FITSHeader
+
+Convenience function to read the entire header corresponding to the HDU at index `hduindex` contained 
+in the FITS file named `filename`. Functionally `read_header(filename, hduindex)` is equivalent to
+
+```julia
+FITS(filename, "r") do f
+    read_header(f[hduindex])
+end
+```
+"""
+function read_header(filename::AbstractString, hduindex = 1)
+    FITS(filename, "r") do f
+        read_header(f[hduindex])
+    end
+end
+
+"""
     read_header(hdu::HDU) -> FITSHeader
 
 Read the entire header from the given HDU and return a `FITSHeader` object.

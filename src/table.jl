@@ -498,12 +498,6 @@ consecutive string of decimal digits (0-9). The string must match a
 unique column.  The optional boolean keyword `case_sensitive`,
 `true` by default, specifies whether the column name is to be
 considered case sensitive.
-
-!!! note "Array order"
-
-    Julia arrays are column-major (like Fortran), not row-major (like C 
-    and numpy), so elements of multi-dimensional columns will be the 
-    transpose of what you get with astropy.
 """
 function read(hdu::TableHDU, colname::String; case_sensitive::Bool=true)
     fits_assert_open(hdu.fitsfile)

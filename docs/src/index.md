@@ -183,3 +183,36 @@ julia> data = Dict("col1"=>[1., 2., 3.], "col2"=>[1, 2, 3]);
 
 julia> write(f, data)  # write a new binary table to a new extension
 ```
+
+!!! tip "Compressed storage"
+    Setting the file extension to `.gz` will automatically use GZIP compression and save on storage space.
+
+    ```julia
+    julia> FITS("abc.fits", "w") do f # save the image uncompressed
+               write(f, ones(200,200))
+           end
+
+    julia> filesize("abc.fits")
+    325440
+
+    julia> FITS("abc.fits.gz", "w") do f # save the image compressed
+                write(f, ones(200,200))
+           end
+
+    julia> filesize("abc.fits.gz")
+    2117
+    ```
+
+    Alternately the compression algorithm might be specified in square brackets after the filename. Check the [CFITSIO website](https://heasarc.gsfc.nasa.gov/docs/software/fitsio/compression.html) for the details of this usage.
+
+    ```julia
+    julia> FITS("abc.fits[compress R 100,100]", "w") do f # Rice algorithm with a 100 x 100 pixel tile size
+               write(f, ones(200,200))
+           end
+
+    julia> filesize("abc.fits")
+    8640
+    ```
+
+    !!! warn
+        Compression is "loss-less" for images with integer pixel values, and might be lossy for floating-point images. 

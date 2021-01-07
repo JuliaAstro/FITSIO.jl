@@ -452,7 +452,7 @@ end
 
             # TODO: remove the tests for deprecation warnings when we don't issue them, but keep the
             # `@test_throws` test.
-            @test_throws ErrorException @test_nowarn(read(f[2], "vcol", case_sensitive=false))
+            @test_throws Exception @test_nowarn(read(f[2], "vcol", case_sensitive=false))
             @test_nowarn read(f[2], "col2")
             @test_logs (:warn, r"case_sensitive") read(f[2], "COL2")
 

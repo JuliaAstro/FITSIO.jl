@@ -7,14 +7,10 @@
 # start with `fits_`.
 
 """
-    try_parse_hdrval(::Type, s::String)
+    try_parse_hdrval(T, s) -> x::Union{T,Nothing}
 
-```julia
-try_parse_hdrval(T, s) -> x::Union{T,Nothing}
-```
-
-attempts to parse string `s` for a FITS card value of type `T` (`String`,
-`Bool`, `Int` or `Float64`) and yields either a value of type `T` or
+Attempt to parse string `s` for a FITS card value of type `T` (`String`,
+`Bool`, `Int` or `Float64`) and yield either a value of type `T` or
 `nothing` if parsing is unsuccessful.
 
 See also: [`parse_header_val`](@ref).
@@ -220,20 +216,16 @@ end
 # Public API
 
 """
-```julia
-read_key(hdu::HDU, key::String) -> (value, comment)
-```
+    read_key(hdu::HDU, key::String) -> (value, comment)
 
-Reads the HDU header record specified by keyword and returns a tuple where
+Read the HDU header record specified by keyword and return a tuple where
 `value` is the keyword parsed value (of type `String`, `Bool`, `Int`,
 `Float64` or `Nothing`), `comment` is the keyword comment (as a string).
-An error is thrown if `key` is not found.
+Throw an error if `key` is not found.
 
-```julia
-read_key(hdu::HDU, key::Integer) -> (keyname, value, comment)
-```
+    read_key(hdu::HDU, key::Integer) -> (keyname, value, comment)
 
-same as above but FITS card is specified by its position and returns a 3
+Same as above but FITS card is specified by its position and returns a 3
 element tuple where `keyname` is the keyword name (a string).
 """
 function read_key(hdu::HDU, key::Integer)

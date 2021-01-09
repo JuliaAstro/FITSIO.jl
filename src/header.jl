@@ -7,15 +7,17 @@
 # start with `fits_`.
 
 """
+    try_parse_hdrval(::Type, s::String)
+
 ```julia
 try_parse_hdrval(T, s) -> x::Union{T,Nothing}
 ```
 
 attempts to parse string `s` for a FITS card value of type `T` (`String`,
 `Bool`, `Int` or `Float64`) and yields either a value of type `T` or
-[`nothing`](@ref) if parsing is unsuccessful.
+`nothing` if parsing is unsuccessful.
 
-See also: [`tryparse`](@ref), [`parse_header_val`](@ref).
+See also: [`parse_header_val`](@ref).
 
 """
 function try_parse_hdrval(::Type{Bool}, s::String)
@@ -58,11 +60,9 @@ hdrval_repr(v::String) = @sprintf "'%s'" v
 hdrval_repr(v::Union{AbstractFloat, Integer}) = string(v)
 
 """
-```julia
-parse_header_val(s) -> x::Union{String,Bool,Int,Float64,Nothing}
-```
+    parse_header_val(s::String) -> x::Union{String,Bool,Int,Float64,Nothing}
 
-parses the FITS card value in the string `s` and returns a value of type
+Parse the FITS card value in the string `s` and return a value of type
 `String`, `Bool`, `Int`, `Float64` or `Nothing`.  The latter indicates an
 empty value.  This method never throws an error; if the value cannot be
 parsed it is returned as it.
@@ -89,12 +89,10 @@ function parse_header_val(s::String)
 end
 
 """
-```julia
-fits_try_read_keys(f, T, keys)
-```
+    fits_try_read_keys(f::FITSFile, ::Type{T}, keys)
 
-tries to read the raw FITS keys in given order if FITS handle `f` and
-returns a value of type `T` or [`nothing`](@ref) if no key exists or if
+Try to read the raw FITS keys in given order if FITS handle `f` and
+return a value of type `T` or [`nothing`](@ref) if no key exists or if
 parsing an existing key is unsuccessful.
 
 See also: [`try_parse_hdrval`](@ref).

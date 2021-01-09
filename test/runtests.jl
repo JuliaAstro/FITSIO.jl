@@ -408,6 +408,25 @@ end
             end
         end
     end
+
+    @testset "delete" begin
+        tempnamefits() do fname
+            f = FITS(fname, "w")
+            write(f, ones(2,2))
+            write(f, ones(3,3))
+            @test length(f) == 2
+            deleteat!(f, 2)
+            @test length(f) == 1
+            write(f, ones(3,3))
+            deleteat!(f,1)
+            @test length(f) == 2
+            @test ndims(f[1]) == 0
+            write(f, ones(4,4))
+            deleteat!(f, 2)
+            @test size(f[2]) == (4,4)
+            close(f)
+        end
+    end
 end
 
 @testset "Write data to an existing image HDU" begin

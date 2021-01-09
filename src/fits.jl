@@ -126,6 +126,24 @@ function getindex(f::FITS, name::AbstractString, ver::Int=0)
 end
 
 """
+    deleteat!(f::FITS, i::Integer)
+
+Delete the HDU at index `i` in the FITS file. If `i == 1`, this deletes the primary HDU and replaces it 
+with a bare HDU with no data and a minimal header. If `i > 1`, this removes the HDU at index `i`
+and moves the following HDUs forward.
+"""
+function deleteat!(f::FITS, i::Integer)
+    fits_assert_open(f.fitsfile)
+
+    if haskey(f.hdus, i)
+        delete!(f.hdus, i)
+    end
+    fits_movabs_hdu(f.fitsfile, i)
+    fits_delete_hdu(f.fitsfile)
+    f
+end
+
+"""
     close(f::FITS)
 
 Close the file.

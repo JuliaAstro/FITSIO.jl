@@ -236,12 +236,15 @@ function read_internal!(hdu::ImageHDU, array::StridedArray,
     if !iscontiguous(array)
         throw(ArgumentError("the output array needs to be contiguous"))
     end
+
     # check number of indices and bounds. Note that number of indices and
     # array dimension must match, unlike in Arrays. Array-like behavior could
     # be supported in the future with care taken in constructing first, last,
     if length(I) != ndims(hdu)
         throw(DimensionMismatch("number of indices must match dimensions"))
     end
+
+    # The following require the HDU to be open
 
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)

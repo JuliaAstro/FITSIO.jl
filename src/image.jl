@@ -7,6 +7,7 @@ function show(io::IO, hdu::ImageHDU)
     bitpix = fits_get_img_type(hdu.fitsfile)
     equivbitpix = fits_get_img_equivtype(hdu.fitsfile)
     sz = fits_get_img_size(hdu.fitsfile)
+    mode = fits_file_mode(hdu.fitsfile)
 
     if bitpix == equivbitpix
         datainfo = string(type_from_bitpix(equivbitpix))
@@ -19,9 +20,10 @@ function show(io::IO, hdu::ImageHDU)
     print(io, """
     File: $(fits_file_name(hdu.fitsfile))
     HDU: $(hdu.ext)$(fits_get_ext_info_string(hdu.fitsfile))
+    Mode: $(mode == 0 ? "read-only" : "read-write")
     Type: Image
     Datatype: $datainfo
-    Datasize: $(tuple(sz...))""")
+    Datasize: $(Tuple(sz))""")
 end
 
 # Get image dimensions
@@ -43,7 +45,7 @@ function size(hdu::ImageHDU{<:Any,N}) where N
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
-    ntuple(i -> sz[i], N)
+    NTuple{N,Int}(sz)
 end
 
 size(hdu::ImageHDU, i::Integer) = size(hdu)[i]
@@ -57,7 +59,7 @@ length(hdu::ImageHDU) = prod(size(hdu))
 
 # `lastindex` is needed so that hdu[:] can throw DimensionMismatch
 # when ndim != 1, rather than no method.
-lastindex(hdu::ImageHDU) = length(hdu::ImageHDU)
+lastindex(hdu::ImageHDU) = length(hdu)
 
 """
     eltype(hdu::ImageHDU)

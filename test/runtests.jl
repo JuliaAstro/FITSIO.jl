@@ -1,15 +1,35 @@
 using FITSIO
 using CFITSIO
 import Tables
+using Aqua
 
 # Deal with compatibility issues.
 using Test
 using Random # for `randstring`
 
+@testset "project quality" begin
+    Aqua.test_all(FITSIO)
+end
+
 randomfilename(dir) = joinpath(dir, randstring(12)*".fits")
 function tempnamefits(f)
     mktempdir() do dir
         f(randomfilename(dir))
+    end
+end
+
+@testset "File IO" begin
+    tempnamefits() do fname
+        # create the file first
+        FITS(fname, "w") do f
+            write(f, ones(2))
+        end
+        # open as read only
+        f = FITS(fname, "r")
+        # writing should throw an error
+        @test_throws Exception write(f, ones(2))
+        d = f[1]
+        @test_throws Exception write(d, ones(2))
     end
 end
 
@@ -25,17 +45,17 @@ end
                 write(f, indata)
 
                 # test reading the full array
-                outdata = read(f[end])
+                outdata = @inferred read(f[end])
                 @test indata == outdata
                 @test eltype(indata) == eltype(outdata) == eltype(f[end])
 
                 # test reading subsets of the array
-                @test read(f[end], :, :) == indata
-                @test read(f[end], 4, 1:10) == indata[4, 1:10]  # 2-d array
-                @test read(f[end], :, 4) == indata[:, 4]  # 1-d array
-                @test read(f[end], 2, 3) == indata[2, 3]  # scalar
-                @test read(f[end], :, 1:2:10) == indata[:, 1:2:10]
-                @test read(f[end], 1:3, :) == indata[1:3, :]
+                @inferred read(f[end], :, :) == indata
+                @inferred read(f[end], 4, 1:10) == indata[4, 1:10]  # 2-d array
+                @inferred read(f[end], :, 4) == indata[:, 4]  # 1-d array
+                @inferred read(f[end], 2, 3) == indata[2, 3]  # scalar
+                @inferred read(f[end], :, 1:2:10) == indata[:, 1:2:10]
+                @inferred read(f[end], 1:3, :) == indata[1:3, :]
 
                 # test expected errors
                 @test_throws DimensionMismatch read(f[end], :)
@@ -53,7 +73,7 @@ end
 
             # test iteration
             for hdu in f
-                @test size(hdu) == (5, 20)
+                @inferred size(hdu) == (5, 20)
             end
         end
     end
@@ -127,9 +147,9 @@ end
 
                 # Test for errors
                 b = zeros(Float64)
-                # Type is checked before dimensions
-                @test_throws TypeError read!(f[1],b,1,1)
-                @test_throws TypeError read!(f[1],b)
+                # Types must match
+                @test_throws MethodError read!(f[1],b,1,1)
+                @test_throws MethodError read!(f[1],b)
 
                 b = zeros(eltype(indata))
                 @test_throws DimensionMismatch read!(f[1],b,1:10,1)
@@ -139,10 +159,7 @@ end
                 @test_throws DimensionMismatch read!(f[1],b,1,:)
                 @test_throws DimensionMismatch read!(f[1],b,:,:)
 
-                b = zeros(eltype(indata),1)
-                @test_throws DimensionMismatch read!(f[1],b,1,1)
-
-                b3D = zeros(eltype(indata3D),size(indata3D))
+                b3D = zero(indata3D)
                 read!(f[2],b3D)
                 @test a3D == b3D
                 read!(f[2],b3D,:,:,:)
@@ -152,18 +169,24 @@ end
                 read!(f[1],b0D,1,1)
                 @test a[1,1] == b0D[]
 
+                @testset "different ndims" begin
+                    local b = similar(indata, length(indata))
+                    read!(f[1], b)
+                    @test vec(b) == vec(a)
+                end
+
                 @testset "read into views" begin
 
-                    b = zeros(eltype(indata),size(indata))
+                    local b = zero(indata)
 
                     # Entire array
-                    b_view = @view b[:,:]
-                    read!(f[1],b_view)
+                    b_view = @view b[:,:];
+                    read!(f[1], b_view);
                     @test a == b
 
-                    b_view = @view b3D[:,:,:]
-                    read!(f[2],b_view)
-                    @test a3D == b3D
+                    b_view = @view b3D[:,:,:];
+                    read!(f[2], b_view);
+                    @test a3D == b3D;
 
                     @testset "1D slices of a 2D array" begin
                         for ax2 in axes(b,2)
@@ -176,7 +199,7 @@ end
                         # Non-contiguous views can not be read into
                         b .= zero(eltype(b))
                         b_view = @view b[1,:]
-                        @test_throws ArgumentError read!(f[1],b_view,1,:)
+                        @test_throws ArgumentError read!(f[1], b_view, 1, :)
                     end
 
                     @testset "1D slices of a 3D array" begin
@@ -402,7 +425,7 @@ end
                 fits_movabs_hdu(f.fitsfile, 1)
 
                 # Attempt to write data array of incorrect size to the second HDU
-                exception = ErrorException("size of HDU [2, 3] not equal to size of data [2, 4].")
+                exception = ErrorException("size of HDU (2, 3) not equal to size of data (2, 4).")
                 @test_throws exception write(second_hdu, [[11 12 13 14]; [15 16 17 18]])
             end
         end

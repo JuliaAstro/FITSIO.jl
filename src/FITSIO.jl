@@ -42,6 +42,7 @@ import CFITSIO: FITSFile,
                 fits_open_file,
                 fits_create_file,
                 fits_assert_open,
+                fits_file_mode,
                 fits_create_img,
                 fits_close_file,
                 fits_write_pix,
@@ -98,9 +99,18 @@ end
 # HDU Types
 abstract type HDU end
 
-mutable struct ImageHDU <: HDU
+mutable struct ImageHDU{T<:Real,N} <: HDU
     fitsfile::FITSFile
     ext::Int
+
+    function ImageHDU(fitsfile::FITSFile, ext::Int)
+        fits_assert_open(fitsfile)
+        fits_movabs_hdu(fitsfile, ext)
+        N = Int(fits_get_img_dim(fitsfile))
+        bitpix = fits_get_img_equivtype(fitsfile)
+        T = type_from_bitpix(bitpix)
+        new{T,N}(fitsfile, ext)
+    end
 end
 
 mutable struct TableHDU <: HDU

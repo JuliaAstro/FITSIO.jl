@@ -7,6 +7,7 @@ function show(io::IO, hdu::ImageHDU)
     bitpix = fits_get_img_type(hdu.fitsfile)
     equivbitpix = fits_get_img_equivtype(hdu.fitsfile)
     sz = fits_get_img_size(hdu.fitsfile)
+    mode = fits_file_mode(hdu.fitsfile)
 
     if bitpix == equivbitpix
         datainfo = string(type_from_bitpix(equivbitpix))
@@ -19,9 +20,10 @@ function show(io::IO, hdu::ImageHDU)
     print(io, """
     File: $(fits_file_name(hdu.fitsfile))
     HDU: $(hdu.ext)$(fits_get_ext_info_string(hdu.fitsfile))
+    Mode: $(mode == 0 ? "read-only" : "read-write")
     Type: Image
     Datatype: $datainfo
-    Datasize: $(tuple(sz...))""")
+    Datasize: $(Tuple(sz))""")
 end
 
 # Get image dimensions
@@ -30,11 +32,7 @@ end
 
 Get number of image dimensions, without reading the image into memory.
 """
-function ndims(hdu::ImageHDU)
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    fits_get_img_dim(hdu.fitsfile)
-end
+ndims(::ImageHDU{<:Any,N}) where N = N
 
 """
     size(hdu::ImageHDU)
@@ -43,19 +41,14 @@ end
 Get image dimensions (or `i`th dimension), without reading the image
 into memory.
 """
-function size(hdu::ImageHDU)
+function size(hdu::ImageHDU{<:Any,N}) where N
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile)
-    tuple(sz...)
+    NTuple{N,Int}(sz)
 end
 
-function size(hdu::ImageHDU, i::Integer)
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    sz = fits_get_img_size(hdu.fitsfile)
-    sz[i]
-end
+size(hdu::ImageHDU, i::Integer) = size(hdu)[i]
 
 """
     length(hdu::ImageHDU)
@@ -66,19 +59,14 @@ length(hdu::ImageHDU) = prod(size(hdu))
 
 # `lastindex` is needed so that hdu[:] can throw DimensionMismatch
 # when ndim != 1, rather than no method.
-lastindex(hdu::ImageHDU) = length(hdu::ImageHDU)
+lastindex(hdu::ImageHDU) = length(hdu)
 
 """
     eltype(hdu::ImageHDU)
 
 Return the element type of the image in `hdu`.
 """
-function eltype(hdu::ImageHDU)
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    type_from_bitpix(bitpix)
-end
+eltype(::ImageHDU{T}) where T = T
 
 """
     fitsread(filename::AbstractString, hduindex = 1, arrayindices...)
@@ -126,9 +114,7 @@ dropped in the returned array, while those specified by ranges will be retained.
 function read(hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    sz = fits_get_img_size(hdu.fitsfile)
-    bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    data = Array{type_from_bitpix(bitpix)}(undef, sz...)
+    data = Array{eltype(hdu)}(undef, size(hdu))
     fits_read_pix(hdu.fitsfile, data)
     data
 end
@@ -151,46 +137,35 @@ end
 checkcontiguous(::Tuple{},args...) = true
 
 """
-    read!(hdu::ImageHDU, array::StridedArray)
-    read!(hdu::ImageHDU, array::StridedArray, range...)
+    read!(hdu::ImageHDU, A::StridedArray)
+    read!(hdu::ImageHDU, A::StridedArray, range...)
 
 Read the data or a subset thereof from disk, and save it in a 
-pre-allocated output array.
+pre-allocated output array `A`.
 The first form reads the entire data from disk. 
 The second form reads a slice of the array given by the specified ranges or integers.
-The output array needs to have the same shape as the data range to be read in. 
-Additionally the output array needs to be contiguously stored in memory.
+The array `A` needs to have the same length as the number of elements to be read in.
+Additionally `A` needs to be stored contiguously in memory.
 
 !!! note
     Julia follows a column-major array indexing convention, so the indices provided must account for this. 
     In particular this means that FITS files created externally following a row-major convention (eg. using astropy)
     will have the sequence of the axes flipped when read in using FITSIO.
 """
-function read!(hdu::ImageHDU, array::StridedArray{T,N}) where {T,N}
+function read!(hdu::ImageHDU{T}, array::StridedArray{T}) where {T<:Real}
+    read!(hdu, reshape(array, size(hdu)))
+end
+function read!(hdu::ImageHDU{T,N}, array::StridedArray{T,N}) where {T<:Real,N}
 
     if !iscontiguous(array)
-        throw(ArgumentError("output array needs to be contiguously stored"))
+        throw(ArgumentError("the output array needs to be contiguous"))
     end
 
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    sz = fits_get_img_size(hdu.fitsfile)
-    bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    
-    if type_from_bitpix(bitpix) != T
-        throw(TypeError(:read!,"",type_from_bitpix(bitpix),T))
-    end
-    
-    if ndims(hdu) != N
-        throw(DimensionMismatch("array dimensions do not match the data. "*
-        "Data has $(ndims(hdu)) dimensions whereas the output array has $N dimensions."))
-    end
-    
-    # Maybe this can be a ShapeMismatch when there's a decision on #16717
-    if Tuple(sz) != size(array)
-        throw(DimensionMismatch("size of the array does not "*
-        "match the data. Data has a size of $(Tuple(sz)) whereas the output array "*
-        "has a size of $(size(array))"))
+
+    if length(hdu) != length(array)
+        throw(DimensionMismatch("length of the output array does not match the number of elements to be read in"))
     end
 
     fits_read_pix(hdu.fitsfile, array)
@@ -227,17 +202,19 @@ _index_shape_dim(sz, dim, r::AbstractRange) = (length(r),)
 
 # Read a subset of an ImageHDU
 function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colon}...)
-    fits_assert_open(hdu.fitsfile)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    sz = fits_get_img_size(hdu.fitsfile)
-
+    
     # check number of indices and bounds. Note that number of indices and
     # array dimension must match, unlike in Arrays. Array-like behavior could
     # be supported in the future with care taken in constructing first, last,
-    if length(I) != length(sz)
+    if length(I) != ndims(hdu)
         throw(DimensionMismatch("number of indices must match dimensions"))
     end
-    for i=1:length(sz)
+
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+
+    sz = size(hdu)
+    for i=1:ndims(hdu)
         _checkbounds(sz[i], I[i]) || throw(BoundsError())
     end
 
@@ -247,56 +224,42 @@ function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colo
     steps = Clong[_step(idx) for idx in I]
 
     # construct output array
-    bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    data = Array{type_from_bitpix(bitpix)}(undef, _index_shape(sz, I...))
+    data = Array{eltype(hdu)}(undef, _index_shape(sz, I...))
 
     fits_read_subset(hdu.fitsfile, firsts, lasts, steps, data)
     data
 end
 
-function read_internal!(hdu::ImageHDU, array::StridedArray{T,N}, 
-    I::Union{AbstractRange{Int}, Integer, Colon}...) where {T,N}
+function read_internal!(hdu::ImageHDU{T}, array::StridedArray{T}, 
+    I::Union{AbstractRange{Int}, Integer, Colon}...) where T
 
     if !iscontiguous(array)
-        throw(ArgumentError("output array needs to be contiguously stored"))
+        throw(ArgumentError("the output array needs to be contiguous"))
+    end
+    # check number of indices and bounds. Note that number of indices and
+    # array dimension must match, unlike in Arrays. Array-like behavior could
+    # be supported in the future with care taken in constructing first, last,
+    if length(I) != ndims(hdu)
+        throw(DimensionMismatch("number of indices must match dimensions"))
     end
 
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-
-    # check that the output array has the right type
-    bitpix = fits_get_img_equivtype(hdu.fitsfile)
-    if type_from_bitpix(bitpix) != T
-        throw(TypeError(:read!,"",type_from_bitpix(bitpix),T))
-    end
     
-    sz = fits_get_img_size(hdu.fitsfile)
-
-    # check number of indices and bounds. Note that number of indices and
-    # array dimension must match, unlike in Arrays. Array-like behavior could
-    # be supported in the future with care taken in constructing first, last,
-    if length(I) != length(sz)
-        throw(DimensionMismatch("number of indices must match dimensions"))
-    end
-
-    for i=1:length(sz)
+    sz = size(hdu)
+    for i = 1:ndims(hdu)
         _checkbounds(sz[i], I[i]) || throw(BoundsError())
     end
 
     ninds = _index_shape(sz, I...)
-    if length(ninds) != N
-        throw(DimensionMismatch("number of dimensions to be read must match the "*
-            "number of dimensions of the output array"))
-    end
 
-    if size(array) != ninds
-        throw(DimensionMismatch("size of the data slice must match that of the output array. "*
-            "Data has a size of $ninds whereas the output array has a size of $(size(output))"))
+    if length(array) != prod(ninds)
+        throw(DimensionMismatch("length of output array does not match the number of elements to be read in"))
     end
 
     # construct first, last and step vectors
     firsts = Clong[_first(idx) for idx in I]
-    lasts = Clong[_last(sz[i], I[i]) for i=1:length(sz)]
+    lasts = Clong[_last(sz[i], I[i]) for i=1:ndims(hdu)]
     steps = Clong[_step(idx) for idx in I]
 
     fits_read_subset(hdu.fitsfile, firsts, lasts, steps, array)
@@ -308,9 +271,9 @@ read(hdu::ImageHDU, I::Union{AbstractRange{Int}, Int, Colon}...) =
     read_internal(hdu, I...)
 read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
 
-read!(hdu::ImageHDU, array::StridedArray, I::Union{AbstractRange{Int}, Int, Colon}...) =
+read!(hdu::ImageHDU{T}, array::StridedArray{T}, I::Union{AbstractRange{Int}, Int, Colon}...) where T<:Real =
     read_internal!(hdu, array, I...)
-read!(hdu::ImageHDU, array::StridedArray, I::Int...) = read_internal!(hdu, array, I...)[1]
+read!(hdu::ImageHDU{T}, array::StridedArray{T}, I::Int...) where T<:Real = read_internal!(hdu, array, I...)[1]
 
 """
     fitswrite(filename::AbstractString, data; kwargs...)
@@ -366,6 +329,9 @@ The data to be written out must be stored contiguously in memory.
      0.4943325325752195 + 0.2034650017475852im
      0.2495752009567498 + 0.819163869249041im
     ```
+
+    While this often works in practice, such a workaround is not officially supported by FITSIO, 
+    and care must be taken to ensure the correctness of data.
 """
 function write(f::FITS, data::StridedArray{<:Real};
                header::Union{Nothing, FITSHeader}=nothing,
@@ -373,12 +339,17 @@ function write(f::FITS, data::StridedArray{<:Real};
                ver::Union{Nothing, Integer}=nothing)
 
     if !iscontiguous(data)
-        throw(ArgumentError("data to be written out needs to be contiguously stored"))
+        throw(ArgumentError("data to be written out needs to be contiguous"))
     end
 
-    fits_assert_open(f.fitsfile)
+    if f.mode == "r"
+        throw(ArgumentError("FITS file has been opened in read-only mode"))
+    end
+
     s = size(data)
+
     fits_create_img(f.fitsfile, eltype(data), [s...])
+
     if isa(header, FITSHeader)
         fits_write_header(f.fitsfile, header, true)
     end
@@ -388,7 +359,7 @@ function write(f::FITS, data::StridedArray{<:Real};
     if isa(ver, Integer)
         fits_update_key(f.fitsfile, "EXTVER", ver)
     end
-    fits_write_pix(f.fitsfile, ones(Int, length(s)), length(data), data)
+    fits_write_pix(f.fitsfile, ones(Int, ndims(data)), length(data), data)
     nothing
 end
 
@@ -398,24 +369,28 @@ end
 Write data to an existing image HDU. 
 The data to be written out must be stored contiguously in memory.
 """
-function write(hdu::ImageHDU, data::StridedArray{<:Real})
+function write(hdu::ImageHDU{T}, data::StridedArray{T}) where T<:Real
 
     if !iscontiguous(data)
-        throw(ArgumentError("data to be written out needs to be contiguously stored"))
+        throw(ArgumentError("data to be written out needs to be contiguous"))
     end
 
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
+    if fits_file_mode(hdu.fitsfile) == 0
+        throw(ArgumentError("FITS file has been opened in read-only mode"))
+    end
+
     # Ensure sizes are equal
-    hdu_size = fits_get_img_size(hdu.fitsfile)
-    data_size = collect(size(data))
+    hdu_size = size(hdu)
+    data_size = size(data)
 
     if hdu_size != data_size
         error("size of HDU $(hdu_size) not equal to size of data $(data_size).")
     end
 
-    fits_write_pix(hdu.fitsfile, ones(Int, length(size(data))), length(data), data)
+    fits_write_pix(hdu.fitsfile, ones(Int, ndims(data)), length(data), data)
     nothing
 end
 

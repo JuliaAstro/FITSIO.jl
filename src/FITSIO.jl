@@ -103,7 +103,7 @@ mutable struct ImageHDU{T<:Real,N} <: HDU
     fitsfile::FITSFile
     ext::Int
 
-    function ImageHDU(fitsfile::FITSFile, ext::Int)
+    function ImageHDU(fitsfile::FITSFile, ext::Integer)
         fits_assert_open(fitsfile)
         fits_movabs_hdu(fitsfile, ext)
         N = Int(fits_get_img_dim(fitsfile))

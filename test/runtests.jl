@@ -383,6 +383,18 @@ end
             @test FITSIO.fitsread(fname, 1) == a
         end
     end
+
+    # Ref: https://github.com/JuliaAstro/FITSIO.jl/issues/163
+    @testset "String key" begin
+        a = ones(3,3)
+        tempnamefits() do fname
+            FITS(fname, "w") do f
+                write(f, a, name="a")
+                @test read(f["a"]) == a
+                @test read(f[1])   == a
+            end
+        end
+    end
 end
 
 @testset "Write data to an existing image HDU" begin

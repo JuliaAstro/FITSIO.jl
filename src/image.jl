@@ -153,7 +153,8 @@ Additionally `A` needs to be stored contiguously in memory.
     will have the sequence of the axes flipped when read in using FITSIO.
 """
 function read!(hdu::ImageHDU{T}, array::StridedArray{T}) where {T<:Real}
-    read!(hdu, reshape(array, size(hdu)))
+    read!(hdu, reshape(array, Val(ndims(hdu))))
+    return array
 end
 function read!(hdu::ImageHDU{T,N}, array::StridedArray{T,N}) where {T<:Real,N}
 
@@ -169,7 +170,7 @@ function read!(hdu::ImageHDU{T,N}, array::StridedArray{T,N}) where {T<:Real,N}
     end
 
     fits_read_pix(hdu.fitsfile, array)
-    array
+    return array
 end
 
 # _checkbounds methods copied from Julia v0.4 Base.

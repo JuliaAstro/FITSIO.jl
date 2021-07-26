@@ -152,11 +152,10 @@ Additionally `A` needs to be stored contiguously in memory.
     In particular this means that FITS files created externally following a row-major convention (eg. using astropy)
     will have the sequence of the axes flipped when read in using FITSIO.
 """
-function read!(hdu::ImageHDU{T}, array::StridedArray{T}) where {T<:Real}
-    read!(hdu, reshape(array, Val(ndims(hdu))))
-    return array
+function read!(hdu::ImageHDU, array::StridedArray{<:Real})
+    read!(hdu, reshape(array, size(hdu)))
 end
-function read!(hdu::ImageHDU{T,N}, array::StridedArray{T,N}) where {T<:Real,N}
+function read!(hdu::ImageHDU{<:Real,N}, array::StridedArray{<:Real,N}) where {N}
 
     if !iscontiguous(array)
         throw(ArgumentError("the output array needs to be contiguous"))
@@ -231,8 +230,8 @@ function read_internal(hdu::ImageHDU, I::Union{AbstractRange{<:Integer}, Integer
     data
 end
 
-function read_internal!(hdu::ImageHDU{T}, array::StridedArray{T},
-    I::Union{AbstractRange{<:Integer}, Integer, Colon}...) where T
+function read_internal!(hdu::ImageHDU, array::StridedArray,
+    I::Union{AbstractRange{<:Integer}, Integer, Colon}...)
 
     if !iscontiguous(array)
         throw(ArgumentError("the output array needs to be contiguous"))
@@ -272,9 +271,9 @@ read(hdu::ImageHDU, I::Union{AbstractRange{<:Integer}, Integer, Colon}...) =
     read_internal(hdu, I...)
 read(hdu::ImageHDU, I::Integer...) = read_internal(hdu, I...)[1]
 
-read!(hdu::ImageHDU{T}, array::StridedArray{T}, I::Union{AbstractRange{<:Integer}, Integer, Colon}...) where T<:Real =
+read!(hdu::ImageHDU, array::StridedArray{<:Real}, I::Union{AbstractRange{<:Integer}, Integer, Colon}...) =
     read_internal!(hdu, array, I...)
-read!(hdu::ImageHDU{T}, array::StridedArray{T}, I::Integer...) where T<:Real = read_internal!(hdu, array, I...)[1]
+read!(hdu::ImageHDU, array::StridedArray{<:Real}, I::Integer...) = read_internal!(hdu, array, I...)[1]
 
 """
     fitswrite(filename::AbstractString, data; kwargs...)

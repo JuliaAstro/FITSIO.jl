@@ -72,7 +72,7 @@ eltype(::ImageHDU{T}) where T = T
     fitsread(filename::AbstractString, hduindex = 1, arrayindices...)
 
 Convenience function to read in an image corresponding to the HDU at index `hduindex` contained in
-the FITS file named `filename`. 
+the FITS file named `filename`.
 If `arrayindices` are provided, only a slice of the image corresponding to the indices is read in.
 
 Functionally `fitsread(filename, hduindex, arrayindices...)` is equivalent to
@@ -84,7 +84,7 @@ end
 ```
 
 !!! note
-    Julia follows a column-major array indexing convention, so the indices provided must account for this. 
+    Julia follows a column-major array indexing convention, so the indices provided must account for this.
     In particular this means that FITS files created externally following a row-major convention (eg. using astropy)
     will have the sequence of axes flipped when read in using FITSIO.
 
@@ -103,12 +103,12 @@ end
 
 Read the data array or a subset thereof from disk. The first form
 reads the entire data array. The second form reads a slice of the array
-given by the specified ranges or integers. Dimensions specified by integers will be 
+given by the specified ranges or integers. Dimensions specified by integers will be
 dropped in the returned array, while those specified by ranges will be retained.
 
 !!! note
-    Julia follows a column-major array indexing convention, so the indices provided must account for this. 
-    In particular this means that FITS files created externally following a row-major convention (eg. using astropy) 
+    Julia follows a column-major array indexing convention, so the indices provided must account for this.
+    In particular this means that FITS files created externally following a row-major convention (eg. using astropy)
     will have the sequence of axes flipped when read in using FITSIO.
 """
 function read(hdu::ImageHDU)
@@ -120,7 +120,7 @@ function read(hdu::ImageHDU)
 end
 
 #= Inplace read
-This requires a contiguous array. Lacking a type to dispatch upon, 
+This requires a contiguous array. Lacking a type to dispatch upon,
 we rely on runtime checks.
 =#
 
@@ -140,15 +140,15 @@ checkcontiguous(::Tuple{},args...) = true
     read!(hdu::ImageHDU, A::StridedArray)
     read!(hdu::ImageHDU, A::StridedArray, range...)
 
-Read the data or a subset thereof from disk, and save it in a 
+Read the data or a subset thereof from disk, and save it in a
 pre-allocated output array `A`.
-The first form reads the entire data from disk. 
+The first form reads the entire data from disk.
 The second form reads a slice of the array given by the specified ranges or integers.
 The array `A` needs to have the same length as the number of elements to be read in.
 Additionally `A` needs to be stored contiguously in memory.
 
 !!! note
-    Julia follows a column-major array indexing convention, so the indices provided must account for this. 
+    Julia follows a column-major array indexing convention, so the indices provided must account for this.
     In particular this means that FITS files created externally following a row-major convention (eg. using astropy)
     will have the sequence of the axes flipped when read in using FITSIO.
 """
@@ -202,7 +202,7 @@ _index_shape_dim(sz, dim, r::AbstractRange) = (length(r),)
 
 # Read a subset of an ImageHDU
 function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colon}...)
-    
+
     # check number of indices and bounds. Note that number of indices and
     # array dimension must match, unlike in Arrays. Array-like behavior could
     # be supported in the future with care taken in constructing first, last,
@@ -230,7 +230,7 @@ function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colo
     data
 end
 
-function read_internal!(hdu::ImageHDU{T}, array::StridedArray{T}, 
+function read_internal!(hdu::ImageHDU{T}, array::StridedArray{T},
     I::Union{AbstractRange{Int}, Integer, Colon}...) where T
 
     if !iscontiguous(array)
@@ -245,7 +245,7 @@ function read_internal!(hdu::ImageHDU{T}, array::StridedArray{T},
 
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    
+
     sz = size(hdu)
     for i = 1:ndims(hdu)
         _checkbounds(sz[i], I[i]) || throw(BoundsError())
@@ -311,7 +311,7 @@ The data to be written out must be stored contiguously in memory.
 
 !!! tip "Unsupported element types"
     It might be possible to write out an array with an element type other than those mentioned above
-    by `reinterpret`ing it as one that is supported. For example, to write out a `Complex` 
+    by `reinterpret`ing it as one that is supported. For example, to write out a `Complex`
     array and read it back in, we may use
 
     ```julia
@@ -330,7 +330,7 @@ The data to be written out must be stored contiguously in memory.
      0.2495752009567498 + 0.819163869249041im
     ```
 
-    While this often works in practice, such a workaround is not officially supported by FITSIO, 
+    While this often works in practice, such a workaround is not officially supported by FITSIO,
     and care must be taken to ensure the correctness of data.
 """
 function write(f::FITS, data::StridedArray{<:Real};
@@ -366,7 +366,7 @@ end
 """
     write(hdu::ImageHDU, data::StridedArray{<:Real})
 
-Write data to an existing image HDU. 
+Write data to an existing image HDU.
 The data to be written out must be stored contiguously in memory.
 """
 function write(hdu::ImageHDU{T}, data::StridedArray{T}) where T<:Real

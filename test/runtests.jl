@@ -293,10 +293,10 @@ end
                 a = FITS(fname,"r") do f
                     read(f[1])
                 end
-                
+
                 b = reinterpret(T,arr)
                 @test b == a
-                
+
                 c = FITS(fname,"r") do f
                     reinterpret(Complex{T}, read(f[1]))
                 end
@@ -374,7 +374,7 @@ end
 
     @testset "fitsread" begin
         a = ones(3,3)
-        
+
         tempnamefits() do fname
             FITS(fname, "w") do f
                 write(f, a)
@@ -395,13 +395,23 @@ end
             end
         end
     end
+
+    @testset "non-Int integer indices" begin
+        tempnamefits() do filename
+            FITS(filename, "w") do f
+                write(f, ones(2,2))
+                @test read(f[1], big(1), Int8(1)) == read(f[1], 1, 1)
+                @test read(f[1], :, Int8(1)) == read(f[1], :, 1)
+            end
+        end
+    end
 end
 
 @testset "Write data to an existing image HDU" begin
     @testset "Overwrite an image" begin
         # Create a file with two images
         tempnamefits() do fname
-            
+
             FITS(fname, "w") do f
                 write(f, [[1 2 3]; [4 5 6]])
                 write(f, [[7 8 9]; [17 52 10]])

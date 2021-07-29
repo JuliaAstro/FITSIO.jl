@@ -176,7 +176,7 @@ end
 # _checkbounds methods copied from Julia v0.4 Base.
 _checkbounds(sz, i::Integer) = 1 <= i <= sz
 _checkbounds(sz, i::Colon) = true
-_checkbounds(sz, r::AbstractRange{Int}) =
+_checkbounds(sz, r::AbstractRange{<:Integer}) =
     (isempty(r) || (minimum(r) >= 1 && maximum(r) <= sz))
 
 # helper functions for constructing cfitsio indexing vectors in read(hdu, ...)

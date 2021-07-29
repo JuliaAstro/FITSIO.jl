@@ -401,6 +401,7 @@ end
             FITS(filename, "w") do f
                 write(f, ones(2,2))
                 @test read(f[1], big(1), Int8(1)) == read(f[1], 1, 1)
+                @test read(f[1], big(1), Int8(1):Int8(2)) == read(f[1], 1, 1:2)
                 @test read(f[1], :, Int8(1)) == read(f[1], :, 1)
             end
         end

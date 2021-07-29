@@ -349,7 +349,7 @@ function write(f::FITS, data::StridedArray{<:Real};
 
     s = size(data)
 
-    fits_create_img(f.fitsfile, eltype(data), [s...])
+    fits_create_img(f.fitsfile, eltype(data), s)
 
     if isa(header, FITSHeader)
         fits_write_header(f.fitsfile, header, true)
@@ -360,7 +360,7 @@ function write(f::FITS, data::StridedArray{<:Real};
     if isa(ver, Integer)
         fits_update_key(f.fitsfile, "EXTVER", ver)
     end
-    fits_write_pix(f.fitsfile, ones(Int, ndims(data)), length(data), data)
+    fits_write_pix(f.fitsfile, data)
     nothing
 end
 
@@ -391,7 +391,7 @@ function write(hdu::ImageHDU{T}, data::StridedArray{T}) where T<:Real
         error("size of HDU $(hdu_size) not equal to size of data $(data_size).")
     end
 
-    fits_write_pix(hdu.fitsfile, ones(Int, ndims(data)), length(data), data)
+    fits_write_pix(hdu.fitsfile, data)
     nothing
 end
 

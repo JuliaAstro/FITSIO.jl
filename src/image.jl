@@ -44,7 +44,7 @@ into memory.
 function size(hdu::ImageHDU{<:Any,N}) where N
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    sz = fits_get_img_size(hdu.fitsfile)
+    sz = fits_get_img_size(hdu.fitsfile, Val(N))
     NTuple{N,Int}(sz)
 end
 

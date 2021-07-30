@@ -158,6 +158,8 @@ end
                 @test_throws DimensionMismatch read!(f[1],b,:,1)
                 @test_throws DimensionMismatch read!(f[1],b,1,:)
                 @test_throws DimensionMismatch read!(f[1],b,:,:)
+                @test_throws DimensionMismatch read!(f[1], zeros(1,1))
+                @test_throws DimensionMismatch read!(f[1], zeros(1,1), :)
 
                 b3D = zero(indata3D)
                 read!(f[2],b3D)

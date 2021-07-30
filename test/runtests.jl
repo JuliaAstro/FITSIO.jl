@@ -144,12 +144,12 @@ end
                 b = zeros(eltype(indata))
                 read!(f[1],b,1,1)
                 @test a[1,1] == first(b)
-
-                # Test for errors
-                b = zeros(Float64)
-                # Types must match
-                @test_throws MethodError read!(f[1],b,1,1)
-                @test_throws MethodError read!(f[1],b)
+                read!(f[2], b, 1, 1, 1)
+                @test a3D[1,1,1] == first(b)
+                # read the entire image into an array with a different eltype
+                b3D = zeros(size(a3D))
+                read!(f[2], b3D)
+                @test a3D == b3D
 
                 b = zeros(eltype(indata))
                 @test_throws DimensionMismatch read!(f[1],b,1:10,1)
@@ -158,6 +158,8 @@ end
                 @test_throws DimensionMismatch read!(f[1],b,:,1)
                 @test_throws DimensionMismatch read!(f[1],b,1,:)
                 @test_throws DimensionMismatch read!(f[1],b,:,:)
+                @test_throws DimensionMismatch read!(f[1], zeros(1,1))
+                @test_throws DimensionMismatch read!(f[1], zeros(1,1), :)
 
                 b3D = zero(indata3D)
                 read!(f[2],b3D)

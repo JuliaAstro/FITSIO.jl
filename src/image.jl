@@ -176,7 +176,7 @@ end
 # _checkbounds methods copied from Julia v0.4 Base.
 _checkbounds(sz, i::Integer) = 1 <= i <= sz
 _checkbounds(sz, i::Colon) = true
-_checkbounds(sz, r::AbstractRange{Int}) =
+_checkbounds(sz, r::AbstractRange{<:Integer}) =
     (isempty(r) || (minimum(r) >= 1 && maximum(r) <= sz))
 
 # helper functions for constructing cfitsio indexing vectors in read(hdu, ...)
@@ -202,7 +202,7 @@ _index_shape_dim(sz, dim, r::AbstractRange) = (length(r),)
     tuple(length(r), _index_shape_dim(sz, dim+1, I...)...)
 
 # Read a subset of an ImageHDU
-function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colon}...)
+function read_internal(hdu::ImageHDU, I::Union{AbstractRange{<:Integer}, Integer, Colon}...)
 
     # check number of indices and bounds. Note that number of indices and
     # array dimension must match, unlike in Arrays. Array-like behavior could
@@ -232,7 +232,7 @@ function read_internal(hdu::ImageHDU, I::Union{AbstractRange{Int}, Integer, Colo
 end
 
 function read_internal!(hdu::ImageHDU{T}, array::StridedArray{T},
-    I::Union{AbstractRange{Int}, Integer, Colon}...) where T
+    I::Union{AbstractRange{<:Integer}, Integer, Colon}...) where T
 
     if !iscontiguous(array)
         throw(ArgumentError("the output array needs to be contiguous"))
@@ -268,13 +268,13 @@ function read_internal!(hdu::ImageHDU{T}, array::StridedArray{T},
 end
 
 # general method and version that returns a single value rather than 0-d array
-read(hdu::ImageHDU, I::Union{AbstractRange{Int}, Int, Colon}...) =
+read(hdu::ImageHDU, I::Union{AbstractRange{<:Integer}, Integer, Colon}...) =
     read_internal(hdu, I...)
-read(hdu::ImageHDU, I::Int...) = read_internal(hdu, I...)[1]
+read(hdu::ImageHDU, I::Integer...) = read_internal(hdu, I...)[1]
 
-read!(hdu::ImageHDU{T}, array::StridedArray{T}, I::Union{AbstractRange{Int}, Int, Colon}...) where T<:Real =
+read!(hdu::ImageHDU{T}, array::StridedArray{T}, I::Union{AbstractRange{<:Integer}, Integer, Colon}...) where T<:Real =
     read_internal!(hdu, array, I...)
-read!(hdu::ImageHDU{T}, array::StridedArray{T}, I::Int...) where T<:Real = read_internal!(hdu, array, I...)[1]
+read!(hdu::ImageHDU{T}, array::StridedArray{T}, I::Integer...) where T<:Real = read_internal!(hdu, array, I...)[1]
 
 """
     fitswrite(filename::AbstractString, data; kwargs...)

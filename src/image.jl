@@ -346,9 +346,7 @@ function write(f::FITS, data::StridedArray{<:Real};
         throw(ArgumentError("FITS file has been opened in read-only mode"))
     end
 
-    s = size(data)
-
-    fits_create_img(f.fitsfile, eltype(data), s)
+    fits_create_img(f.fitsfile, data)
 
     if isa(header, FITSHeader)
         fits_write_header(f.fitsfile, header, true)

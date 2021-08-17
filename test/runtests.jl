@@ -483,6 +483,16 @@ end
         end
     end
 
+    @testset "write with different eltype" begin
+        tempnamefits() do fname
+            FITS(fname, "w") do f
+                write(f, ones(2,2)) # create an image with eltype Float64
+                write(f[1], ones(Int, 2, 2) .* 2) # write Int data to the same HDU
+                @test read(f[1]) == ones(2,2) .* 2 # check that data is written correctly
+            end
+        end
+    end
+
     @testset "fitswrite" begin
         tempnamefits() do fname
             a = ones(3,3)

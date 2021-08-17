@@ -90,8 +90,8 @@ end
 
 See also: [`read`](@ref)
 """
-function fitsread(filename::AbstractString, hduindex = 1, arrayindices...)
-    FITS(filename, "r") do f
+function fitsread(filename::AbstractString, hduindex = 1, arrayindices...; extendedparser = true)
+    FITS(filename, "r"; extendedparser = extendedparser) do f
         read(f[hduindex], arrayindices...)
     end
 end
@@ -293,8 +293,8 @@ end
 
 See also: [`write`](@ref)
 """
-function fitswrite(filename::AbstractString, data; kwargs...)
-    FITS(filename, "w") do f
+function fitswrite(filename::AbstractString, data; extendedparser = true, kwargs...)
+    FITS(filename, "w", extendedparser = extendedparser) do f
         write(f, data; kwargs...)
     end
 end

@@ -40,7 +40,9 @@ import Base: iterate, lastindex
 import CFITSIO: FITSFile,
                 FITSMemoryHandle,
                 fits_open_file,
+                fits_open_diskfile,
                 fits_create_file,
+                fits_create_diskfile,
                 fits_assert_open,
                 fits_file_mode,
                 fits_create_img,
@@ -134,7 +136,7 @@ end
 # as deleting extensions. This could be done by, e.g., setting ext=-1
 # in the HDU object.
 """
-    FITS(filename::String, mode::String="r")
+    FITS(filename::String, mode::String="r"; extendedparser = true)
 
 Open or create a FITS file. `mode` can be one of `"r"` (read-only),
 `"r+"` (read-write) or `"w"` (write). In "write" mode, any existing
@@ -155,6 +157,11 @@ supports the following operations:
       ...
   end
   ```
+
+The keyword argument `extendedparser` may be used to enable or disable the
+[extended filename parser](https://heasarc.gsfc.nasa.gov/docs/software/fitsio/c/c_user/node83.html).
+If disabled, `filename` is treated exactly as the name of the file and is not tokenized into
+parameters.
 """
 mutable struct FITS
     fitsfile::FITSFile
@@ -166,17 +173,20 @@ mutable struct FITS
     memhandle::FITSMemoryHandle
     hidden::Any
 
-    function FITS(filename::AbstractString, mode::AbstractString="r")
-        f = (mode == "r"                      ? fits_open_file(filename, 0)    :
-             mode == "r+" && isfile(filename) ? fits_open_file(filename, 1)    :
-             mode == "r+"                     ? fits_create_file(filename)     :
-             mode == "w"                      ? fits_create_file("!"*filename) :
+    function FITS(filename::AbstractString, mode::AbstractString="r"; extendedparser = true)
+        openfn = extendedparser ? fits_open_file : fits_open_diskfile
+        createfn = extendedparser ? fits_create_file : fits_create_diskfile
+        f = (mode == "r"                      ? openfn(filename, 0)    :
+             mode == "r+" && isfile(filename) ? openfn(filename, 1)    :
+             mode == "r+"                     ? createfn(filename)     :
+             mode == "w"                      ?
+                (rm(filename, force = true); createfn(filename)) :
              error("invalid open mode: $mode"))
 
         new(f, filename, mode, Dict{Int, HDU}(), FITSMemoryHandle(), nothing)
     end
 
-    function FITS(data::Vector{UInt8}, mode::AbstractString="r", filename = "")
+    function FITS(data::Vector{UInt8}, mode::AbstractString="r", filename = ""; kwargs...)
         @assert mode == "r"
         f, handle = fits_open_memfile(data, 0)
         new(f, filename, mode, Dict{Int, HDU}(), handle, data)
@@ -184,13 +194,13 @@ mutable struct FITS
 end
 
 """
-    FITS(f::Function, args...)
+    FITS(f::Function, args...; kwargs...)
 
-Apply the function `f` to the result of `FITS(args...)` and close the
+Apply the function `f` to the result of `FITS(args...; kwargs...)` and close the
 resulting file descriptor upon completion.
 """
-function FITS(f::Function, args...)
-    io = FITS(args...)
+function FITS(f::Function, args...; extendedparser = true)
+    io = FITS(args...; extendedparser = extendedparser)
     try
         f(io)
     finally

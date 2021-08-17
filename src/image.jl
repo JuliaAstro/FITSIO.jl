@@ -369,7 +369,7 @@ end
 Write data to an existing image HDU.
 The data to be written out must be stored contiguously in memory.
 """
-function write(hdu::ImageHDU{T}, data::StridedArray{T}) where T<:Real
+function write(hdu::ImageHDU, data::StridedArray{<:Real})
 
     if !iscontiguous(data)
         throw(ArgumentError("data to be written out needs to be contiguous"))

@@ -4,8 +4,9 @@
 
 ```@docs
 FITS
-length(::FITS)
-close(::FITS)
+length
+close
+deleteat!
 ```
 
 ## Header operations
@@ -21,6 +22,7 @@ keys(::FITSHeader)
 values(::FITSHeader)
 get_comment
 set_comment!
+default_header
 ```
 
 ## Image operations

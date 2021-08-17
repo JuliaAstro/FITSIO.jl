@@ -408,6 +408,33 @@ end
             end
         end
     end
+
+    @testset "delete" begin
+        tempnamefits() do fname
+            FITS(fname, "w") do f
+                write(f, ones(2,2))
+                write(f, ones(3,3))
+                @test length(f) == 2
+                deleteat!(f, 2)
+                @test length(f) == 1
+
+                # if the array is read in before deletion,
+                # test that the hdu is removed from the cache
+                write(f, ones(3,3))
+                read(f[2])
+                deleteat!(f, 2)
+                @test length(f) == 1
+
+                write(f, ones(3,3))
+                deleteat!(f,1)
+                @test length(f) == 2
+                @test ndims(f[1]) == 0
+                write(f, ones(4,4))
+                deleteat!(f, 2)
+                @test size(f[2]) == (4,4)
+            end
+        end
+    end
 end
 
 @testset "Write data to an existing image HDU" begin

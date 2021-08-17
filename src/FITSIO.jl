@@ -28,7 +28,8 @@ import Base: getindex,
              haskey,
              keys,
              values,
-             eltype
+             eltype,
+             deleteat!
 
 # Deal with compatibility issues.
 using Printf
@@ -48,6 +49,7 @@ import CFITSIO: FITSFile,
                 fits_write_pix,
                 fits_get_num_hdus,
                 fits_movabs_hdu,
+                fits_delete_hdu,
                 fits_get_img_size,
                 fits_get_img_type,
                 fits_get_img_equivtype,

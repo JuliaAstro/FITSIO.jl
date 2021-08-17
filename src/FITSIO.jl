@@ -199,8 +199,8 @@ end
 Apply the function `f` to the result of `FITS(args...; kwargs...)` and close the
 resulting file descriptor upon completion.
 """
-function FITS(f::Function, args...; extendedparser = true)
-    io = FITS(args...; extendedparser = extendedparser)
+function FITS(f::Function, args...; kwargs...)
+    io = FITS(args...; kwargs...)
     try
         f(io)
     finally

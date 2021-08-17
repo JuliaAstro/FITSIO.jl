@@ -136,7 +136,7 @@ end
 # as deleting extensions. This could be done by, e.g., setting ext=-1
 # in the HDU object.
 """
-    FITS(filename::String, mode::String="r"; extendedparser = true)
+    FITS(filename::String[, mode::String = "r"]; extendedparser = true)
 
 Open or create a FITS file. `mode` can be one of `"r"` (read-only),
 `"r+"` (read-write) or `"w"` (write). In "write" mode, any existing

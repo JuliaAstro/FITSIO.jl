@@ -186,7 +186,7 @@ mutable struct FITS
         new(f, filename, mode, Dict{Int, HDU}(), FITSMemoryHandle(), nothing)
     end
 
-    function FITS(data::Vector{UInt8}, mode::AbstractString="r", filename = ""; kwargs...)
+    function FITS(data::Vector{UInt8}, mode::AbstractString="r", filename = "")
         @assert mode == "r"
         f, handle = fits_open_memfile(data, 0)
         new(f, filename, mode, Dict{Int, HDU}(), handle, data)

@@ -30,6 +30,14 @@ end
         @test_throws Exception write(f, ones(2))
         d = f[1]
         @test_throws Exception write(d, ones(2))
+
+        fname2 = fname*"[12].fits"
+        FITS(fname2, "w", extendedparser = false) do f
+            write(f, [1,2])
+            @test read(f[1]) == [1,2]
+        end
+        FITSIO.fitswrite(fname2, [1:4;], extendedparser = false)
+        @test FITSIO.fitsread(fname2, extendedparser = false) == [1:4;]
     end
 end
 

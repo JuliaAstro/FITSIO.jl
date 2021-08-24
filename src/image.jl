@@ -69,19 +69,24 @@ Return the element type of the image in `hdu`.
 eltype(::ImageHDU{T}) where T = T
 
 """
-    fitsread(filename::AbstractString, hduindex = 1, arrayindices...)
+    fitsread(filename::AbstractString[, hduindex = 1[, arrayindices...]]; extendedparser = true)
 
 Convenience function to read in an image corresponding to the HDU at index `hduindex` contained in
 the FITS file named `filename`.
 If `arrayindices` are provided, only a slice of the image corresponding to the indices is read in.
 
-Functionally `fitsread(filename, hduindex, arrayindices...)` is equivalent to
+Functionally `fitsread(filename, hduindex, arrayindices...; extendedparser)` is equivalent to
 
 ```julia
-FITS(filename, "r") do f
+FITS(filename, "r"; extendedparser = extendedparser) do f
     read(f[hduindex], arrayindices...)
 end
 ```
+
+The keyword argument `extendedparser` may be used to enable or disable the
+[extended filename parser](https://heasarc.gsfc.nasa.gov/docs/software/fitsio/c/c_user/node83.html).
+If disabled, `filename` is treated exactly as the name of the file and is not tokenized into
+parameters.
 
 !!! note
     Julia follows a column-major array indexing convention, so the indices provided must account for this.
@@ -90,8 +95,8 @@ end
 
 See also: [`read`](@ref)
 """
-function fitsread(filename::AbstractString, hduindex = 1, arrayindices...)
-    FITS(filename, "r") do f
+function fitsread(filename::AbstractString, hduindex = 1, arrayindices...; extendedparser = true)
+    FITS(filename, "r"; extendedparser = extendedparser) do f
         read(f[hduindex], arrayindices...)
     end
 end
@@ -276,25 +281,30 @@ read!(hdu::ImageHDU, array::StridedArray{<:Real}, I::Union{AbstractRange{<:Integ
 read!(hdu::ImageHDU, array::StridedArray{<:Real}, I::Integer...) = read_internal!(hdu, array, I...)[1]
 
 """
-    fitswrite(filename::AbstractString, data; kwargs...)
+    fitswrite(filename::AbstractString, data; extendedparser = true, kwargs...)
 
 Convenience function to write the image array `data` to a file named `filename`.
 
-Functionally `fitswrite(filename, data; kwargs...)` is equivalent to
+Functionally `fitswrite(filename, data; extendedparser, kwargs...)` is equivalent to
 
 ```julia
-FITS(filename, "w") do f
+FITS(filename, "w"; extendedparser = extendedparser) do f
     write(f, data; kwargs...)
 end
 ```
+
+The keyword argument `extendedparser` may be used to enable or disable the
+[extended filename parser](https://heasarc.gsfc.nasa.gov/docs/software/fitsio/c/c_user/node83.html).
+If disabled, `filename` is treated exactly as the name of the file and is not tokenized into
+parameters.
 
 !!! warn "Warning"
     Existing files with the same name will be overwritten.
 
 See also: [`write`](@ref)
 """
-function fitswrite(filename::AbstractString, data; kwargs...)
-    FITS(filename, "w") do f
+function fitswrite(filename::AbstractString, data; extendedparser = true, kwargs...)
+    FITS(filename, "w", extendedparser = extendedparser) do f
         write(f, data; kwargs...)
     end
 end

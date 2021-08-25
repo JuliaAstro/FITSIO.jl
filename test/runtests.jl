@@ -418,7 +418,7 @@ end
                 hdu = f[2]
                 deleteat!(f, 2)
                 @test length(f) == 1
-                @test repr(hdu) == "HDU deleted"
+                @test repr(hdu) == "Deleted HDU"
 
                 # if the array is read in before deletion,
                 # test that the hdu is removed from the cache

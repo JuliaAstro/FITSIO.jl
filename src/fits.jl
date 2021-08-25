@@ -143,6 +143,10 @@ function deleteat!(f::FITS, i::Integer)
     f
 end
 
+isdeleted(hdu) = hdu.ext == -1
+assert_exists(hdu) = isdeleted(hdu) && error("HDU doesn't exist, it has been deleted previously")
+assert_open(hdu) = assert_exists(hdu) && fits_assert_open(hdu.fitsfile)
+
 """
     close(f::FITS)
 

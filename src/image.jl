@@ -3,6 +3,10 @@
 # Display the image datatype and dimensions
 function show(io::IO, hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
+    if hdu.ext == -1
+        print(io, "HDU deleted")
+        return
+    end
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     bitpix = fits_get_img_type(hdu.fitsfile)
     equivbitpix = fits_get_img_equivtype(hdu.fitsfile)

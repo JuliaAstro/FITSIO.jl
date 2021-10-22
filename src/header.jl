@@ -229,14 +229,14 @@ Same as above but FITS card is specified by its position and returns a 3
 element tuple where `keyname` is the keyword name (a string).
 """
 function read_key(hdu::HDU, key::Integer)
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     keyout, value, comment = fits_read_keyn(hdu.fitsfile, key)
     keyout, parse_header_val(value), comment
 end
 
 function read_key(hdu::HDU, key::String)
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     value, comment = fits_read_keyword(hdu.fitsfile, key)
     parse_header_val(value), comment
@@ -257,7 +257,7 @@ end of the header.
 function write_key(hdu::HDU, key::String,
                    value::Union{String, Bool, Integer, AbstractFloat, Nothing},
                    comment::Union{String, Ptr{Cvoid}}=C_NULL)
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     fits_update_key(hdu.fitsfile, key, value, comment)
 end
@@ -266,7 +266,7 @@ end
 """
     read_header(filename::AbstractString, hduindex = 1) -> FITSHeader
 
-Convenience function to read the entire header corresponding to the HDU at index `hduindex` contained 
+Convenience function to read the entire header corresponding to the HDU at index `hduindex` contained
 in the FITS file named `filename`. Functionally `read_header(filename, hduindex)` is equivalent to
 
 ```julia
@@ -292,7 +292,7 @@ If the value cannot be parsed according to the FITS standard, the value is
 stored as the raw unparsed `String`.
 """
 function read_header(hdu::HDU)
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     # Below, we use a direct call to ffgkyn so that we can keep reusing the
@@ -327,7 +327,7 @@ end
 Read the entire header from the given HDU as a single string.
 """
 function read_header(hdu::HDU, ::Type{String})
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     fits_hdr2str(hdu.fitsfile)
 end

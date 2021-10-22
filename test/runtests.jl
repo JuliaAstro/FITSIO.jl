@@ -423,8 +423,10 @@ end
                 write(f, ones(2,2))
                 write(f, ones(3,3))
                 @test length(f) == 2
+                hdu = f[2]
                 deleteat!(f, 2)
                 @test length(f) == 1
+                @test repr(hdu) == "Deleted HDU"
 
                 # if the array is read in before deletion,
                 # test that the hdu is removed from the cache

@@ -161,7 +161,7 @@ function fits_read_table_header!(hdu::ASCIITableHDU, ncols, nrows,
 end
 
 function columns_names_tforms(hdu::Union{ASCIITableHDU,TableHDU})
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     ncols = fits_get_num_cols(hdu.fitsfile)
 
@@ -188,6 +188,10 @@ Return the names of columns in a table HDU.
 colnames(hdu::Union{ASCIITableHDU,TableHDU}) = columns_names_tforms(hdu)[1]
 
 function show(io::IO, hdu::TableHDU)
+    if isdeleted(hdu)
+        print(io, "Deleted HDU")
+        return
+    end
     colnames, coltforms, ncols, nrows = columns_names_tforms(hdu)
     # get some more information for all the columns
     coltypes    = Vector{String}(undef, ncols)
@@ -219,6 +223,10 @@ function show(io::IO, hdu::TableHDU)
 end
 
 function show(io::IO, hdu::ASCIITableHDU)
+    if isdeleted(hdu)
+        print(io, "Deleted HDU")
+        return
+    end
     colnames, coltforms, ncols, nrows = columns_names_tforms(hdu)
     # Get additional info
     coltypes = Vector{String}(undef, ncols)
@@ -450,7 +458,7 @@ end
 
 # Read a table column
 function read(hdu::ASCIITableHDU, colname::String; case_sensitive::Bool=true)
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     nrows = fits_get_num_rows(hdu.fitsfile)
@@ -501,12 +509,12 @@ considered case sensitive.
 
 !!! note "Array order"
 
-    Julia arrays are column-major (like Fortran), not row-major (like C 
-    and numpy), so elements of multi-dimensional columns will be the 
+    Julia arrays are column-major (like Fortran), not row-major (like C
+    and numpy), so elements of multi-dimensional columns will be the
     transpose of what you get with astropy.
 """
 function read(hdu::TableHDU, colname::String; case_sensitive::Bool=true)
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     nrows = fits_get_num_rows(hdu.fitsfile)
@@ -530,7 +538,7 @@ function read(hdu::TableHDU, colname::String; case_sensitive::Bool=true)
     else
         colnum = fits_get_colnum(hdu.fitsfile, colname, case_sensitive=case_sensitive)
     end
-    
+
 
     T, rowsize, isvariable = fits_get_col_info(hdu.fitsfile, colnum)
 
@@ -548,7 +556,7 @@ end
 #Tables.jl integration
 
 const EitherTableHDU = Union{TableHDU, ASCIITableHDU}
-Tables.istable(::Type{<:EitherTableHDU}) = true    
+Tables.istable(::Type{<:EitherTableHDU}) = true
 Tables.columnaccess(::Type{<:EitherTableHDU}) = true
 Tables.columns(t::EitherTableHDU) = t
 

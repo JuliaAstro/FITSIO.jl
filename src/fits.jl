@@ -135,11 +135,17 @@ and moves the following HDUs forward.
 function deleteat!(f::FITS, i::Integer)
     fits_assert_open(f.fitsfile)
 
+    hdu = f[i]
+    hdu.ext = -1 # indicate that the hdu is deleted
     delete!(f.hdus, i)
     fits_movabs_hdu(f.fitsfile, i)
     fits_delete_hdu(f.fitsfile)
     f
 end
+
+isdeleted(hdu) = hdu.ext == -1
+assert_exists(hdu) = isdeleted(hdu) && error("HDU doesn't exist, it has been deleted previously")
+assert_open(hdu) = assert_exists(hdu) && fits_assert_open(hdu.fitsfile)
 
 """
     close(f::FITS)

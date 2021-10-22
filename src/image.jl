@@ -3,6 +3,10 @@
 # Display the image datatype and dimensions
 function show(io::IO, hdu::ImageHDU)
     fits_assert_open(hdu.fitsfile)
+    if isdeleted(hdu)
+        print(io, "Deleted HDU")
+        return
+    end
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     bitpix = fits_get_img_type(hdu.fitsfile)
     equivbitpix = fits_get_img_equivtype(hdu.fitsfile)
@@ -42,7 +46,7 @@ Get image dimensions (or `i`th dimension), without reading the image
 into memory.
 """
 function size(hdu::ImageHDU{<:Any,N}) where N
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     sz = fits_get_img_size(hdu.fitsfile, Val(N))
     NTuple{N,Int}(sz)
@@ -117,7 +121,7 @@ dropped in the returned array, while those specified by ranges will be retained.
     will have the sequence of axes flipped when read in using FITSIO.
 """
 function read(hdu::ImageHDU)
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     data = Array{eltype(hdu)}(undef, size(hdu))
     fits_read_pix(hdu.fitsfile, data)
@@ -166,7 +170,7 @@ function read!(hdu::ImageHDU{<:Real,N}, array::StridedArray{<:Real,N}) where {N}
         throw(ArgumentError("the output array needs to be contiguous"))
     end
 
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     if length(hdu) != length(array)
@@ -215,7 +219,7 @@ function read_internal(hdu::ImageHDU, I::Union{AbstractRange{<:Integer}, Integer
         throw(DimensionMismatch("number of indices must match dimensions"))
     end
 
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     sz = size(hdu)
@@ -248,7 +252,7 @@ function read_internal!(hdu::ImageHDU, array::StridedArray,
         throw(DimensionMismatch("number of indices must match dimensions"))
     end
 
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     sz = size(hdu)
@@ -383,7 +387,7 @@ function write(hdu::ImageHDU, data::StridedArray{<:Real})
         throw(ArgumentError("data to be written out needs to be contiguous"))
     end
 
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
     if fits_file_mode(hdu.fitsfile) == 0
@@ -439,7 +443,7 @@ copy_section(hdu, f, 1:200, 1:2:200)
 ```
 """
 function copy_section(hdu::ImageHDU, dest::FITS, r::AbstractRange{Int}...)
-    fits_assert_open(hdu.fitsfile)
+    assert_open(hdu)
     fits_assert_open(dest.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     fits_copy_image_section(hdu.fitsfile, dest.fitsfile,

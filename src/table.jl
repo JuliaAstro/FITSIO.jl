@@ -403,7 +403,7 @@ Optional inputs:
     potentially non-uniform element types (which would not be writable
     as a FITS table column).
 """
-function write(f::FITS, data::Dict{String};
+function write(f::FITS, data::AbstractDict{<:AbstractString};
                units=nothing, header=nothing, hdutype=TableHDU,
                name=nothing, ver=nothing, varcols=nothing)
     colnames = collect(keys(data))

@@ -1,7 +1,8 @@
-using FITSIO
-using CFITSIO
-import Tables
 using Aqua
+using CFITSIO
+using FITSIO
+using OrderedCollections
+import Tables
 
 # Deal with compatibility issues.
 using Test
@@ -571,6 +572,25 @@ end
                                  String=>String)
             colnames = FITSIO.colnames(f[3])
             for (colname, incol) in indata
+                outcol = read(f[3], colname)  # table is in extension 3
+                @test outcol == incol
+                @test eltype(outcol) == expected_type[eltype(incol)]
+                @test colname in colnames
+            end
+            # test show/repr on ASCIITableHDU by checking that a couple lines are what we expect
+            lines = split(repr(f[3]), "\n")
+            @test lines[4] == "Rows: 20"
+            @test lines[6] == "         col3  Float64  E26.17  "
+
+            # test variations on AbstractDict (issue #177)
+            ordered_indata = OrderedDict(indata)
+            write(f, ordered_indata; hdutype=ASCIITableHDU)
+
+            expected_type = Dict(Int16=>Int32, Int32=>Int32,
+                                 Float32=>Float64, Float64=>Float64,
+                                 String=>String)
+            colnames = FITSIO.colnames(f[3])
+            for (colname, incol) in ordered_indata
                 outcol = read(f[3], colname)  # table is in extension 3
                 @test outcol == incol
                 @test eltype(outcol) == expected_type[eltype(incol)]

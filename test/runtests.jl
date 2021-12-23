@@ -738,6 +738,11 @@ HISTORY this is a history"""
             # Test that show() works and that the beginning of output is what we expect.
             @test repr(f)[1:6] == "File: "
 
+            # Test the deletion of a key
+            dhdr = deepcopy(inhdr)
+            deletekey!(dhdr, "FLTKEY")
+            @test !haskey(dhdr, "FLTKEY")
+
         end
 
         hdr = FITS(fname, "r") do f

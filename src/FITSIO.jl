@@ -12,7 +12,8 @@ export FITS,
        get_comment,
        set_comment!,
        copy_section,
-       default_header
+       default_header,
+       deletekey!
 
 import Base: getindex,
              setindex!,

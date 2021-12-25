@@ -392,7 +392,7 @@ end
 
 Delete a key in a FITS header. 
 """
-function deletekey!(hdr::FITSHeader, key::String)
+function delete!(hdr::FITSHeader, key::String)
     if (haskey(hdr, key))
         index = hdr.map[key]
 

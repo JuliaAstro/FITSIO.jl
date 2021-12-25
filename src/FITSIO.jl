@@ -12,8 +12,7 @@ export FITS,
        get_comment,
        set_comment!,
        copy_section,
-       default_header,
-       deletekey!
+       default_header
 
 import Base: getindex,
              setindex!,
@@ -30,7 +29,8 @@ import Base: getindex,
              keys,
              values,
              eltype,
-             deleteat!
+             deleteat!,
+             delete!
 
 # Deal with compatibility issues.
 using Printf

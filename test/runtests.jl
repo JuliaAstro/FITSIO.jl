@@ -740,7 +740,7 @@ HISTORY this is a history"""
 
             # Test the deletion of a key
             dhdr = deepcopy(inhdr)
-            deletekey!(dhdr, "FLTKEY")
+            delete!(dhdr, "FLTKEY")
             @test !haskey(dhdr, "FLTKEY")
 
         end

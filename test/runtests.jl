@@ -680,7 +680,7 @@ end
 FLTKEY  =                  1.0 / floating point keyword
 INTKEY  =                    1
 BOOLKEY =                    T / boolean keyword
-STRKEY  =       'string value' / string value
+STRKEY  = 'string value'       / string value
 COMMENT this is a comment
 HISTORY this is a history"""
 

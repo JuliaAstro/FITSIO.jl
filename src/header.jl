@@ -411,7 +411,7 @@ function show(io::IO, hdr::FITSHeader)
     n = length(hdr)
     for i=1:n
         if hdr.keys[i] == "COMMENT" || hdr.keys[i] == "HISTORY"
-                lastc = min(71, lastindex(hdr.comments[i]))
+                lastc = min(72, lastindex(hdr.comments[i]))
                 @printf io "%s %s" hdr.keys[i] hdr.comments[i][1:lastc]
                 print(io, " "^(72-lastc))
         else

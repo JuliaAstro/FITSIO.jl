@@ -429,8 +429,6 @@ function show(io::IO, hdr::FITSHeader)
                 rc = length(val) <= 20 ? 50 : 70 - length(val)
             end
             if length(hdr.comments[i]) > 0
-                # We don't pad out comments after keywords with trailing whitespace 
-                # but we do for standalone comments above.
                 lastc = min(rc-3, lastindex(hdr.comments[i]))
                 @printf io " / %s" hdr.comments[i][1:lastc]
                 rc -= lastc + 3

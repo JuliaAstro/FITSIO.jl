@@ -52,7 +52,7 @@ try_parse_hdrval(::Type{T}, s::String) where {T<:Union{Int,Float64}} =
 
 # functions for displaying header values in show(io, header)
 hdrval_repr(v::Bool) = v ? "T" : "F"
-hdrval_repr(v::String) = @sprintf "'%s'" v
+hdrval_repr(v::String) = @sprintf "'%-8s'" v
 hdrval_repr(v::Union{AbstractFloat, Integer}) = string(v)
 
 """
@@ -417,6 +417,10 @@ function show(io::IO, hdr::FITSHeader)
             if hdr.values[i] === nothing
                 print(io, "                      ")
                 rc = 50  # remaining characters on line
+            elseif hdr.values[i] isa String
+                val = hdrval_repr(hdr.values[i])
+                @printf io "= %-20s" val
+                rc = length(val) <= 20 ? 50 : 70 - length(val)
             else
                 val = hdrval_repr(hdr.values[i])
                 @printf io "= %20s" val

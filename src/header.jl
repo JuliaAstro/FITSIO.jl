@@ -263,6 +263,9 @@ function write_key(hdu::HDU, key::String,
 end
 
 
+
+
+
 """
     read_header(filename::AbstractString, hduindex = 1) -> FITSHeader
 
@@ -382,6 +385,33 @@ end
 function setindex!(hdr::FITSHeader, value::Any, i::Integer)
     hdr.values[i] = value
 end
+
+
+"""
+    delete!(hdr::FITSHeader, key::String)
+
+Delete a key in a FITS header. 
+"""
+function delete!(hdr::FITSHeader, key::String)
+
+    # Throw error on missing key
+    haskey(hdr, key) || throw(KeyError(key))
+
+    index = hdr.map[key]
+
+    # Delete the entries
+    deleteat!(hdr.values, index)
+    deleteat!(hdr.keys, index)
+    deleteat!(hdr.comments, index)
+
+
+    # Then re-create the map array
+    map = Dict(zip(hdr.keys, 1:length(hdr.keys)))
+
+    return nothing
+end
+
+
 
 # Comments
 """

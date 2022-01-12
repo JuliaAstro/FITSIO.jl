@@ -29,7 +29,8 @@ import Base: getindex,
              keys,
              values,
              eltype,
-             deleteat!
+             deleteat!,
+             delete!
 
 # Deal with compatibility issues.
 using Printf

@@ -738,8 +738,16 @@ HISTORY this is a history"""
             # Test that show() works and that the beginning of output is what we expect.
             @test repr(f)[1:6] == "File: "
 
-        end
+            # Test the deletion of a key and verify that deleting a
+            # non-existing key throws an error here.
+            dhdr = deepcopy(inhdr)
+            delete!(dhdr, "FLTKEY")
+            @test !haskey(dhdr, "FLTKEY")
+            
+            @test_throws KeyError delete!(dhdr, "aaabbbbccccdddd")
 
+        end
+        
         hdr = FITS(fname, "r") do f
             read_header(f[1])
         end

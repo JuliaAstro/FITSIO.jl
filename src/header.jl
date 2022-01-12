@@ -393,24 +393,20 @@ end
 Delete a key in a FITS header. 
 """
 function delete!(hdr::FITSHeader, key::String)
-    if (haskey(hdr, key))
-        index = hdr.map[key]
 
-        # Delete the entries
-        deleteat!(hdr.values, index)
-        deleteat!(hdr.keys, index)
-        deleteat!(hdr.comments, index)
+    # Throw error on missing key
+    haskey(hdr, key) || throw(KeyError(key))
 
-        # Then re-create the map array
-        map = Dict{String, Int}()
-        for i in 1:length(hdr.keys)
-            map[hdr.keys[i]] = i
-        end
-        hdr.map = map
+    index = hdr.map[key]
 
-    else
-        println("No key $key found!")
-    end
+    # Delete the entries
+    deleteat!(hdr.values, index)
+    deleteat!(hdr.keys, index)
+    deleteat!(hdr.comments, index)
+
+
+    # Then re-create the map array
+    map = Dict(zip(hdr.keys, 1:length(hdr.keys)))
 
     return nothing
 end

@@ -739,7 +739,7 @@ HISTORY this is a history"""
             @test repr(f)[1:6] == "File: "
 
             # Test the deletion of a key and verify that deleting a
-            # non-existing key throws an error.
+            # non-existing key throws an error here.
             dhdr = deepcopy(inhdr)
             delete!(dhdr, "FLTKEY")
             @test !haskey(dhdr, "FLTKEY")

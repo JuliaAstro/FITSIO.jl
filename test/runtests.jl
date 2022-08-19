@@ -690,8 +690,8 @@ HISTORY this is a history"""
 
             # Test reading possibly missing keyword
             @test_throws KeyError inhdr["BADKEY"]
-            @test getkey(inhdr, "BADKEY", nothing) === nothing  # deprecated
-            @test getkey(inhdr, "INTKEY", nothing) == inhdr["INTKEY"]  # deprecated
+            @test getkey(inhdr, "BADKEY", nothing) === nothing
+            @test getkey(inhdr, "INTKEY", nothing) == "INTKEY"
             @test get(inhdr, "BADKEY", nothing) === nothing
             @test get(inhdr, "INTKEY", nothing) == inhdr["INTKEY"]
             @test get(() -> nothing, inhdr, "BADKEY") == nothing

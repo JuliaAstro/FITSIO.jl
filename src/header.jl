@@ -364,8 +364,9 @@ Array of values in header of HDU (not a copy).
 """
 values(hdr::FITSHeader) = hdr.values
 
-getkey(hdr::FITSHeader, key::String, def) =
-    (haskey(hdr, key) ? getindex(hdr, key) : def)
+getkey(hdr::FITSHeader, key::String, default) = haskey(hdr, key) ? key : default
+get(hdr::FITSHeader, key::String, default) = haskey(hdr, key) ? hdr[key] : default
+get(f::Function, hdr::FITSHeader, key::String) = haskey(hdr, key) ? hdr[key] : f()
 
 getindex(hdr::FITSHeader, key::String) = hdr.values[hdr.map[key]]
 getindex(hdr::FITSHeader, i::Integer) = hdr.values[i]

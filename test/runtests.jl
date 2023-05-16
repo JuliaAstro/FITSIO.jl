@@ -750,6 +750,14 @@ HISTORY this is a history"""
             
             @test_throws KeyError delete!(dhdr, "aaabbbbccccdddd")
 
+            
+            # Test multiple deletes
+            dhdr = deepcopy(inhdr)
+            delete!(dhdr, "FLTKEY")
+            delete!(dhdr, "INTKEY")
+            @test !haskey(dhdr, "FLTKEY") & !haskey(dhdr, "INTKEY")
+
+            
         end
         
         hdr = FITS(fname, "r") do f

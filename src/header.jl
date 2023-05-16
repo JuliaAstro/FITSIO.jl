@@ -407,7 +407,7 @@ function delete!(hdr::FITSHeader, key::String)
 
 
     # Then re-create the map array
-    map = Dict(zip(hdr.keys, 1:length(hdr.keys)))
+    hdr.map = Dict(zip(hdr.keys, 1:length(hdr.keys)))
 
     return nothing
 end

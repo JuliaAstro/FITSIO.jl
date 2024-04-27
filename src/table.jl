@@ -22,6 +22,7 @@ for (T, tform, code) in ((UInt8,       'B',  11),
                          (Int16,       'I',  21),
                          (UInt32,      'V',  40),
                          (Int32,       'J',  41),
+                         (UInt64,      'W',  80),
                          (Int64,       'K',  81),
                          (Float32,     'E',  42),
                          (Float64,     'D',  82),
@@ -31,7 +32,7 @@ for (T, tform, code) in ((UInt8,       'B',  11),
     CFITSIO_COLTYPE[code] = T
 end
 const FITSTableScalar = Union{UInt8, Int8, Bool, UInt16, Int16, UInt32,
-                              Int32, Int64, Float32, Float64, ComplexF32,
+                              Int32, UInt64, Int64, Float32, Float64, ComplexF32,
                               ComplexF64}
 
 # Helper function for reading information about a (binary) table column
@@ -383,7 +384,7 @@ appending the table extension to it. `data` should be a dictionary
 with String keys (giving the column names) and Array values
 (giving data to write to each column). The following types are
 supported in binary tables: `UInt8`, `Int8`, `UInt16`, `Int16`,
-`UInt32`, `Int32`, `Int64`, `Float32`, `Float64`, `Complex{Float32}`,
+`UInt32`, `Int32`, `UInt64`, `Int64`, `Float32`, `Float64`, `Complex{Float32}`,
 `Complex{Float64}`, `String`, `Bool`.
 
 Optional inputs:

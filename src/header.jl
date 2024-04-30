@@ -105,7 +105,8 @@ function fits_try_read_keys(f::FITSFile, ::Type{T}, keys) where T
         # If the key is found, return it. If there was some other error
         # besides key not found, throw an error.
         if status[1] == 0
-            return try_parse_hdrval(T, unsafe_string(pointer(value)))
+            # Note: String(value) truncates value, but we only do this when returning
+            return try_parse_hdrval(T, safe_string(value))
         elseif status[1] != 202
             error(fits_get_errstatus(status[1]))
         end
@@ -295,11 +296,10 @@ function read_header(hdu::HDU)
     assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
-    # Below, we use a direct call to ffgkyn so that we can keep reusing the
-    # same buffers.
-    key = Vector{UInt8}(undef, 81)
-    value = Vector{UInt8}(undef, 81)
-    comment = Vector{UInt8}(undef, 81)
+    # A previous version of this function unsafely
+    # re-used buffers between calls. This has been refactored
+    # to be safe; however, it might be possible to use a simpler,
+    # allocating interface.
     status = Cint[0]
 
     nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
@@ -309,12 +309,15 @@ function read_header(hdu::HDU)
     values = Vector{Any}(undef, nkeys)
     comments = Vector{String}(undef, nkeys)
     for i=1:nkeys
+        key = Vector{UInt8}(undef, 81)
+        value = Vector{UInt8}(undef, 81)
+        comment = Vector{UInt8}(undef, 81)
         ccall((:ffgkyn,libcfitsio), Cint,
               (Ptr{Cvoid},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
               hdu.fitsfile.ptr, i, key, value, comment, status)
-        keys[i] = unsafe_string(pointer(key))
-        values[i] = parse_header_val(unsafe_string(pointer(value)))
-        comments[i] = unsafe_string(pointer(comment))
+        keys[i] = safe_string(key)
+        values[i] = parse_header_val(safe_string(value))
+        comments[i] = safe_string(comment)
     end
     fits_assert_ok(status[1])
     FITSHeader(keys, values, comments)

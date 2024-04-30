@@ -163,3 +163,11 @@ function close(f::FITS)
     empty!(f.hdus)
     nothing
 end
+
+
+# Safe counterpart to `unsafe_string(pointer(buffer::Vector{UInt8}))`
+# that reads a null terminated Byte buffer as a string.
+function safe_string(x::Vector{UInt8})
+    i = findfirst(iszero, x)
+    return String(view(x,firstindex(x):i-1))
+end

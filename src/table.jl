@@ -175,8 +175,8 @@ function columns_names_tforms(hdu::Union{ASCIITableHDU,TableHDU})
     fits_assert_ok(status[])
 
     # parse out results
-    colnames = [unsafe_string(pointer(item)) for item in colnames_in]
-    coltforms = [unsafe_string(pointer(item)) for item in coltforms_in]
+    colnames = [safe_string(item) for item in colnames_in]
+    coltforms = [safe_string(item) for item in coltforms_in]
     return colnames, coltforms, ncols, nrows
 end
 
@@ -262,18 +262,21 @@ function fits_write_var_col(f::FITSFile, colnum::Integer,
     status = Ref{Cint}(0)
     buffer = Ref{Ptr{UInt8}}()  # holds the address of the current row
     for i=1:length(data)
-        buffer[] = pointer(data[i])
+        dat = data[i]
+        GC.@preserve dat begin
+            buffer[] = pointer(dat)
 
-        # Note that when writing to a variable ASCII column, the
-        # ‘firstelem’ and ‘nelements’ parameter values in the
-        # fits_write_col routine are ignored and the number of
-        # characters to write is simply determined by the length of
-        # the input null-terminated character string.
-        ccall((:ffpcls, libcfitsio), Cint,
-              (Ptr{Cvoid}, Cint, Int64, Int64, Int64, Ref{Ptr{UInt8}},
-               Ref{Cint}),
-              f.ptr, colnum, i, 1, length(data[i]), buffer, status)
-        fits_assert_ok(status[])
+            # Note that when writing to a variable ASCII column, the
+            # ‘firstelem’ and ‘nelements’ parameter values in the
+            # fits_write_col routine are ignored and the number of
+            # characters to write is simply determined by the length of
+            # the input null-terminated character string.
+            ccall((:ffpcls, libcfitsio), Cint,
+                (Ptr{Cvoid}, Cint, Int64, Int64, Int64, Ref{Ptr{UInt8}},
+                Ref{Cint}),
+                f.ptr, colnum, i, 1, length(data[i]), buffer, status)
+            fits_assert_ok(status[])
+        end
     end
 end
 
@@ -289,66 +292,71 @@ function write_internal(f::FITS, colnames::Vector{String},
     (nhdus > 1) && fits_movabs_hdu(f.fitsfile, nhdus)
 
     ncols = length(colnames)
-    ttype = [pointer(name) for name in colnames]
+    global tform_str = Vector{String}(undef, ncols)
 
-    # determine which columns are requested to be variable-length
-    isvarcol = zeros(Bool, ncols)
-    if !isa(varcols, Nothing)
-        for i=1:ncols
-            isvarcol[i] = (i in varcols) || (colnames[i] in varcols)
+    
+    GC.@preserve colnames tform_str units begin
+
+        ttype = [pointer(name) for name in colnames]
+
+        # determine which columns are requested to be variable-length
+        isvarcol = zeros(Bool, ncols)
+        if !isa(varcols, Nothing)
+            for i=1:ncols
+                isvarcol[i] = (i in varcols) || (colnames[i] in varcols)
+            end
         end
-    end
 
-    # create an array of tform strings (which we will create pointers to)
-    tform_str = Vector{String}(undef, ncols)
-    for i in 1:ncols
-        if isvarcol[i]
-            tform_str[i] = fits_tform_v(hdutype, coldata[i])
+        # create an array of tform strings (which we will create pointers to)
+        for i in 1:ncols
+            if isvarcol[i]
+                tform_str[i] = fits_tform_v(hdutype, coldata[i])
+            else
+                tform_str[i] = fits_tform(hdutype, coldata[i])
+            end
+        end
+        tform = [pointer(s) for s in tform_str]
+
+        # get units
+        if isa(units, Nothing)
+            tunit = C_NULL
         else
-            tform_str[i] = fits_tform(hdutype, coldata[i])
+            tunit = Ptr{UInt8}[(haskey(units, n) ? pointer(units[n]) : C_NULL)
+                            for n in colnames]
         end
-    end
-    tform = [pointer(s) for s in tform_str]
 
-    # get units
-    if isa(units, Nothing)
-        tunit = C_NULL
-    else
-        tunit = Ptr{UInt8}[(haskey(units, n) ? pointer(units[n]) : C_NULL)
-                           for n in colnames]
-    end
+        # extension name
+        name_ptr = (isa(name, Nothing) ? Ptr{UInt8}(C_NULL) :
+                    pointer(name))
 
-    # extension name
-    name_ptr = (isa(name, Nothing) ? Ptr{UInt8}(C_NULL) :
-                   pointer(name))
+        status = Ref{Cint}(0)
+        ccall(("ffcrtb", libcfitsio), Cint,
+            (Ptr{Cvoid}, Cint, Int64, Cint, Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}},
+            Ptr{Ptr{UInt8}}, Ptr{UInt8}, Ref{Cint}),
+            f.fitsfile.ptr, table_type_code(hdutype), 0, ncols,  # 0 = nrows
+            ttype, tform, tunit, name_ptr, status)
+        fits_assert_ok(status[])
 
-    status = Ref{Cint}(0)
-    ccall(("ffcrtb", libcfitsio), Cint,
-          (Ptr{Cvoid}, Cint, Int64, Cint, Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}},
-           Ptr{Ptr{UInt8}}, Ptr{UInt8}, Ref{Cint}),
-          f.fitsfile.ptr, table_type_code(hdutype), 0, ncols,  # 0 = nrows
-          ttype, tform, tunit, name_ptr, status)
-    fits_assert_ok(status[])
+        # For binary tables, write tdim info
+        if hdutype === TableHDU
+            for (i, a) in enumerate(coldata)
+                isvarcol[i] || fits_write_tdim(f.fitsfile, i, fits_tdim(a))
+            end
+        end
 
-    # For binary tables, write tdim info
-    if hdutype === TableHDU
+        if isa(header, FITSHeader)
+            fits_write_header(f.fitsfile, header, true)
+        end
+        if isa(ver, Integer)
+            fits_update_key(f.fitsfile, "EXTVER", ver)
+        end
+
         for (i, a) in enumerate(coldata)
-            isvarcol[i] || fits_write_tdim(f.fitsfile, i, fits_tdim(a))
-        end
-    end
-
-    if isa(header, FITSHeader)
-        fits_write_header(f.fitsfile, header, true)
-    end
-    if isa(ver, Integer)
-        fits_update_key(f.fitsfile, "EXTVER", ver)
-    end
-
-    for (i, a) in enumerate(coldata)
-        if isvarcol[i]
-            fits_write_var_col(f.fitsfile, i, a)
-        else
-            fits_write_col(f.fitsfile, i, 1, 1, a)
+            if isvarcol[i]
+                fits_write_var_col(f.fitsfile, i, a)
+            else
+                fits_write_col(f.fitsfile, i, 1, 1, a)
+            end
         end
     end
     nothing
@@ -442,13 +450,14 @@ function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{String})
     for i=1:length(data)
         repeat, offset = fits_read_descript(f, colnum, i)
         buffer = Vector{UInt8}(undef, repeat)
-        bufptr[] = pointer(buffer)
-        ccall((:ffgcvs, libcfitsio), Cint,
-              (Ptr{Cvoid}, Cint, Int64, Int64, Int64,
-               Ptr{UInt8}, Ref{Ptr{UInt8}}, Ptr{Cint}, Ref{Cint}),
-              f.ptr, colnum, i, 1, repeat, " ", bufptr, C_NULL, status)
-        fits_assert_ok(status[])
-
+        GC.@preserve buffer begin
+            bufptr[] = pointer(buffer)
+            ccall((:ffgcvs, libcfitsio), Cint,
+                (Ptr{Cvoid}, Cint, Int64, Int64, Int64,
+                Ptr{UInt8}, Ref{Ptr{UInt8}}, Ptr{Cint}, Ref{Cint}),
+                f.ptr, colnum, i, 1, repeat, " ", bufptr, C_NULL, status)
+            fits_assert_ok(status[])
+        end
         # Create string out of the buffer, terminating at null characters
         zeropos = something(findfirst(isequal(0x00), buffer), 0)
         data[i] = (zeropos >= 1) ? String(buffer[1:(zeropos-1)]) :

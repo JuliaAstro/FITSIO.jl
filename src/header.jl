@@ -88,7 +88,7 @@ end
     fits_try_read_keys(f::FITSFile, ::Type{T}, keys)
 
 Try to read the raw FITS keys in given order if FITS handle `f` and
-return a value of type `T` or [`nothing`](@ref) if no key exists or if
+return a value of type `T` or `nothing` if no key exists or if
 parsing an existing key is unsuccessful.
 
 See also: [`try_parse_hdrval`](@ref).

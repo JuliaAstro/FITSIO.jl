@@ -294,7 +294,7 @@ function write_internal(f::FITS, colnames::Vector{String},
 
     # determine which columns are requested to be variable-length
     isvarcol = zeros(Bool, ncols)
-    if !isa(varcols, Nothing)
+    if !isnothing(varcols)
         for i=1:ncols
             isvarcol[i] = (i in varcols) || (colnames[i] in varcols)
         end
@@ -312,7 +312,7 @@ function write_internal(f::FITS, colnames::Vector{String},
     tform = [pointer(s) for s in tform_str]
 
     # get units
-    if isa(units, Nothing)
+    if isnothing(units)
         tunit = C_NULL
     else
         tunit = Ptr{UInt8}[(haskey(units, n) ? pointer(units[n]) : C_NULL)
@@ -320,8 +320,7 @@ function write_internal(f::FITS, colnames::Vector{String},
     end
 
     # extension name
-    name_ptr = (isa(name, Nothing) ? Ptr{UInt8}(C_NULL) :
-                   pointer(name))
+    name_ptr = (isnothing(name) ? Ptr{UInt8}(C_NULL) : pointer(name))
 
     status = Ref{Cint}(0)
     ccall(("ffcrtb", libcfitsio), Cint,

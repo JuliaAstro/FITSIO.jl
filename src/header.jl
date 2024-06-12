@@ -222,24 +222,26 @@ Read the HDU header record specified by keyword and return a tuple where
 `value` is the keyword parsed value (of type `String`, `Bool`, `Int`,
 `Float64` or `Nothing`), `comment` is the keyword comment (as a string).
 Throw an error if `key` is not found.
+"""
+function read_key(hdu::HDU, key::String)
+    assert_open(hdu)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    value, comment = fits_read_keyword(hdu.fitsfile, key)
+    parse_header_val(value), comment
+end
 
+"""
     read_key(hdu::HDU, key::Integer) -> (keyname, value, comment)
 
-Same as above but FITS card is specified by its position and returns a 3
-element tuple where `keyname` is the keyword name (a string).
+Same as [above](@ref read_key(::HDU, ::String)) but FITS card is
+specified by its position and returns a 3 element tuple where
+`keyname` is the keyword name (a string).
 """
 function read_key(hdu::HDU, key::Integer)
     assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     keyout, value, comment = fits_read_keyn(hdu.fitsfile, key)
     keyout, parse_header_val(value), comment
-end
-
-function read_key(hdu::HDU, key::String)
-    assert_open(hdu)
-    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    value, comment = fits_read_keyword(hdu.fitsfile, key)
-    parse_header_val(value), comment
 end
 
 

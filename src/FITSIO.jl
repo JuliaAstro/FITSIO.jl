@@ -156,7 +156,7 @@ supports the following operations:
   given EXTVER (or HDUVER) number (an Integer).
 
 * Iteration:
-  ```
+  ```julia
   for hdu in f
       ...
   end

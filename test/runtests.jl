@@ -747,19 +747,19 @@ HISTORY this is a history"""
             dhdr = deepcopy(inhdr)
             delete!(dhdr, "FLTKEY")
             @test !haskey(dhdr, "FLTKEY")
-            
+
             @test_throws KeyError delete!(dhdr, "aaabbbbccccdddd")
 
-            
+
             # Test multiple deletes
             dhdr = deepcopy(inhdr)
             delete!(dhdr, "FLTKEY")
             delete!(dhdr, "INTKEY")
             @test !haskey(dhdr, "FLTKEY") & !haskey(dhdr, "INTKEY")
 
-            
+
         end
-        
+
         hdr = FITS(fname, "r") do f
             read_header(f[1])
         end

@@ -39,10 +39,10 @@ Datatype: Float64
 Datasize: (800, 800)
 
 # read an image from disk
-julia> data = read(f[1]);  
+julia> data = read(f[1]);
 
 # read just a subset of image
-julia> data = read(f[1], :, 790:end);  
+julia> data = read(f[1], :, 790:end);
 
 # Get info about binary table
 julia> f[2]
@@ -50,9 +50,9 @@ File: file.fits
 HDU: 2
 Type: Table
 Rows: 20
-Columns: Name  Size  Type    TFORM  
-         col2        String  5A     
-         col1        Int64   1K     
+Columns: Name  Size  Type    TFORM
+         col2        String  5A
+         col1        Int64   1K
 
 # Read a column from the table:
  julia> data = read(f[2], "col1")

@@ -31,9 +31,9 @@ julia> using FITSIO
 julia> f = FITS("file.fits")
 File: file.fits
 Mode: "w" (read-write)
-HDUs: Num  Name  Type   
-      1          Image  
-      2          Table  
+HDUs: Num  Name  Type
+      1          Image
+      2          Table
 ```
 (At the REPL, information about the file contents is shown.)
 
@@ -90,9 +90,9 @@ File: file.fits
 HDU: 2
 Type: Table
 Rows: 20
-Columns: Name  Size  Type    TFORM  
-         col2        String  5A     
-         col1        Int64   1K     
+Columns: Name  Size  Type    TFORM
+         col2        String  5A
+         col1        Int64   1K
 ```
 
 
@@ -221,4 +221,4 @@ julia> write(f, data)  # write a new binary table to a new extension
     ```
 
     !!! warn
-        Compression is "loss-less" for images with integer pixel values, and might be lossy for floating-point images. 
+        Compression is "loss-less" for images with integer pixel values, and might be lossy for floating-point images.

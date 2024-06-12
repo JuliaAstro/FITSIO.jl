@@ -357,7 +357,9 @@ end
 
 
 """
-    write(f::FITS, colnames, coldata; hdutype=TableHDU, name=nothing, ver=nothing, header=nothing, units=nothing, varcols=nothing)
+    write(f::FITS, colnames, coldata;
+          hdutype=TableHDU, name=nothing, ver=nothing,
+          header=nothing, units=nothing, varcols=nothing)
 
 Same as `write(f::FITS, data::Dict; ...)` but providing column names
 and column data as a separate arrays. This is useful for specifying
@@ -376,7 +378,9 @@ end
 
 
 """
-    write(f::FITS, data::Dict; hdutype=TableHDU, name=nothing, ver=nothing, header=nothing, units=nothing, varcols=nothing)
+    write(f::FITS, data::Dict;
+          hdutype=TableHDU, name=nothing, ver=nothing,
+          header=nothing, units=nothing, varcols=nothing)
 
 Create a new table extension and write data to it. If the FITS file is
 currently empty then a dummy primary array will be created before

@@ -146,7 +146,7 @@ const RESERVED_KEYS = ["SIMPLE","EXTEND","XTENSION","BITPIX","PCOUNT","GCOUNT",
 function reserved_key_indices(hdr::FITSHeader)
     nhdr = length(hdr)
     indices = Int[]
-    for i=1:nhdr
+    for i = 1:nhdr
         if in(hdr.keys[i], RESERVED_KEYS)
             push!(indices, i)
         end
@@ -154,7 +154,7 @@ function reserved_key_indices(hdr::FITSHeader)
 
     # Note that this removes anything matching NAXIS\d regardless of # of axes.
     if in("NAXIS", hdr.keys)
-        for i=1:nhdr
+        for i = 1:nhdr
             if occursin(r"^NAXIS\d*$", hdr.keys[i])
                 push!(indices, i)
             end
@@ -162,7 +162,7 @@ function reserved_key_indices(hdr::FITSHeader)
     end
 
     if in("ZNAXIS", hdr.keys)
-        for i=1:nhdr
+        for i = 1:nhdr
             if (occursin(r"^ZNAXIS\d*$", hdr.keys[i]) ||
                 occursin(r"^ZTILE\d*$", hdr.keys[i]) ||
                 occursin(r"^ZNAME\d*$", hdr.keys[i]) ||
@@ -173,7 +173,7 @@ function reserved_key_indices(hdr::FITSHeader)
     end
 
     if in("TFIELDS", hdr.keys)
-        for i=1:nhdr
+        for i = 1:nhdr
             for re in [r"^TFORM\d*$", r"^TTYPE\d*$", r"^TDIM\d*$",
                        r"^TUNIT\d*$", r"^TSCAL\d*$", r"^TZERO\d*$",
                        r"^TNULL\d*$", r"^TDISP\d*$", r"^TDMIN\d*$",
@@ -195,7 +195,7 @@ end
 # If `clean` is true, skip writing reserved header keywords.
 function fits_write_header(f::FITSFile, hdr::FITSHeader, clean::Bool=true)
     indices = clean ? reserved_key_indices(hdr) : Int[]
-    for i=1:length(hdr)
+    for i = 1:length(hdr)
         if clean && in(i, indices)
             continue
         end
@@ -261,7 +261,6 @@ function write_key(hdu::HDU, key::String,
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     fits_update_key(hdu.fitsfile, key, value, comment)
 end
-
 
 
 
@@ -391,7 +390,7 @@ end
 """
     delete!(hdr::FITSHeader, key::String)
 
-Delete a key in a FITS header. 
+Delete a key in a FITS header.
 """
 function delete!(hdr::FITSHeader, key::String)
 

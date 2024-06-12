@@ -328,7 +328,7 @@ The data to be written out must be stored contiguously in memory.
     by `reinterpret`ing it as one that is supported. For example, to write out a `Complex`
     array and read it back in, we may use
 
-    ```julia
+    ```julia-repl
     julia> a = rand(ComplexF64, 2)
     2-element Array{Complex{Float64},1}:
      0.4943325325752195 + 0.2034650017475852im

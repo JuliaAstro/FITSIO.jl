@@ -675,6 +675,17 @@ end
                                 "string value",
                                 "this is a comment",
                                 "this is a history"])
+            inhdr2 = FITSHeader(map(NamedTuple{(:key,:value,:comment)}, [
+                ("FLTKEY", 1.0, "floating point keyword",),
+                ("INTKEY", 1, "",),
+                ("BOOLKEY", true, "boolean keyword",),
+                ("STRKEY", "string value", "string value",),
+                ("COMMENT", nothing, "this is a comment",),
+                ("HISTORY", nothing, "this is a history",),
+            ]))
+            @test inhdr.keys == inhdr2.keys
+            @test inhdr.values == inhdr2.values
+            @test inhdr.comments == inhdr2.comments
 
             @test repr(inhdr) == """
 FLTKEY  =                  1.0 / floating point keyword

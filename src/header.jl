@@ -6,6 +6,12 @@
 # Used here and in other files. Functions that operate on FITSFile
 # start with `fits_`.
 
+FITSIO.FITSHeader(cards::AbstractVector{<:NamedTuple}) = FITSHeader(
+    map(x -> x.key, cards),
+    map(x -> x.value, cards),
+    map(x -> x.comment, cards),
+)
+
 """
     try_parse_hdrval(T, s) -> x::Union{T,Nothing}
 

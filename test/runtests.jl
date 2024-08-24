@@ -403,6 +403,10 @@ end
                 write(f, a, name="a")
                 @test read(f["a"]) == a
                 @test read(f[1])   == a
+                @test haskey(f, "a")
+                @test !haskey(f, "b")
+                @test haskey(f, 1)
+                @test !haskey(f, 2)
             end
         end
     end

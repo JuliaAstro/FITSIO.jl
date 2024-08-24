@@ -125,6 +125,13 @@ function getindex(f::FITS, name::AbstractString, ver::Int=0)
     return f.hdus[i]
 end
 
+Base.haskey(f::FITS, i::Integer) = i ∈ 1:length(f)
+
+Base.haskey(f::FITS, name::AbstractString) = any(1:length(f)) do i
+    fits_movabs_hdu(f.fitsfile, i)
+    fits_try_read_extname(f.fitsfile) == name
+end
+
 """
     deleteat!(f::FITS, i::Integer)
 

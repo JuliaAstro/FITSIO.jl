@@ -285,13 +285,36 @@ varcolhandler(::Type{<:Vector{String}}) = StringVarColHandler()
 varcolhandler(::Type{<:Vector{Vector{T}}} where T) = NumericVarColHandler()
 varcolhandler(::Type) = UnsupportedVarColHandler()
 
-"""
-Read a variable length column - main dispatch function
-"""
+
 function fits_read_var_col(f::FITSFile, colnum::Integer, data::T) where T
     fits_read_var_col(f, colnum, data, varcolhandler(T))
 end
+"""
+    fits_write_var_col(f::FITSFile, colnum::Integer, data)
+    fits_write_var_col(data)
 
+Write variable-length column data to a FITS file.
+
+# Arguments
+- `f::FITSFile`: The FITS file to write to
+- `colnum::Integer`: The column number (1-based)
+- `data`: The data to write. Can be:
+  * Vector{String} for string columns
+  * Vector{Vector{T}} where T<:Number for numeric columns
+
+# Examples
+```julia
+FITS("example.fits", "w") do f
+    # Write string column
+    data = ["short", "medium", "long string"]
+    fits_write_var_col(f, 1, data)
+
+    # Write numeric column
+    numbers = [[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]]
+    fits_write_var_col(f, 2, numbers)
+end
+```
+"""
 # Read a variable length array column of numbers
 # (separate implementation from normal fits_read_col function because
 # the length of each vector must be determined for each row.)

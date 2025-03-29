@@ -23,14 +23,16 @@ See also: [`parse_header_val`](@ref).
 
 """
 function try_parse_hdrval(::Type{Bool}, s::String)
-    if length(s) == 1
-        if s[1] == 'T'
-            return true
-        elseif s[1] == 'F'
-            return false
+    GC.@preserve s begin
+        if length(s) == 1
+            if s[1] == 'T'
+                return true
+            elseif s[1] == 'F'
+                return false
+            end
         end
+        return nothing
     end
-    return nothing
 end
 
 # Note that trailing whitespaces are not significant in FITS header
@@ -39,26 +41,28 @@ end
 #
 # TODO: parse '' within the string as a single '.
 function try_parse_hdrval(::Type{String}, s::String)
-    if length(s) < 2 || s[1] != '\'' || s[end] != '\''
-        return nothing
-    end
-
-    i = lastindex(s) - 1
-    while i > 2
-        if s[i] != ' '
-            return s[2:i]
+    GC.@preserve s begin
+        if length(s) < 2 || s[1] != '\'' || s[end] != '\''
+            return nothing
         end
-        i -= 1
+
+        i = lastindex(s) - 1
+        while i > 2
+            if s[i] != ' '
+                return String(view(s, 2:i))  # Use view for memory efficiency
+            end
+            i -= 1
+        end
+        return String(view(s, 2:i))
     end
-    return s[2:i]
 end
 
 try_parse_hdrval(::Type{T}, s::String) where {T<:Union{Int,Float64}} =
-    tryparse(T, s)
+    GC.@preserve s tryparse(T, s)
 
 # functions for displaying header values in show(io, header)
 hdrval_repr(v::Bool) = v ? "T" : "F"
-hdrval_repr(v::String) = @sprintf "'%-8s'" v
+hdrval_repr(v::String) = GC.@preserve v @sprintf "'%-8s'" v
 hdrval_repr(v::Union{AbstractFloat, Integer}) = string(v)
 
 """
@@ -72,22 +76,23 @@ parsed it is returned as it.
 See also: [`try_parse_hdrval`](@ref).
 """
 function parse_header_val(s::String)
-    length(s) == 0 && return nothing
+    GC.@preserve s begin
+        length(s) == 0 && return nothing
 
-    vb = try_parse_hdrval(Bool, s)
-    vb === nothing || return vb
+        vb = try_parse_hdrval(Bool, s)
+        vb === nothing || return vb
 
-    vs = try_parse_hdrval(String, s)
-    vs === nothing || return vs
+        vs = try_parse_hdrval(String, s)
+        vs === nothing || return vs
 
-    vi = try_parse_hdrval(Int, s)
-    vi === nothing || return vi
+        vi = try_parse_hdrval(Int, s)
+        vi === nothing || return vi
 
-    vf = try_parse_hdrval(Float64, s)
-    vf === nothing || return vf
-
-    # FIXME: error("invalid FITS keyword value")
-    return s
+        vf = try_parse_hdrval(Float64, s)
+        vf === nothing || return vf
+        # FIXME: error("invalid FITS keyword value")
+        return s
+    end
 end
 
 """
@@ -103,17 +108,19 @@ See also: [`try_parse_hdrval`](@ref).
 function fits_try_read_keys(f::FITSFile, ::Type{T}, keys) where T
     status = Cint[0]
     value = Vector{UInt8}(undef, 71)
-    for key in keys
-        ccall((:ffgkey, libcfitsio), Cint,
-              (Ptr{Cvoid},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
-              f.ptr, key, value, C_NULL, status)
-
-        # If the key is found, return it. If there was some other error
-        # besides key not found, throw an error.
-        if status[1] == 0
-            return try_parse_hdrval(T, unsafe_string(pointer(value)))
-        elseif status[1] != 202
-            error(fits_get_errstatus(status[1]))
+    
+    GC.@preserve f value begin
+        for key in keys
+            ccall((:ffgkey, libcfitsio), Cint,
+                  (Ptr{Cvoid},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+                  f.ptr, key, value, C_NULL, status)
+            # If the key is found, return it. If there was some other error
+            # besides key not found, throw an error.
+            if status[1] == 0
+                return try_parse_hdrval(T, safe_string_convert(value))
+            elseif status[1] != 202
+                error(fits_get_errstatus(status[1]))
+            end
         end
     end
     return nothing
@@ -129,17 +136,19 @@ fits_try_read_extver(f::FITSFile) :: Union{Int,Nothing} =
     fits_try_read_keys(f, Int, EXTVER_KEYS)
 
 function fits_get_ext_info_string(f::FITSFile)
-    extname = fits_try_read_extname(f)
-    extver = fits_try_read_extver(f)
-    if extname === nothing
-        return ""
-    elseif extver === nothing
-        return " (name=$extname)"
-    else
-        return " (name=$extname, ver=$extver)"
+    GC.@preserve f begin
+        extname = fits_try_read_extname(f)
+        extver = fits_try_read_extver(f)
+
+        if extname === nothing
+            return ""
+        elseif extver === nothing
+            return " (name=$extname)"
+        else
+            return " (name=$extname, ver=$extver)"
+        end
     end
 end
-
 # Return indices of reserved keys in a header.
 # This is more complex than you would think because some reserved keys
 # are only reserved when other keys are present. Also, in general a key
@@ -305,29 +314,33 @@ function read_header(hdu::HDU)
     assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
-    # Below, we use a direct call to ffgkyn so that we can keep reusing the
-    # same buffers.
-    key = Vector{UInt8}(undef, 81)
-    value = Vector{UInt8}(undef, 81)
-    comment = Vector{UInt8}(undef, 81)
-    status = Cint[0]
+    GC.@preserve hdu begin
+        # Below, we use a direct call to ffgkyn so that we can keep reusing the
+        # same buffers.
+        key = Vector{UInt8}(undef, 81)
+        value = Vector{UInt8}(undef, 81)
+        comment = Vector{UInt8}(undef, 81)
+        status = Cint[0]
 
-    nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
+        nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
+        # Initialize output arrays
+        keys = Vector{String}(undef, nkeys)
+        values = Vector{Any}(undef, nkeys)
+        comments = Vector{String}(undef, nkeys)
 
-    # Initialize output arrays
-    keys = Vector{String}(undef, nkeys)
-    values = Vector{Any}(undef, nkeys)
-    comments = Vector{String}(undef, nkeys)
-    for i=1:nkeys
-        ccall((:ffgkyn,libcfitsio), Cint,
-              (Ptr{Cvoid},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
-              hdu.fitsfile.ptr, i, key, value, comment, status)
-        keys[i] = unsafe_string(pointer(key))
-        values[i] = parse_header_val(unsafe_string(pointer(value)))
-        comments[i] = unsafe_string(pointer(comment))
+        for i=1:nkeys
+            ccall((:ffgkyn,libcfitsio), Cint,
+                  (Ptr{Cvoid},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
+                  hdu.fitsfile.ptr, i, key, value, comment, status)
+            # Safe string conversion
+            keys[i] = unsafe_string(pointer(key))
+            values[i] = parse_header_val(unsafe_string(pointer(value)))
+            comments[i] = unsafe_string(pointer(comment))
+        end
+        
+        fits_assert_ok(status[1])
+        return FITSHeader(keys, values, comments)
     end
-    fits_assert_ok(status[1])
-    FITSHeader(keys, values, comments)
 end
 
 
@@ -339,7 +352,9 @@ Read the entire header from the given HDU as a single string.
 function read_header(hdu::HDU, ::Type{String})
     assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
-    fits_hdr2str(hdu.fitsfile)
+    GC.@preserve hdu begin
+        fits_hdr2str(hdu.fitsfile)
+    end
 end
 
 

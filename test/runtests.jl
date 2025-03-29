@@ -868,7 +868,67 @@ end
         end
     end
 end
+@testset "Variable Length Column Operations" begin
+    function create_test_data()
+        strings = ["short", "medium length", "this is a longer string"]
+        numbers = [Float64[1,2], Float64[3,4,5], Float64[6]]
+        integers = [Int64[1], Int64[1,2,3], Int64[1,2]]
+        return strings, numbers, integers
+    end
 
+    @testset "Mixed Variable Length Types" begin
+        tempnamefits() do fname
+            strings, numbers, integers = create_test_data()
+
+            FITS(fname, "w") do f
+                write(f, zeros(Float32, 1))  # Primary HDU
+                
+                # Test writing multiple variable length columns of different types together
+                data = Dict(
+                    "STRINGS" => strings,
+                    "NUMBERS" => numbers,
+                    "INTEGERS" => integers
+                )
+                write(f, data; varcols=["STRINGS", "NUMBERS", "INTEGERS"])
+            end
+
+            FITS(fname, "r") do f
+                hdu = f[2]
+                
+                # Test reading and verifying mixed types
+                read_strings = read(hdu, "STRINGS")
+                read_numbers = read(hdu, "NUMBERS")
+                read_integers = read(hdu, "INTEGERS")
+                
+                # Verify data integrity across types
+                @test all(read_strings .== strings)
+                @test all(length.(read_numbers) .== length.(numbers))
+                @test all(length.(read_integers) .== length.(integers))
+                
+                # Verify content equality
+                for (orig, read) in zip(numbers, read_numbers)
+                    @test all(orig .== read)
+                end
+                
+                for (orig, read) in zip(integers, read_integers)
+                    @test all(orig .== read)
+                end
+            end
+        end
+    end
+
+    @testset "Error Handling for Invalid Types" begin
+        tempnamefits() do fname
+            FITS(fname, "w") do f
+                write(f, zeros(Float32, 1))
+                
+                # Test deeply nested vector rejection
+                nested_data = Dict("NESTED" => [[[1,2], [3,4]]])
+                @test_throws ErrorException write(f, nested_data; varcols=["NESTED"])
+            end
+        end
+    end
+end
 @test_deprecated FITSIO.libcfitsio_version()
 
 # test we can still access Libcfitsio

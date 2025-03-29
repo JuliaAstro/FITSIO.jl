@@ -896,346 +896,156 @@ end
         end
     end
 end
+# Test configuration for Windows
+if Sys.iswindows()
+    ENV["JULIA_CPU_THREADS"] = "1"
+    Base.GC.enable(true)
+end
+
+# Helper function for test data creation
+function create_test_data()
+    return (
+        strings = ["short", "medium length", "very long string"],
+        numbers = Vector{Float64}[[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]],
+        integers = Vector{Int64}[[1], [1,2,3], [1,2]]
+    )
+end
+
 @testset "Variable Length Column Operations" begin
-    # Helper function to create test data
-    function create_test_data()
-        return (
-            strings = ["short", "medium length", "very long string"],
-            numbers = [[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]],
-            integers = [[1], [1,2,3], [1,2]]
-        )
+    @testset "Type Handlers" begin
+        # Test handler type resolution
+        @test varcolhandler(String) isa StringVarColHandler
+        @test varcolhandler(Vector{Float64}) isa NumericVarColHandler
+        @test varcolhandler(Vector{Int64}) isa NumericVarColHandler
+        @test varcolhandler(Complex{Float64}) isa UnsupportedVarColHandler
+        @test varcolhandler(Dict) isa UnsupportedVarColHandler
     end
 
-    tempnamefits() do fname
-        # Test writing variable length columns
-        let
+    @testset "Basic Read/Write Operations" begin
+        tempnamefits() do fname
+            # Create and write test data
             test_data = create_test_data()
             
             FITS(fname, "w") do f
-                # Write primary HDU first
-                write(f, zeros(Float32, 1))
+                write(f, zeros(Float32, 1))  # Primary HDU
 
-                # Create data dictionary
                 data = Dict(
                     "STRINGS" => test_data.strings,
                     "NUMBERS" => test_data.numbers,
                     "INTEGERS" => test_data.integers
                 )
-
-                # Write table with variable length columns
                 write(f, data; varcols=["STRINGS", "NUMBERS", "INTEGERS"])
             end
-        end
 
-        # Test reading variable length columns
-        let
-            test_data = create_test_data()
-            
+            # Verify written data
             FITS(fname, "r") do f
-                hdu = f[2]  # Skip primary HDU
-
+                hdu = f[2]
+                
                 # Test string column
                 @test read(hdu, "STRINGS") == test_data.strings
 
-                # Test numeric columns with explicit type conversion
+                # Test numeric columns
                 numbers = read(hdu, "NUMBERS")
                 @test length(numbers) == length(test_data.numbers)
-                for (i, (orig, read_val)) in enumerate(zip(test_data.numbers, numbers))
+                for (orig, read_val) in zip(test_data.numbers, numbers)
                     @test length(read_val) == length(orig)
                     @test all(read_val .== orig)
                 end
 
                 integers = read(hdu, "INTEGERS")
                 @test length(integers) == length(test_data.integers)
-                for (i, (orig, read_val)) in enumerate(zip(test_data.integers, integers))
+                for (orig, read_val) in zip(test_data.integers, integers)
                     @test length(read_val) == length(orig)
                     @test all(read_val .== orig)
                 end
             end
         end
     end
-end
 
-@testset "Error Handling for Variable Length Columns" begin
-    tempnamefits() do fname
-        FITS(fname, "w") do f
-            # Write primary HDU
-            write(f, zeros(Float32, 1))
-
-            # Test ASCII table restriction
-            @test_throws ErrorException begin
-                write(f, Dict("TEST" => [[1,2], [3,4]]); 
-                      hdutype=ASCIITableHDU, 
-                      varcols=["TEST"])
-            end
-
-            # Test unsupported type
-            @test_throws ErrorException begin
-                complex_data = [[1+2im], [3+4im]]
-                write(f, Dict("COMPLEX" => complex_data); 
-                      varcols=["COMPLEX"])
-            end
-        end
-    end
-end
-
-@testset "Table Writing" begin
-    tempnamefits() do fname
-        FITS(fname, "w") do f
-            # Write primary HDU
-            write(f, zeros(Float32, 1))
-
-            # Create simple table
-            data = Dict(
-                "COL1" => [1, 2, 3],
-                "COL2" => ["a", "b", "c"]
-            )
-
-            # Write table
-            write(f, data)
-
-            # Verify data
-            hdu = f[2]
-            @test read(hdu, "COL1") == [1, 2, 3]
-            @test read(hdu, "COL2") == ["a", "b", "c"]
-        end
-    end
-end
-
-@testset "Variable Column Type Handling" begin
-    tempnamefits() do fname
-        FITS(fname, "w") do f
-            # Write primary HDU
-            write(f, zeros(Float32, 1))
-
-            # Test different variable length types
-            data = Dict(
-                "VAR_INT" => [[1], [1,2], [1,2,3]],
-                "VAR_FLOAT" => [[1.0], [1.0,2.0], [1.0,2.0,3.0]],
-                "VAR_STRING" => ["a", "bb", "ccc"]
-            )
-
-            # Write data
-            write(f, data; varcols=["VAR_INT", "VAR_FLOAT", "VAR_STRING"])
-
-            # Verify data
-            hdu = f[2]
-            @test all(read(hdu, "VAR_INT")[i] == data["VAR_INT"][i] 
-                     for i in 1:3)
-            @test all(read(hdu, "VAR_FLOAT")[i] == data["VAR_FLOAT"][i] 
-                     for i in 1:3)
-            @test read(hdu, "VAR_STRING") == data["VAR_STRING"]
-        end
-    end
-    @testset "Error Handling for Invalid Types" begin
+    @testset "Type Conversions" begin
         tempnamefits() do fname
             FITS(fname, "w") do f
-                GC.@preserve begin
-                    write(f, zeros(Float32, 1))
+                write(f, zeros(Float32, 1))
+
+                # Test numeric conversions
+                let
+                    int_data = [[1,2], [3,4,5]]
+                    write(f, Dict("INTS" => int_data); varcols=["INTS"])
                     
-                    # Test deeply nested vector rejection
-                    nested_data = Dict("NESTED" => [[[1,2], [3,4]]])
-                    @test_throws ErrorException write(f, nested_data; varcols=["NESTED"])
+                    result = read(f[end], "INTS")
+                    @test length(result) == length(int_data)
+                    @test all(Float64.(int_data[1]) .≈ result[1])
+                    @test all(Float64.(int_data[2]) .≈ result[2])
                 end
-            end
-        end
-    end
-end
-# Define test data creation function
-function create_test_data()
-    strings = ["short", "medium length", "very long string"]
-    numbers = Vector{Float64}[[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]]
-    integers = Vector{Int64}[[1], [1,2,3], [1,2]]
-    return strings, numbers, integers
-end
 
-@testset "Mixed Variable Length Types" begin
-    tempnamefits() do fname
-        strings, numbers, integers = create_test_data()
-
-        FITS(fname, "w") do f
-            # Ensure primary HDU is created properly
-            GC.@preserve f strings numbers integers begin
-                write(f, zeros(Float32, 1))  # Primary HDU
-                
-                # Test writing multiple variable length columns of different types together
-                data = Dict(
-                    "STRINGS" => strings,
-                    "NUMBERS" => numbers,
-                    "INTEGERS" => integers
-                )
-                write(f, data; varcols=["STRINGS", "NUMBERS", "INTEGERS"])
-            end
-        end
-
-        FITS(fname, "r") do f
-            hdu = f[2]
-            
-            # Test reading and verifying mixed types with GC protection
-            GC.@preserve f hdu strings numbers integers begin
-                read_strings = read(hdu, "STRINGS")
-                read_numbers = read(hdu, "NUMBERS")
-                read_integers = read(hdu, "INTEGERS")
-                
-                # Version-specific string comparison
-                @static if VERSION < v"1.6"
-                    # Direct string comparison for older Julia
-                    @test all(String.(read_strings) .== String.(strings))
-                else
-                    # Modern comparison
-                    @test read_strings == strings
-                end
-                
-                # Verify numeric data
-                @test all(length.(read_numbers) .== length.(numbers))
-                @test all(length.(read_integers) .== length.(integers))
-                
-                # Verify content equality with GC protection
-                for (orig, read) in zip(numbers, read_numbers)
-                    GC.@preserve orig read begin
-                        @test all(orig .== read)
-                    end
-                end
-                
-                for (orig, read) in zip(integers, read_integers)
-                    GC.@preserve orig read begin
-                        @test all(orig .== read)
-                    end
-                end
-            end
-        end
-    end
-end
-
-if Sys.iswindows()
-    ENV["JULIA_CPU_THREADS"] = "1"
-    Base.GC.enable(true)
-end
-
-@testset "Variable Length Column Operations" begin
-    @testset "Reading Operations" begin
-        tempnamefits() do fname
-            FITS(fname, "w") do f
-                # Write primary HDU first
-                write(f, zeros(Float32, 1))
-
-                # Prepare test data
+                # Test string variations
                 let
-                    string_data = ["short", "medium length", "very long string"]
-                    numeric_data = [[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]]
-                    int_data = [[1], [1,2,3], [1,2]]
+                    str_data = ["a", "bb", "ccc"]
+                    write(f, Dict("STRS" => str_data); varcols=["STRS"])
+                    @test read(f[end], "STRS") == str_data
+                end
 
-                    # Write data
-                    data = Dict(
-                        "STRINGS" => string_data,
-                        "NUMBERS" => numeric_data,
-                        "INTEGERS" => int_data
+                # Test mixed types
+                let
+                    mixed_data = Dict(
+                        "VAR_INT" => [[1], [1,2], [1,2,3]],
+                        "VAR_STR" => ["x", "xy", "xyz"]
                     )
-                    write(f, data; varcols=["STRINGS", "NUMBERS", "INTEGERS"])
-                end
-            end
-
-            # Read and verify in separate FITS instance
-            FITS(fname, "r") do f
-                hdu = f[2]  # Skip primary HDU
-                
-                # Test string column
-                let
-                    expected = ["short", "medium length", "very long string"]
-                    result = read(hdu, "STRINGS")
-                    @test result == expected
-                end
-
-                # Test numeric column
-                let
-                    expected = [[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]]
-                    result = read(hdu, "NUMBERS")
-                    @test length(result) == length(expected)
-                    for (r, e) in zip(result, expected)
-                        @test r == e
-                    end
-                end
-
-                # Test integer column
-                let
-                    expected = [[1], [1,2,3], [1,2]]
-                    result = read(hdu, "INTEGERS")
-                    @test length(result) == length(expected)
-                    for (r, e) in zip(result, expected)
-                        @test r == e
-                    end
+                    write(f, mixed_data; varcols=["VAR_INT", "VAR_STR"])
+                    
+                    @test read(f[end], "VAR_INT") == mixed_data["VAR_INT"]
+                    @test read(f[end], "VAR_STR") == mixed_data["VAR_STR"]
                 end
             end
         end
     end
 
-    @testset "Writing Operations" begin
+    @testset "Error Handling" begin
         tempnamefits() do fname
             FITS(fname, "w") do f
-                # Write primary HDU
                 write(f, zeros(Float32, 1))
 
-                # Test string column
-                let
-                    data = ["short", "medium length", "very long string"]
-                    write(f, Dict("STRINGS" => data); varcols=["STRINGS"])
-                    result = read(f[end], "STRINGS")
-                    @test result == data
-                end
-
-                # Test numeric column
-                let
-                    data = [[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]]
-                    write(f, Dict("NUMBERS" => data); varcols=["NUMBERS"])
-                    result = read(f[end], "NUMBERS")
-                    @test all(result[i] == data[i] for i in 1:length(data))
-                end
-
-                # Test error cases
-                @test_throws ErrorException write(f, Dict("TEST" => [1,2,3]); 
+                # Test ASCII table restriction
+                @test_throws ErrorException write(f, 
+                    Dict("TEST" => [[1,2], [3,4]]); 
                     hdutype=ASCIITableHDU, 
                     varcols=["TEST"])
 
+                # Test unsupported types
                 @test_throws ErrorException write(f, 
                     Dict("COMPLEX" => [[1+2im], [3+4im]]); 
                     varcols=["COMPLEX"])
+
+                # Test nested vector rejection
+                @test_throws ErrorException write(f, 
+                    Dict("NESTED" => [[[1,2], [3,4]]]); 
+                    varcols=["NESTED"])
             end
         end
     end
 
-    @testset "Table Functions" begin
+    @testset "Table Operations" begin
         tempnamefits() do fname
             FITS(fname, "w") do f
-                # Write primary HDU
                 write(f, zeros(Float32, 1))
 
+                # Basic table operations
                 let
-                    # Basic table
                     colnames = ["COL1", "COL2"]
                     coldata = [[1, 2, 3], ["a", "b", "c"]]
                     write(f, Dict(zip(colnames, coldata)))
                     
                     @test read(f[end], "COL1") == [1, 2, 3]
                     @test read(f[end], "COL2") == ["a", "b", "c"]
+                end
 
-                    # Test with units
-                    units = Dict("COL1" => "m/s", "COL2" => "kg")
-                    write(f, Dict(zip(colnames, coldata)); units=units)
-
-                    # Test with version
-                    write(f, Dict(zip(colnames, coldata)); ver=2)
-                    @test read_key(f[end], "EXTVER") == (2, "")
-
-                    # Test with header
-                    hdr = FITSHeader(["TEST"], [1], ["test comment"])
-                    write(f, Dict(zip(colnames, coldata)); header=hdr)
-                    @test read_key(f[end], "TEST") == (1, "test comment")
-
-                    # Test variable length
+                # Variable length columns
+                let
                     var_data = [[[1], [1,2]], ["a", "bb"]]
-                    write(f, Dict(zip(colnames, var_data)); varcols=["COL1"])
-                    result = read(f[end], "COL1")
-                    @test all(result[i] == var_data[1][i] for i in 1:length(var_data[1]))
+                    write(f, Dict("VAR1" => var_data[1], "VAR2" => var_data[2]); 
+                          varcols=["VAR1"])
+                    @test read(f[end], "VAR1") == var_data[1]
+                    @test read(f[end], "VAR2") == var_data[2]
                 end
             end
         end

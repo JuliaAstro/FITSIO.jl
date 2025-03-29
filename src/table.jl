@@ -263,10 +263,22 @@ end
 Type traits for variable length column operations
 """
 abstract type VarColHandler end
-
 struct StringVarColHandler <: VarColHandler end
 struct NumericVarColHandler <: VarColHandler end
 struct UnsupportedVarColHandler <: VarColHandler end
+
+# Define varcolhandler function
+function varcolhandler(::Type{String})
+    StringVarColHandler()
+end
+
+function varcolhandler(::Type{Vector{T}}) where T <: Number
+    NumericVarColHandler()
+end
+
+function varcolhandler(::Type{T}) where T
+    UnsupportedVarColHandler()
+end
 
 # Type trait definitions
 varcolhandler(::Type{<:Vector{String}}) = StringVarColHandler()

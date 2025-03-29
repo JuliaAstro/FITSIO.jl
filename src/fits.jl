@@ -161,15 +161,26 @@ function getindex(f::FITS, name::AbstractString, ver::Int=0)
         return f.hdus[i]
     end
 end
-
 Base.haskey(f::FITS, i::Integer) = i ∈ 1:length(f)
 
 function Base.haskey(f::FITS, name::AbstractString)
     fits_assert_open(f.fitsfile)
-    GC.@preserve f name begin
-        any(1:length(f)) do i
-            fits_movabs_hdu(f.fitsfile, i)
-            fits_try_read_extname(f.fitsfile) == name
+    
+    @static if VERSION < v"1.6"
+        str_name = String(name)
+        GC.@preserve f str_name begin
+            any(1:length(f)) do i
+                fits_movabs_hdu(f.fitsfile, i)
+                str_extname = String(fits_try_read_extname(f.fitsfile))
+                str_extname == str_name
+            end
+        end
+    else
+        GC.@preserve f name begin
+            any(1:length(f)) do i
+                fits_movabs_hdu(f.fitsfile, i)
+                fits_try_read_extname(f.fitsfile) == name
+            end
         end
     end
 end

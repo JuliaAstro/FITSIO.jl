@@ -23,18 +23,31 @@ See also: [`parse_header_val`](@ref).
 
 """
 function try_parse_hdrval(::Type{Bool}, s::String)
-    GC.@preserve s begin
-        if length(s) == 1
-            if s[1] == 'T'
+    @static if VERSION < v"1.6"
+        # For Julia 1.3: Use direct string access without view
+        str = String(s)  # Ensure we have a proper String
+        if length(str) == 1
+            if str[1] == 'T'
                 return true
-            elseif s[1] == 'F'
+            elseif str[1] == 'F'
                 return false
             end
         end
         return nothing
+    else
+        # For Julia 1.6+: Use GC.@preserve with proper string handling
+        GC.@preserve s begin
+            if length(s) == 1
+                if s[1] == 'T'
+                    return true
+                elseif s[1] == 'F'
+                    return false
+                end
+            end
+            return nothing
+        end
     end
 end
-
 # Note that trailing whitespaces are not significant in FITS header
 # keywords, but *leading* whitespaces are, so "'    '" parses as " " (a
 # single space).  See CFITSIO manual section 4.5 for details.

@@ -260,22 +260,33 @@ end
 # (separate implementation from normal fits_write_col function because
 #  we must make separate calls to `fits_write_col` for each row.)
 """
+    VarColHandler
+
 Abstract type for handling variable length column operations in FITS files.
 """
 abstract type VarColHandler end
 
+
 """
+    StringVarColHandler <: VarColHandler
+
 Handler for variable length string columns in FITS files.
+Used to handle reading and writing of variable-length string arrays.
 """
 struct StringVarColHandler <: VarColHandler end
 
 """
+    NumericVarColHandler <: VarColHandler
+
 Handler for variable length numeric columns in FITS files.
+Used to handle reading and writing of variable-length numeric arrays.
 """
 struct NumericVarColHandler <: VarColHandler end
-
 """
+    UnsupportedVarColHandler <: VarColHandler
+
 Handler for unsupported variable length column types in FITS files.
+Used to handle error cases for unsupported data types.
 """
 struct UnsupportedVarColHandler <: VarColHandler end
 
@@ -288,10 +299,19 @@ struct UnsupportedVarColHandler <: VarColHandler end
 
 Determine the appropriate variable column handler for a given type.
 
-Returns:
+# Returns
 - `StringVarColHandler` for String types
 - `NumericVarColHandler` for numeric vector types
 - `UnsupportedVarColHandler` for unsupported types
+
+# Examples
+```julia
+varcolhandler(String)                  # Returns StringVarColHandler()
+varcolhandler(Vector{Float64})         # Returns NumericVarColHandler()
+varcolhandler(Vector{String})          # Returns StringVarColHandler()
+varcolhandler(Vector{Vector{Float64}}) # Returns NumericVarColHandler()
+varcolhandler(Complex{Float64})        # Returns UnsupportedVarColHandler()
+```
 """
 function varcolhandler(::Type{String})
     StringVarColHandler()

@@ -12,7 +12,13 @@ export FITS,
        get_comment,
        set_comment!,
        copy_section,
-       default_header
+       default_header,
+       fits_read_var_col,
+       fits_write_var_col,
+       varcolhandler,
+       StringVarColHandler,
+       NumericVarColHandler,
+       UnsupportedVarColHandler
 
 import Base: getindex,
              setindex!,

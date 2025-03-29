@@ -397,15 +397,27 @@ end
 
     # Ref: https://github.com/JuliaAstro/FITSIO.jl/issues/163
     @testset "String key" begin
-        a = ones(3,3)
         tempnamefits() do fname
+            # Create test data
+            a = ones(3,3)
+            
             FITS(fname, "w") do f
                 GC.@preserve a begin
+                    # Write data with name
                     write(f, a, name="a")
+                    
+                    # For Julia < 1.6, handle strings explicitly
                     @static if VERSION < v"1.6"
-                        read_data = read(f[String("a")])
-                        @test read_data == a
+                        key_a = String("a")
+                        GC.@preserve key_a begin
+                            read_data = read(f[key_a])
+                            @test read_data == a
+                        end
+                        
+                        # Read by index
                         @test read(f[1]) == a
+                        
+                        # Test haskey with strings
                         key_a = String("a")
                         key_b = String("b")
                         GC.@preserve key_a key_b begin
@@ -413,13 +425,13 @@ end
                             @test !haskey(f, key_b)
                         end
                     else
-                        GC.@preserve begin
-                            @test read(f["a"]) == a
-                            @test read(f[1]) == a
-                            @test haskey(f, "a")
-                            @test !haskey(f, "b")
-                        end
+                        @test read(f["a"]) == a
+                        @test read(f[1]) == a
+                        @test haskey(f, "a")
+                        @test !haskey(f, "b")
                     end
+                    
+                    # Test numeric keys (same for all versions)
                     @test haskey(f, 1)
                     @test !haskey(f, 2)
                 end
@@ -677,35 +689,32 @@ end
 @testset "FITSHeader" begin
     tempnamefits() do fname
         FITS(fname, "w") do f
+
             # test that show() works on an empty file and that the beginning and end
             # arre what we expect.
-            s = GC.@preserve f repr(f)
+            s = repr(f)
             @test s[1:6] == "File: "
             @test s[end-7:end] == "No HDUs."
 
             @test_throws ErrorException FITSHeader(["KEY1"], [1, 2, 3], ["comment 1", "comment 2"])
 
-            inhdr = GC.@preserve begin
-                FITSHeader(["FLTKEY", "INTKEY", "BOOLKEY", "STRKEY", "COMMENT",
-                            "HISTORY"],
-                           [1.0, 1, true, "string value", nothing, nothing],
-                           ["floating point keyword",
-                            "",
-                            "boolean keyword",
-                            "string value",
-                            "this is a comment",
-                            "this is a history"])
-            end
-            inhdr2 = GC.@preserve begin
-                FITSHeader(map(NamedTuple{(:key,:value,:comment)}, [
-                    ("FLTKEY", 1.0, "floating point keyword",),
-                    ("INTKEY", 1, "",),
-                    ("BOOLKEY", true, "boolean keyword",),
-                    ("STRKEY", "string value", "string value",),
-                    ("COMMENT", nothing, "this is a comment",),
-                    ("HISTORY", nothing, "this is a history",),
-                ]))
-            end
+            inhdr = FITSHeader(["FLTKEY", "INTKEY", "BOOLKEY", "STRKEY", "COMMENT",
+                                "HISTORY"],
+                               [1.0, 1, true, "string value", nothing, nothing],
+                               ["floating point keyword",
+                                "",
+                                "boolean keyword",
+                                "string value",
+                                "this is a comment",
+                                "this is a history"])
+            inhdr2 = FITSHeader(map(NamedTuple{(:key,:value,:comment)}, [
+                ("FLTKEY", 1.0, "floating point keyword",),
+                ("INTKEY", 1, "",),
+                ("BOOLKEY", true, "boolean keyword",),
+                ("STRKEY", "string value", "string value",),
+                ("COMMENT", nothing, "this is a comment",),
+                ("HISTORY", nothing, "this is a history",),
+            ]))
             @test inhdr.keys == inhdr2.keys
             @test inhdr.values == inhdr2.values
             @test inhdr.comments == inhdr2.comments
@@ -718,121 +727,104 @@ STRKEY  = 'string value'       / string value
 COMMENT this is a comment
 HISTORY this is a history"""
 
-            @static if VERSION < v"1.6"
-                GC.@preserve inhdr begin
-                    inhdr["INTKEY"] = Int64(2)  # test setting by key
-                    inhdr[1] = Float64(2.0)  # test settting by index
-                    set_comment!(inhdr, String("INTKEY"), "integer keyword")
-                end
-            else
-                inhdr["INTKEY"] = 2  # test setting by key
-                inhdr[1] = 2.0  # test settting by index
-                set_comment!(inhdr, "INTKEY", "integer keyword")
-            end
+            inhdr["INTKEY"] = 2  # test setting by key
+            inhdr[1] = 2.0  # test settting by index
+            set_comment!(inhdr, "INTKEY", "integer keyword") # test setting a comment
 
             # Test reading possibly missing keyword
-            GC.@preserve inhdr begin
-                @test_throws KeyError inhdr["BADKEY"]
-                @test getkey(inhdr, "BADKEY", nothing) === nothing
-                @test getkey(inhdr, "INTKEY", nothing) == "INTKEY"
-                @test get(inhdr, "BADKEY", nothing) === nothing
-                @test get(inhdr, "INTKEY", nothing) == inhdr["INTKEY"]
-                @test get(() -> nothing, inhdr, "BADKEY") == nothing
-                @test get(() -> nothing, inhdr, "INTKEY") == inhdr["INTKEY"]
-            end
+            @test_throws KeyError inhdr["BADKEY"]
+            @test getkey(inhdr, "BADKEY", nothing) === nothing
+            @test getkey(inhdr, "INTKEY", nothing) == "INTKEY"
+            @test get(inhdr, "BADKEY", nothing) === nothing
+            @test get(inhdr, "INTKEY", nothing) == inhdr["INTKEY"]
+            @test get(() -> nothing, inhdr, "BADKEY") == nothing
+            @test get(() -> nothing, inhdr, "INTKEY") == inhdr["INTKEY"]
 
             indata = reshape(Float32[1:100;], 5, 20)
-            GC.@preserve indata inhdr begin
-                write(f, indata; header=inhdr)
+            write(f, indata; header=inhdr)
 
-                # Write a second block.
-                inhdr2 = deepcopy(inhdr)
-                inhdr2["INTKEY"] = 3 # Set it to a different value.
-                write(f, indata; header=inhdr2)
+            # Write a second block.
+            inhdr2 = deepcopy(inhdr)
+            inhdr2["INTKEY"] = 3 # Set it to a different value.
+            write(f, indata; header=inhdr2)
+
+            outhdr = read_header(f[1])
+            @test outhdr["FLTKEY"] === 2.0
+            @test outhdr["INTKEY"] === 2
+            @test outhdr["BOOLKEY"] === true
+            @test outhdr["STRKEY"] == "string value"
+            @test get_comment(outhdr, 13) == "this is a comment"
+            @test get_comment(outhdr, 14) == "this is a history"
+            @test length(outhdr) == 14
+            @test haskey(outhdr, "FLTKEY")
+
+            # Read entire header as a single string
+            s = read_header(f[1], String)
+            @test s[1:9] == "SIMPLE  ="  # all headers should start with this.
+            @test length(s) == (9 + length(inhdr)) * 80  # 9 lines = 8 default + "END"
+
+            # Test to check that read_header gets the right block even after reading another.
+            s_reread = read_header(f[1])
+            s_reread = read_header(f[2])
+            s_reread = read_header(f[1], String)
+            @test s == s_reread
+
+            # update an existing keyword, and read it directly
+            write_key(f[1], "FLTKEY", 3.0)
+            @test read_key(f[1], 9) == ("FLTKEY", 3.0, "floating point keyword")
+            @test read_key(f[1], "FLTKEY") == (3.0, "floating point keyword")
+
+            # Test appending a keyword, then modifying a keyword of different
+            # values with write_key()
+            for value in [1.0, "string value", 42, false, nothing]
+                write_key(f[1], "NEWKEY", value, "new key comment")
+                @test read_key(f[1], "NEWKEY") == (value, "new key comment")
+                @test read_key(f[1], 15) == ("NEWKEY", value, "new key comment")
             end
 
-            GC.@preserve f begin
-                outhdr = read_header(f[1])
-                @test outhdr["FLTKEY"] === 2.0
-                @test outhdr["INTKEY"] === 2
-                @test outhdr["BOOLKEY"] === true
-                @test outhdr["STRKEY"] == "string value"
-                @test get_comment(outhdr, 13) == "this is a comment"
-                @test get_comment(outhdr, 14) == "this is a history"
-                @test length(outhdr) == 14
-                @test haskey(outhdr, "FLTKEY")
-
-                # Read entire header as a single string
-                s = read_header(f[1], String)
-                @test s[1:9] == "SIMPLE  ="  # all headers should start with this.
-                @test length(s) == (9 + length(inhdr)) * 80  # 9 lines = 8 default + "END"
-
-                # Test to check that read_header gets the right block even after reading another.
-                s_reread = read_header(f[1])
-                s_reread = read_header(f[2])
-                s_reread = read_header(f[1], String)
-                @test s == s_reread
-
-                # update an existing keyword, and read it directly
-                write_key(f[1], "FLTKEY", 3.0)
-                @test read_key(f[1], 9) == ("FLTKEY", 3.0, "floating point keyword")
-                @test read_key(f[1], "FLTKEY") == (3.0, "floating point keyword")
-
-                # Test appending a keyword, then modifying a keyword of different
-                # values with write_key()
-                for value in [1.0, "string value", 42, false, nothing]
-                    write_key(f[1], "NEWKEY", value, "new key comment")
-                    @test read_key(f[1], "NEWKEY") == (value, "new key comment")
-                    @test read_key(f[1], 15) == ("NEWKEY", value, "new key comment")
-                end
-
-                # Test that show() works and that the beginning of output is what we expect.
-                @test repr(f)[1:6] == "File: "
-            end
+            # Test that show() works and that the beginning of output is what we expect.
+            @test repr(f)[1:6] == "File: "
 
             # Test the deletion of a key and verify that deleting a
             # non-existing key throws an error here.
-            dhdr = GC.@preserve inhdr deepcopy(inhdr)
-            GC.@preserve dhdr begin
-                delete!(dhdr, "FLTKEY")
-                @test !haskey(dhdr, "FLTKEY")
+            dhdr = deepcopy(inhdr)
+            delete!(dhdr, "FLTKEY")
+            @test !haskey(dhdr, "FLTKEY")
 
-                @test_throws KeyError delete!(dhdr, "aaabbbbccccdddd")
+            @test_throws KeyError delete!(dhdr, "aaabbbbccccdddd")
 
-                # Test multiple deletes
-                dhdr = deepcopy(inhdr)
-                delete!(dhdr, "FLTKEY")
-                delete!(dhdr, "INTKEY")
-                @test !haskey(dhdr, "FLTKEY") & !haskey(dhdr, "INTKEY")
-            end
+
+            # Test multiple deletes
+            dhdr = deepcopy(inhdr)
+            delete!(dhdr, "FLTKEY")
+            delete!(dhdr, "INTKEY")
+            @test !haskey(dhdr, "FLTKEY") & !haskey(dhdr, "INTKEY")
+
+
         end
 
-        hdr = GC.@preserve fname FITS(fname, "r") do f
+        hdr = FITS(fname, "r") do f
             read_header(f[1])
         end
-        hdrfname = GC.@preserve fname read_header(fname)
+        hdrfname = read_header(fname)
         @test keys(hdr) == keys(hdrfname)
         @test values(hdr) == values(hdrfname)
-        GC.@preserve hdr hdrfname begin
-            for k in keys(hdr)
-                @test get_comment(hdr, k) == get_comment(hdrfname, k)
-            end
+        for k in keys(hdr)
+            @test get_comment(hdr, k) == get_comment(hdrfname, k)
         end
     end
 
     @testset "default_header" begin
         data = fill(Int16(2), 5, 6, 2)
-        GC.@preserve data begin
-            hdr = default_header(data)
-            @test hdr isa FITSHeader
-            @test hdr["SIMPLE"] == true
-            @test hdr["BITPIX"] == 16
-            @test hdr["NAXIS"] == 3
-            @test hdr["NAXIS1"] == 2
-            @test hdr["NAXIS2"] == 6
-            @test hdr["NAXIS3"] == 5
-            @test hdr["EXTEND"] == true
-        end
+        hdr = default_header(data)
+        @test hdr isa FITSHeader
+        @test hdr["SIMPLE"] == true
+        @test hdr["BITPIX"] == 16
+        @test hdr["NAXIS"] == 3
+        @test hdr["NAXIS1"] == 2
+        @test hdr["NAXIS2"] == 6
+        @test hdr["NAXIS3"] == 5
+        @test hdr["EXTEND"] == true
     end
 end
 
@@ -905,71 +897,136 @@ end
     end
 end
 @testset "Variable Length Column Operations" begin
+    # Helper function to create test data
     function create_test_data()
-        strings = ["short", "medium length", "this is a longer string"]
-        numbers = [Float64[1,2], Float64[3,4,5], Float64[6]]
-        integers = [Int64[1], Int64[1,2,3], Int64[1,2]]
-        return strings, numbers, integers
+        return (
+            strings = ["short", "medium length", "very long string"],
+            numbers = [[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]],
+            integers = [[1], [1,2,3], [1,2]]
+        )
     end
 
-    @testset "Mixed Variable Length Types" begin
-        tempnamefits() do fname
-            strings, numbers, integers = create_test_data()
-
+    tempnamefits() do fname
+        # Test writing variable length columns
+        let
+            test_data = create_test_data()
+            
             FITS(fname, "w") do f
-                # Ensure primary HDU is created properly
-                GC.@preserve begin
-                    write(f, zeros(Float32, 1))  # Primary HDU
-                    
-                    # Test writing multiple variable length columns of different types together
-                    data = Dict(
-                        "STRINGS" => strings,
-                        "NUMBERS" => numbers,
-                        "INTEGERS" => integers
-                    )
-                    write(f, data; varcols=["STRINGS", "NUMBERS", "INTEGERS"])
-                end
-            end
+                # Write primary HDU first
+                write(f, zeros(Float32, 1))
 
+                # Create data dictionary
+                data = Dict(
+                    "STRINGS" => test_data.strings,
+                    "NUMBERS" => test_data.numbers,
+                    "INTEGERS" => test_data.integers
+                )
+
+                # Write table with variable length columns
+                write(f, data; varcols=["STRINGS", "NUMBERS", "INTEGERS"])
+            end
+        end
+
+        # Test reading variable length columns
+        let
+            test_data = create_test_data()
+            
             FITS(fname, "r") do f
-                hdu = f[2]
-                
-                # Test reading and verifying mixed types with GC protection
-                GC.@preserve hdu begin
-                    read_strings = read(hdu, "STRINGS")
-                    read_numbers = read(hdu, "NUMBERS")
-                    read_integers = read(hdu, "INTEGERS")
-                    
-                    # Version-specific string comparison
-                    @static if VERSION < v"1.6"
-                        # Direct string comparison for older Julia
-                        @test all(String.(read_strings) .== String.(strings))
-                    else
-                        # Modern comparison
-                        @test all(read_strings .== strings)
-                    end
-                    
-                    # Verify numeric data
-                    @test all(length.(read_numbers) .== length.(numbers))
-                    @test all(length.(read_integers) .== length.(integers))
-                    
-                    # Verify content equality with GC protection
-                    for (orig, read) in zip(numbers, read_numbers)
-                        GC.@preserve orig read begin
-                            @test all(orig .== read)
-                        end
-                    end
-                    
-                    for (orig, read) in zip(integers, read_integers)
-                        GC.@preserve orig read begin
-                            @test all(orig .== read)
-                        end
-                    end
+                hdu = f[2]  # Skip primary HDU
+
+                # Test string column
+                @test read(hdu, "STRINGS") == test_data.strings
+
+                # Test numeric columns with explicit type conversion
+                numbers = read(hdu, "NUMBERS")
+                @test length(numbers) == length(test_data.numbers)
+                for (i, (orig, read_val)) in enumerate(zip(test_data.numbers, numbers))
+                    @test length(read_val) == length(orig)
+                    @test all(read_val .== orig)
+                end
+
+                integers = read(hdu, "INTEGERS")
+                @test length(integers) == length(test_data.integers)
+                for (i, (orig, read_val)) in enumerate(zip(test_data.integers, integers))
+                    @test length(read_val) == length(orig)
+                    @test all(read_val .== orig)
                 end
             end
         end
     end
+end
 
+@testset "Error Handling for Variable Length Columns" begin
+    tempnamefits() do fname
+        FITS(fname, "w") do f
+            # Write primary HDU
+            write(f, zeros(Float32, 1))
+
+            # Test ASCII table restriction
+            @test_throws ErrorException begin
+                write(f, Dict("TEST" => [[1,2], [3,4]]); 
+                      hdutype=ASCIITableHDU, 
+                      varcols=["TEST"])
+            end
+
+            # Test unsupported type
+            @test_throws ErrorException begin
+                complex_data = [[1+2im], [3+4im]]
+                write(f, Dict("COMPLEX" => complex_data); 
+                      varcols=["COMPLEX"])
+            end
+        end
+    end
+end
+
+@testset "Table Writing" begin
+    tempnamefits() do fname
+        FITS(fname, "w") do f
+            # Write primary HDU
+            write(f, zeros(Float32, 1))
+
+            # Create simple table
+            data = Dict(
+                "COL1" => [1, 2, 3],
+                "COL2" => ["a", "b", "c"]
+            )
+
+            # Write table
+            write(f, data)
+
+            # Verify data
+            hdu = f[2]
+            @test read(hdu, "COL1") == [1, 2, 3]
+            @test read(hdu, "COL2") == ["a", "b", "c"]
+        end
+    end
+end
+
+@testset "Variable Column Type Handling" begin
+    tempnamefits() do fname
+        FITS(fname, "w") do f
+            # Write primary HDU
+            write(f, zeros(Float32, 1))
+
+            # Test different variable length types
+            data = Dict(
+                "VAR_INT" => [[1], [1,2], [1,2,3]],
+                "VAR_FLOAT" => [[1.0], [1.0,2.0], [1.0,2.0,3.0]],
+                "VAR_STRING" => ["a", "bb", "ccc"]
+            )
+
+            # Write data
+            write(f, data; varcols=["VAR_INT", "VAR_FLOAT", "VAR_STRING"])
+
+            # Verify data
+            hdu = f[2]
+            @test all(read(hdu, "VAR_INT")[i] == data["VAR_INT"][i] 
+                     for i in 1:3)
+            @test all(read(hdu, "VAR_FLOAT")[i] == data["VAR_FLOAT"][i] 
+                     for i in 1:3)
+            @test read(hdu, "VAR_STRING") == data["VAR_STRING"]
+        end
+    end
     @testset "Error Handling for Invalid Types" begin
         tempnamefits() do fname
             FITS(fname, "w") do f
@@ -979,6 +1036,206 @@ end
                     # Test deeply nested vector rejection
                     nested_data = Dict("NESTED" => [[[1,2], [3,4]]])
                     @test_throws ErrorException write(f, nested_data; varcols=["NESTED"])
+                end
+            end
+        end
+    end
+end
+# Define test data creation function
+function create_test_data()
+    strings = ["short", "medium length", "very long string"]
+    numbers = Vector{Float64}[[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]]
+    integers = Vector{Int64}[[1], [1,2,3], [1,2]]
+    return strings, numbers, integers
+end
+
+@testset "Mixed Variable Length Types" begin
+    tempnamefits() do fname
+        strings, numbers, integers = create_test_data()
+
+        FITS(fname, "w") do f
+            # Ensure primary HDU is created properly
+            GC.@preserve f strings numbers integers begin
+                write(f, zeros(Float32, 1))  # Primary HDU
+                
+                # Test writing multiple variable length columns of different types together
+                data = Dict(
+                    "STRINGS" => strings,
+                    "NUMBERS" => numbers,
+                    "INTEGERS" => integers
+                )
+                write(f, data; varcols=["STRINGS", "NUMBERS", "INTEGERS"])
+            end
+        end
+
+        FITS(fname, "r") do f
+            hdu = f[2]
+            
+            # Test reading and verifying mixed types with GC protection
+            GC.@preserve f hdu strings numbers integers begin
+                read_strings = read(hdu, "STRINGS")
+                read_numbers = read(hdu, "NUMBERS")
+                read_integers = read(hdu, "INTEGERS")
+                
+                # Version-specific string comparison
+                @static if VERSION < v"1.6"
+                    # Direct string comparison for older Julia
+                    @test all(String.(read_strings) .== String.(strings))
+                else
+                    # Modern comparison
+                    @test read_strings == strings
+                end
+                
+                # Verify numeric data
+                @test all(length.(read_numbers) .== length.(numbers))
+                @test all(length.(read_integers) .== length.(integers))
+                
+                # Verify content equality with GC protection
+                for (orig, read) in zip(numbers, read_numbers)
+                    GC.@preserve orig read begin
+                        @test all(orig .== read)
+                    end
+                end
+                
+                for (orig, read) in zip(integers, read_integers)
+                    GC.@preserve orig read begin
+                        @test all(orig .== read)
+                    end
+                end
+            end
+        end
+    end
+end
+
+if Sys.iswindows()
+    ENV["JULIA_CPU_THREADS"] = "1"
+    Base.GC.enable(true)
+end
+
+@testset "Variable Length Column Operations" begin
+    @testset "Reading Operations" begin
+        tempnamefits() do fname
+            FITS(fname, "w") do f
+                # Write primary HDU first
+                write(f, zeros(Float32, 1))
+
+                # Prepare test data
+                let
+                    string_data = ["short", "medium length", "very long string"]
+                    numeric_data = [[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]]
+                    int_data = [[1], [1,2,3], [1,2]]
+
+                    # Write data
+                    data = Dict(
+                        "STRINGS" => string_data,
+                        "NUMBERS" => numeric_data,
+                        "INTEGERS" => int_data
+                    )
+                    write(f, data; varcols=["STRINGS", "NUMBERS", "INTEGERS"])
+                end
+            end
+
+            # Read and verify in separate FITS instance
+            FITS(fname, "r") do f
+                hdu = f[2]  # Skip primary HDU
+                
+                # Test string column
+                let
+                    expected = ["short", "medium length", "very long string"]
+                    result = read(hdu, "STRINGS")
+                    @test result == expected
+                end
+
+                # Test numeric column
+                let
+                    expected = [[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]]
+                    result = read(hdu, "NUMBERS")
+                    @test length(result) == length(expected)
+                    for (r, e) in zip(result, expected)
+                        @test r == e
+                    end
+                end
+
+                # Test integer column
+                let
+                    expected = [[1], [1,2,3], [1,2]]
+                    result = read(hdu, "INTEGERS")
+                    @test length(result) == length(expected)
+                    for (r, e) in zip(result, expected)
+                        @test r == e
+                    end
+                end
+            end
+        end
+    end
+
+    @testset "Writing Operations" begin
+        tempnamefits() do fname
+            FITS(fname, "w") do f
+                # Write primary HDU
+                write(f, zeros(Float32, 1))
+
+                # Test string column
+                let
+                    data = ["short", "medium length", "very long string"]
+                    write(f, Dict("STRINGS" => data); varcols=["STRINGS"])
+                    result = read(f[end], "STRINGS")
+                    @test result == data
+                end
+
+                # Test numeric column
+                let
+                    data = [[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]]
+                    write(f, Dict("NUMBERS" => data); varcols=["NUMBERS"])
+                    result = read(f[end], "NUMBERS")
+                    @test all(result[i] == data[i] for i in 1:length(data))
+                end
+
+                # Test error cases
+                @test_throws ErrorException write(f, Dict("TEST" => [1,2,3]); 
+                    hdutype=ASCIITableHDU, 
+                    varcols=["TEST"])
+
+                @test_throws ErrorException write(f, 
+                    Dict("COMPLEX" => [[1+2im], [3+4im]]); 
+                    varcols=["COMPLEX"])
+            end
+        end
+    end
+
+    @testset "Table Functions" begin
+        tempnamefits() do fname
+            FITS(fname, "w") do f
+                # Write primary HDU
+                write(f, zeros(Float32, 1))
+
+                let
+                    # Basic table
+                    colnames = ["COL1", "COL2"]
+                    coldata = [[1, 2, 3], ["a", "b", "c"]]
+                    write(f, Dict(zip(colnames, coldata)))
+                    
+                    @test read(f[end], "COL1") == [1, 2, 3]
+                    @test read(f[end], "COL2") == ["a", "b", "c"]
+
+                    # Test with units
+                    units = Dict("COL1" => "m/s", "COL2" => "kg")
+                    write(f, Dict(zip(colnames, coldata)); units=units)
+
+                    # Test with version
+                    write(f, Dict(zip(colnames, coldata)); ver=2)
+                    @test read_key(f[end], "EXTVER") == (2, "")
+
+                    # Test with header
+                    hdr = FITSHeader(["TEST"], [1], ["test comment"])
+                    write(f, Dict(zip(colnames, coldata)); header=hdr)
+                    @test read_key(f[end], "TEST") == (1, "test comment")
+
+                    # Test variable length
+                    var_data = [[[1], [1,2]], ["a", "bb"]]
+                    write(f, Dict(zip(colnames, var_data)); varcols=["COL1"])
+                    result = read(f[end], "COL1")
+                    @test all(result[i] == var_data[1][i] for i in 1:length(var_data[1]))
                 end
             end
         end

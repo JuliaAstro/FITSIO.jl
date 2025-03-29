@@ -400,12 +400,9 @@ function write_internal(f::FITS, colnames::Vector{String},
     end
 
     GC.@preserve f colnames coldata begin
-        # Add metadata to header if it exists
+        # Add header if it exists
         local_header = if header isa FITSHeader
-            hdr_copy = deepcopy(header)
-            hdr_copy["CREATOR"] = "kashish2210"
-            hdr_copy["DATE"] = "2025-03-29 00:13:36"
-            hdr_copy
+            deepcopy(header)
         else
             nothing
         end
@@ -463,7 +460,7 @@ function write_internal(f::FITS, colnames::Vector{String},
             end
         end
 
-        # Write header with metadata
+        # Write header if exists
         if local_header !== nothing
             fits_write_header(f.fitsfile, local_header, true)
         end

@@ -260,14 +260,39 @@ end
 # (separate implementation from normal fits_write_col function because
 #  we must make separate calls to `fits_write_col` for each row.)
 """
-Type traits for variable length column operations
+Abstract type for handling variable length column operations in FITS files.
 """
 abstract type VarColHandler end
+
+"""
+Handler for variable length string columns in FITS files.
+"""
 struct StringVarColHandler <: VarColHandler end
+
+"""
+Handler for variable length numeric columns in FITS files.
+"""
 struct NumericVarColHandler <: VarColHandler end
+
+"""
+Handler for unsupported variable length column types in FITS files.
+"""
 struct UnsupportedVarColHandler <: VarColHandler end
 
-# Define varcolhandler function
+"""
+    varcolhandler(::Type{String})
+    varcolhandler(::Type{Vector{T}}) where T <: Number
+    varcolhandler(::Type{T}) where T
+    varcolhandler(::Type{<:Vector{String}})
+    varcolhandler(::Type{<:Vector{Vector{T}}} where T)
+
+Determine the appropriate variable column handler for a given type.
+
+Returns:
+- `StringVarColHandler` for String types
+- `NumericVarColHandler` for numeric vector types
+- `UnsupportedVarColHandler` for unsupported types
+"""
 function varcolhandler(::Type{String})
     StringVarColHandler()
 end
@@ -285,39 +310,30 @@ varcolhandler(::Type{<:Vector{String}}) = StringVarColHandler()
 varcolhandler(::Type{<:Vector{Vector{T}}} where T) = NumericVarColHandler()
 varcolhandler(::Type) = UnsupportedVarColHandler()
 
+"""
+    fits_read_var_col(f::FITSFile, colnum::Integer, data::T) where T
 
+Read variable-length column data from a FITS file.
+
+# Arguments
+- `f`: FITS file to read from
+- `colnum`: Column number (1-based)
+- `data`: Pre-allocated array to store the read data
+"""
 function fits_read_var_col(f::FITSFile, colnum::Integer, data::T) where T
     fits_read_var_col(f, colnum, data, varcolhandler(T))
 end
-"""
-    fits_write_var_col(f::FITSFile, colnum::Integer, data)
-    fits_write_var_col(data)
 
-Write variable-length column data to a FITS file.
+"""
+    fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{Vector{T}}, ::NumericVarColHandler) where T
+
+Read a variable length array column of numbers.
 
 # Arguments
-- `f::FITSFile`: The FITS file to write to
-- `colnum::Integer`: The column number (1-based)
-- `data`: The data to write. Can be:
-  * Vector{String} for string columns
-  * Vector{Vector{T}} where T<:Number for numeric columns
-
-# Examples
-```julia
-FITS("example.fits", "w") do f
-    # Write string column
-    data = ["short", "medium", "long string"]
-    fits_write_var_col(f, 1, data)
-
-    # Write numeric column
-    numbers = [[1.0, 2.0], [3.0, 4.0, 5.0], [6.0]]
-    fits_write_var_col(f, 2, numbers)
-end
-```
+- `f`: FITS file to read from
+- `colnum`: Column number (1-based)
+- `data`: Pre-allocated vector of vectors to store numeric data
 """
-# Read a variable length array column of numbers
-# (separate implementation from normal fits_read_col function because
-# the length of each vector must be determined for each row.)
 function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{Vector{T}}, 
                           ::NumericVarColHandler) where T
     GC.@preserve f data begin
@@ -330,9 +346,16 @@ function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{Vector{T}}
     end
 end
 
-# Read a variable length array column of strings
-# (Must be separate implementation from normal fits_read_col function because
-# the length of each string must be determined for each row.)
+"""
+    fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{String}, ::StringVarColHandler)
+
+Read a variable length array column of strings.
+
+# Arguments
+- `f`: FITS file to read from
+- `colnum`: Column number (1-based)
+- `data`: Pre-allocated vector to store string data
+"""
 function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{String}, 
                           ::StringVarColHandler)
     status = Ref{Cint}(0)
@@ -360,20 +383,45 @@ function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{String},
     end
 end
 
-# Error handler for unsupported types
+"""
+    fits_read_var_col(f::FITSFile, colnum::Integer, data::Any, ::UnsupportedVarColHandler)
+
+Error handler for unsupported variable length column types.
+
+# Arguments
+- `f`: FITS file
+- `colnum`: Column number
+- `data`: Data of unsupported type
+"""
 function fits_read_var_col(f::FITSFile, colnum::Integer, data::Any, 
                           ::UnsupportedVarColHandler)
     error("Unsupported variable length column type")
 end
 
 """
-Write a variable length column - main dispatch function
+    fits_write_var_col(f::FITSFile, colnum::Integer, data::T) where T
+
+Write variable-length column data to a FITS file.
+
+# Arguments
+- `f`: FITS file to write to
+- `colnum`: Column number (1-based)
+- `data`: Data to write (Vector{String} or Vector{Vector{T}} where T<:Number)
 """
 function fits_write_var_col(f::FITSFile, colnum::Integer, data::T) where T
     fits_write_var_col(f, colnum, data, varcolhandler(T))
 end
 
-# String implementation
+"""
+    fits_write_var_col(f::FITSFile, colnum::Integer, data::Vector{String}, ::StringVarColHandler)
+
+Write a variable length string column to a FITS file.
+
+# Arguments
+- `f`: FITS file to write to
+- `colnum`: Column number (1-based)
+- `data`: Vector of strings to write
+"""
 function fits_write_var_col(f::FITSFile, colnum::Integer, data::Vector{String}, 
                            ::StringVarColHandler)
     for el in data
@@ -388,11 +436,6 @@ function fits_write_var_col(f::FITSFile, colnum::Integer, data::Vector{String},
             str_data = data[i]
             GC.@preserve str_data begin
                 buffer[] = pointer(str_data)
-                # Note that when writing to a variable ASCII column, the
-                # 'firstelem' and 'nelements' parameter values in the
-                # fits_write_col routine are ignored and the number of
-                # characters to write is simply determined by the length of
-                # the input null-terminated character string.
                 ccall((:ffpcls, libcfitsio), Cint,
                       (Ptr{Cvoid}, Cint, Int64, Int64, Int64, Ref{Ptr{UInt8}},
                        Ref{Cint}),
@@ -403,7 +446,16 @@ function fits_write_var_col(f::FITSFile, colnum::Integer, data::Vector{String},
     end
 end
 
-# Numeric implementation
+"""
+    fits_write_var_col(f::FITSFile, colnum::Integer, data::Vector{Vector{T}}, ::NumericVarColHandler) where T<:FITSTableScalar
+
+Write a variable length numeric column to a FITS file.
+
+# Arguments
+- `f`: FITS file to write to
+- `colnum`: Column number (1-based)
+- `data`: Vector of numeric vectors to write
+"""
 function fits_write_var_col(f::FITSFile, colnum::Integer, data::Vector{Vector{T}}, 
                            ::NumericVarColHandler) where T<:FITSTableScalar
     GC.@preserve f data begin
@@ -416,16 +468,51 @@ function fits_write_var_col(f::FITSFile, colnum::Integer, data::Vector{Vector{T}
     end
 end
 
-# Error handlers
+"""
+    fits_write_var_col(f::FITSFile, colnum::Integer, data::Any, ::UnsupportedVarColHandler)
+
+Error handler for unsupported variable length column types.
+
+# Arguments
+- `f`: FITS file
+- `colnum`: Column number
+- `data`: Data of unsupported type
+
+# Throws
+- `ErrorException` with message about unsupported type
+"""
 function fits_write_var_col(f::FITSFile, colnum::Integer, data::Any, 
                            ::UnsupportedVarColHandler)
     error("column data must be a leaf type: e.g., Vector{Vector{Int}}, not Vector{Vector{T}}.")
 end
 
+"""
+    fits_write_var_col(::Type{ASCIITableHDU}, ::Any)
+
+Error handler for ASCII table HDUs, which do not support variable length columns.
+
+# Throws
+- `ErrorException` indicating lack of support for variable length columns
+"""
 fits_write_var_col(::Type{ASCIITableHDU}, ::Any) = 
     error("variable length columns not supported in ASCII tables")
 
-# Add a new TableHDU to a FITS object
+"""
+    write_internal(f::FITS, colnames::Vector{String}, coldata::Vector, hdutype, name, ver, header, units, varcols)
+
+Add a new TableHDU to a FITS object with support for variable length columns.
+
+# Arguments
+- `f`: FITS object to write to
+- `colnames`: Vector of column names
+- `coldata`: Vector of column data
+- `hdutype`: Type of HDU to create
+- `name`: Name of the extension
+- `ver`: Version number of the extension
+- `header`: Optional header to write
+- `units`: Optional units for columns
+- `varcols`: Specification of variable length columns
+"""
 function write_internal(f::FITS, colnames::Vector{String},
                        coldata::Vector, hdutype, name, ver, header, units,
                        varcols)
@@ -515,7 +602,6 @@ function write_internal(f::FITS, colnames::Vector{String},
     end
     nothing
 end
-
 
 """
     write(f::FITS, colnames, coldata;

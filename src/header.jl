@@ -101,19 +101,17 @@ See also: [`try_parse_hdrval`](@ref).
 
 """
 function fits_try_read_keys(f::FITSFile, ::Type{T}, keys) where T
-    status = Cint[0]
-    value = Vector{UInt8}(undef, 71)
+    (; value, comment) = CFITSIO.fits_read_keyword_buffer()
     for key in keys
-        ccall((:ffgkey, libcfitsio), Cint,
-              (Ptr{Cvoid},Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
-              f.ptr, key, value, C_NULL, status)
-
-        # If the key is found, return it. If there was some other error
-        # besides key not found, throw an error.
-        if status[1] == 0
-            return try_parse_hdrval(T, unsafe_string(pointer(value)))
-        elseif status[1] != 202
-            error(fits_get_errstatus(status[1]))
+        try
+            value_str, comment_str = fits_read_keyword(f, key; value=value, comment=comment)
+            # If the key is found, return it
+            return try_parse_hdrval(T, value_str)
+        catch e
+            # If there was some other error besides key not found, throw an error.
+            if !(e isa CFITSIO.CFITSIOError && e.errcode == 202)
+                rethrow()
+            end
         end
     end
     return nothing
@@ -305,28 +303,22 @@ function read_header(hdu::HDU)
     assert_open(hdu)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
 
-    # Below, we use a direct call to ffgkyn so that we can keep reusing the
-    # same buffers.
-    key = Vector{UInt8}(undef, 81)
-    value = Vector{UInt8}(undef, 81)
-    comment = Vector{UInt8}(undef, 81)
-    status = Cint[0]
+    f = hdu.fitsfile
 
-    nkeys, morekeys = fits_get_hdrspace(hdu.fitsfile)
+    nkeys, morekeys = fits_get_hdrspace(f)
 
     # Initialize output arrays
+    (; keyname, value, comment) = CFITSIO.fits_read_keyn_buffer()
     keys = Vector{String}(undef, nkeys)
     values = Vector{Any}(undef, nkeys)
     comments = Vector{String}(undef, nkeys)
     for i=1:nkeys
-        ccall((:ffgkyn,libcfitsio), Cint,
-              (Ptr{Cvoid},Cint,Ptr{UInt8},Ptr{UInt8},Ptr{UInt8},Ptr{Cint}),
-              hdu.fitsfile.ptr, i, key, value, comment, status)
-        keys[i] = unsafe_string(pointer(key))
-        values[i] = parse_header_val(unsafe_string(pointer(value)))
-        comments[i] = unsafe_string(pointer(comment))
+        keyname_str, value_str, comment_str =
+            fits_read_keyn(f, i; keyname=keyname, value=value, comment=comment)
+        keys[i] = keyname_str
+        values[i] = parse_header_val(value_str)
+        comments[i] = comment_str
     end
-    fits_assert_ok(status[1])
     FITSHeader(keys, values, comments)
 end
 

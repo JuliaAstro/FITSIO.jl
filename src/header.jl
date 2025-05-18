@@ -101,7 +101,8 @@ See also: [`try_parse_hdrval`](@ref).
 
 """
 function fits_try_read_keys(f::FITSFile, ::Type{T}, keys) where T
-    (; value, comment) = CFITSIO.fits_read_keyword_buffer()
+    buf = CFITSIO.fits_read_keyword_buffer()
+    value, comment = buf.value, buf.comment
     for key in keys
         try
             value_str, comment_str = fits_read_keyword(f, key; value=value, comment=comment)
@@ -308,7 +309,8 @@ function read_header(hdu::HDU)
     nkeys, morekeys = fits_get_hdrspace(f)
 
     # Initialize output arrays
-    (; keyname, value, comment) = CFITSIO.fits_read_keyn_buffer()
+    buf = CFITSIO.fits_read_keyn_buffer()
+    keyname, value, comment = buf.keyname, buf.value, buf.comment
     keys = Vector{String}(undef, nkeys)
     values = Vector{Any}(undef, nkeys)
     comments = Vector{String}(undef, nkeys)

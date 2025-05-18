@@ -598,7 +598,7 @@ end
                 el_exp = expected_type[el]
                 [k, string(el_exp), codes[string(el)]]
             end
-            for i in 1:5
+            for i in eachindex(lines_tokens)
                 @test lines_tokens[i] == tokenvec("col$i", indata)
             end
 

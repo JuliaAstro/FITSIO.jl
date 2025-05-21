@@ -82,7 +82,9 @@ import CFITSIO: FITSFile,
                 fits_open_memfile,
                 fits_movnam_hdu,
                 fits_get_hdu_num,
-                fits_get_hdu_type
+                fits_get_hdu_type,
+                fits_read_btblhdr,
+                fits_read_atblhdr
 
 # There are a few direct `ccall`s to libcfitsio in this module. For this, we
 # need a few non-exported things from Libcfitsio: the shared library handle,

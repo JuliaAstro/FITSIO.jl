@@ -172,8 +172,8 @@ parameters.
 """
 mutable struct FITS
     fitsfile::FITSFile
-    filename::AbstractString
-    mode::AbstractString
+    filename::String
+    mode::String
     hdus::Dict{Int, HDU}
 
     # Hold on to memory if backed by a julia buffer
@@ -190,13 +190,13 @@ mutable struct FITS
                 (rm(filename, force = true); createfn(filename)) :
              error("invalid open mode: $mode"))
 
-        new(f, filename, mode, Dict{Int, HDU}(), FITSMemoryHandle(), nothing)
+        new(f, convert(String, filename), convert(String, mode), Dict{Int, HDU}(), FITSMemoryHandle(), nothing)
     end
 
     function FITS(data::Vector{UInt8}, mode::AbstractString="r", filename = "")
         @assert mode == "r"
         f, handle = fits_open_memfile(data, 0)
-        new(f, filename, mode, Dict{Int, HDU}(), handle, data)
+        new(f, convert(String, filename), convert(String, mode), Dict{Int, HDU}(), handle, data)
     end
 end
 

@@ -576,6 +576,9 @@ end
             expected_type = Dict(Int16=>Int32, Int32=>Int32,
                                  Float32=>Float64, Float64=>Float64,
                                  String=>String)
+            codes = Dict("Int16" => "I7", "Int32" => "I12",
+                         "Float32" => "E26.17", "Float64" => "E26.17",
+                         "String" => "A10")
             colnames = FITSIO.colnames(f[3])
             for (colname, incol) in indata
                 outcol = read(f[3], colname)  # table is in extension 3
@@ -586,7 +589,18 @@ end
             # test show/repr on ASCIITableHDU by checking that a couple lines are what we expect
             lines = split(repr(f[3]), "\n")
             @test lines[4] == "Rows: 20"
-            @test lines[6] == "         col3  Float64  E26.17  "
+            lines = strip.(lines[6:end])
+            # we sort the lines as the order of the columns is not guaranteed
+            sort!(lines, by = x -> split(x, " ")[1])
+            lines_tokens = split.(lines, " ", keepempty=false)
+            function tokenvec(k, d)
+                el = eltype(d[k])
+                el_exp = expected_type[el]
+                [k, string(el_exp), codes[string(el)]]
+            end
+            for i in eachindex(lines_tokens)
+                @test lines_tokens[i] == tokenvec("col$i", indata)
+            end
 
             # test variations on AbstractDict (issue #177)
             ordered_indata = OrderedDict(indata)
@@ -605,7 +619,14 @@ end
             # test show/repr on ASCIITableHDU by checking that a couple lines are what we expect
             lines = split(repr(f[3]), "\n")
             @test lines[4] == "Rows: 20"
-            @test lines[6] == "         col3  Float64  E26.17  "
+            lines = strip.(lines[6:end])
+            lines_tokens = split.(lines, " ", keepempty=false)
+
+            keys_ord_vec = collect(keys(ordered_indata))
+            # check that the order is preserved
+            for (i, k) in enumerate(keys_ord_vec)
+                @test lines_tokens[i] == tokenvec(k, ordered_indata)
+            end
         end
     end
     @testset "Tables.jl integration" begin

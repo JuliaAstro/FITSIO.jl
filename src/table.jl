@@ -243,19 +243,16 @@ function fits_write_var_col(f::FITSFile, colnum::Integer,
                             data::Vector{String})
     for el in data; fits_assert_isascii(el); end
     status = Ref{Cint}(0)
-    buffer = Ref{Ptr{UInt8}}()  # holds the address of the current row
-    for i=1:length(data)
-        buffer[] = pointer(data[i])
-
+    for (i,s) in enumerate(data)
         # Note that when writing to a variable ASCII column, the
         # ‘firstelem’ and ‘nelements’ parameter values in the
         # fits_write_col routine are ignored and the number of
         # characters to write is simply determined by the length of
         # the input null-terminated character string.
         ccall((:ffpcls, libcfitsio), Cint,
-              (Ptr{Cvoid}, Cint, Int64, Int64, Int64, Ref{Ptr{UInt8}},
+              (Ptr{Cvoid}, Cint, Int64, Int64, Int64, Ptr{Cstring},
                Ref{Cint}),
-              f.ptr, colnum, i, 1, length(data[i]), buffer, status)
+              f.ptr, colnum, i, 1, length(s), fill(s), status)
         fits_assert_ok(status[])
     end
 end
@@ -409,21 +406,19 @@ end
 # the length of each string must be determined for each row.)
 function fits_read_var_col(f::FITSFile, colnum::Integer, data::Vector{String})
     status = Ref{Cint}(0)
-    bufptr = Ref{Ptr{UInt8}}()  # holds a pointer to the current row buffer
-    for i=1:length(data)
+    buffer = Vector{UInt8}(undef, 0)
+    bufbuf = fill(buffer)
+    for i in eachindex(data)
         repeat, offset = fits_read_descript(f, colnum, i)
-        buffer = Vector{UInt8}(undef, repeat)
-        bufptr[] = pointer(buffer)
+        resize!(buffer, repeat + 1)  # +1 for null terminator
         ccall((:ffgcvs, libcfitsio), Cint,
               (Ptr{Cvoid}, Cint, Int64, Int64, Int64,
-               Ptr{UInt8}, Ref{Ptr{UInt8}}, Ptr{Cint}, Ref{Cint}),
-              f.ptr, colnum, i, 1, repeat, " ", bufptr, C_NULL, status)
+               Ptr{UInt8}, Ptr{Ptr{UInt8}}, Ptr{Cint}, Ref{Cint}),
+              f.ptr, colnum, i, 1, repeat, " ", bufbuf, C_NULL, status)
         fits_assert_ok(status[])
 
         # Create string out of the buffer, terminating at null characters
-        zeropos = something(findfirst(isequal(0x00), buffer), 0)
-        data[i] = (zeropos >= 1) ? String(buffer[1:(zeropos-1)]) :
-                                   String(buffer)
+        data[i] = CFITSIO.tostring(buffer)
     end
 end
 

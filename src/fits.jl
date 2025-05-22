@@ -97,12 +97,12 @@ end
 # Returns HDU object based on extension number
 function getindex(f::FITS, i::Integer)
     fits_assert_open(f.fitsfile)
-    if i > length(f) || i < 1
-        throw(BoundsError(f, i))
-    end
     _getindex(f, i)
 end
 function _getindex(f::FITS, i::Integer)
+    if i > length(f) || i < 1
+        throw(BoundsError(f, i))
+    end
     get!(f.hdus, i) do
         hdutype = fits_get_hdu_type(f.fitsfile)
         (hdutype == :image_hdu ? ImageHDU(f.fitsfile, i) :

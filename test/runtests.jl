@@ -74,7 +74,7 @@ end
 
             end
 
-            @test_throws ErrorException f[100]
+            @test_throws BoundsError f[100]
 
             # Test representation
             @test repr(f)[end-17:end] == "9          Image  "

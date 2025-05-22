@@ -272,45 +272,30 @@ function write_internal(f::FITS, colnames::Vector{String},
     (nhdus > 1) && fits_movabs_hdu(f.fitsfile, nhdus)
 
     ncols = length(colnames)
-    ttype = [pointer(name) for name in colnames]
 
     # determine which columns are requested to be variable-length
     isvarcol = zeros(Bool, ncols)
     if !isnothing(varcols)
-        for i=1:ncols
+        for i in eachindex(isvarcol, colnames)
             isvarcol[i] = (i in varcols) || (colnames[i] in varcols)
         end
     end
 
-    # create an array of tform strings (which we will create pointers to)
-    tform_str = Vector{String}(undef, ncols)
-    for i in 1:ncols
+    # data format, accounting for variable-length columns
+    tform = Vector{String}(undef, ncols)
+    for i in eachindex(tform, isvarcol, coldata)
         if isvarcol[i]
-            tform_str[i] = fits_tform_v(hdutype, coldata[i])
+            tform[i] = fits_tform_v(hdutype, coldata[i])
         else
-            tform_str[i] = fits_tform(hdutype, coldata[i])
+            tform[i] = fits_tform(hdutype, coldata[i])
         end
     end
-    tform = [pointer(s) for s in tform_str]
 
     # get units
-    if isnothing(units)
-        tunit = C_NULL
-    else
-        tunit = Ptr{UInt8}[(haskey(units, n) ? pointer(units[n]) : C_NULL)
-                           for n in colnames]
-    end
+    tunit = isnothing(units) ? nothing : map(x -> get(units, x, ""), colnames)
 
-    # extension name
-    name_ptr = (isnothing(name) ? Ptr{UInt8}(C_NULL) : pointer(name))
-
-    status = Ref{Cint}(0)
-    ccall(("ffcrtb", libcfitsio), Cint,
-          (Ptr{Cvoid}, Cint, Int64, Cint, Ptr{Ptr{UInt8}}, Ptr{Ptr{UInt8}},
-           Ptr{Ptr{UInt8}}, Ptr{UInt8}, Ref{Cint}),
-          f.fitsfile.ptr, table_type_code(hdutype), 0, ncols,  # 0 = nrows
-          ttype, tform, tunit, name_ptr, status)
-    fits_assert_ok(status[])
+    fits_create_tbl(f.fitsfile, table_type_code(hdutype), 0,
+                   colnames, tform, tunit, name)
 
     # For binary tables, write tdim info
     if hdutype === TableHDU

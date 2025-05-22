@@ -898,3 +898,14 @@ end
     using FITSIO.Libcfitsio
     Libcfitsio.libcfitsio_version() isa VersionNumber
 end
+
+@testset "0-dim arrays" begin
+    tempnamefits() do fname
+        FITS(fname, "w") do f
+            @test_throws ArgumentError write(f, fill(0.0, ()))
+            fits_create_empty_img(f.fitsfile)
+            CFITSIO.fits_flush_file(f.fitsfile)
+            @test isnothing(read(f[1]))
+        end
+    end
+end

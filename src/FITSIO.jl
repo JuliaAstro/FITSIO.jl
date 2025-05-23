@@ -183,8 +183,8 @@ mutable struct FITS
     function FITS(filename::AbstractString, mode::AbstractString="r"; extendedparser = true)
         openfn = extendedparser ? fits_open_file : fits_open_diskfile
         createfn = extendedparser ? fits_create_file : fits_create_diskfile
-        f = (mode == "r"                      ? openfn(filename, 0)    :
-             mode == "r+" && isfile(filename) ? openfn(filename, 1)    :
+        f = (mode == "r"                      ? openfn(filename, CFITSIO.READONLY)    :
+             mode == "r+" && isfile(filename) ? openfn(filename, CFITSIO.READWRITE)   :
              mode == "r+"                     ? createfn(filename)     :
              mode == "w"                      ?
                 (rm(filename, force = true); createfn(filename)) :

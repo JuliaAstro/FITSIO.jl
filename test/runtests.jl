@@ -713,12 +713,12 @@ end
             @test inhdr.comments == inhdr2.comments
 
             @test repr(inhdr) == """
-FLTKEY  =                  1.0 / floating point keyword
-INTKEY  =                    1
-BOOLKEY =                    T / boolean keyword
-STRKEY  = 'string value'       / string value
-COMMENT this is a comment
-HISTORY this is a history"""
+                FLTKEY  =                  1.0 / floating point keyword
+                INTKEY  =                    1
+                BOOLKEY =                    T / boolean keyword
+                STRKEY  = 'string value'       / string value
+                COMMENT this is a comment
+                HISTORY this is a history"""
 
             inhdr["INTKEY"] = 2  # test setting by key
             inhdr[1] = 2.0  # test settting by index

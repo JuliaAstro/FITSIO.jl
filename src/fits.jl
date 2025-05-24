@@ -88,23 +88,28 @@ function show(io::IO, f::FITS)
     end
 end
 
+function Base.summary(io::IO, f::FITS)
+    fits_assert_open(f.fitsfile)
+    nhdu = length(f)
+    print(io, "FITS with $(nhdu) HDU", nhdu == 1 ? "" : "s")
+end
+
 # Returns HDU object based on extension number
 function getindex(f::FITS, i::Integer)
     fits_assert_open(f.fitsfile)
-
-    if haskey(f.hdus, i)
-        return f.hdus[i]
+    _getindex(f, i)
+end
+function _getindex(f::FITS, i::Integer)
+    if i > length(f) || i < 1
+        throw(BoundsError(f, i))
     end
-
-    if i > length(f)
-        error("index out of bounds")
+    get!(f.hdus, i) do
+        hdutype = fits_get_hdu_type(f.fitsfile)
+        (hdutype == :image_hdu ? ImageHDU(f.fitsfile, i) :
+         hdutype == :binary_table ? TableHDU(f.fitsfile, i) :
+         hdutype == :ascii_table ? ASCIITableHDU(f.fitsfile, i) :
+         error("bad HDU type"))
     end
-    hdutype = fits_movabs_hdu(f.fitsfile, i)
-    f.hdus[i] = (hdutype == :image_hdu ? ImageHDU(f.fitsfile, i) :
-                 hdutype == :binary_table ? TableHDU(f.fitsfile, i) :
-                 hdutype == :ascii_table ? ASCIITableHDU(f.fitsfile, i) :
-                 error("bad HDU type"))
-    return f.hdus[i]
 end
 
 # Returns HDU based on hduname, version
@@ -112,17 +117,7 @@ function getindex(f::FITS, name::AbstractString, ver::Int=0)
     fits_assert_open(f.fitsfile)
     fits_movnam_hdu(f.fitsfile, name, ver)
     i = fits_get_hdu_num(f.fitsfile)
-
-    if haskey(f.hdus, i)
-        return f.hdus[i]
-    end
-
-    hdutype = fits_get_hdu_type(f.fitsfile)
-    f.hdus[i] = (hdutype == :image_hdu ? ImageHDU(f.fitsfile, i) :
-                 hdutype == :binary_table ? TableHDU(f.fitsfile, i) :
-                 hdutype == :ascii_table ? ASCIITableHDU(f.fitsfile, i) :
-                 error("bad HDU type"))
-    return f.hdus[i]
+    _getindex(f, i)
 end
 
 Base.haskey(f::FITS, i::Integer) = i ∈ 1:length(f)

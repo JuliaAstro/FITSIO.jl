@@ -27,6 +27,7 @@ end
         end
         # open as read only
         f = FITS(fname, "r")
+        @test summary(f) == "FITS with 1 HDU"
         # writing should throw an error
         @test_throws Exception write(f, ones(2))
         d = f[1]
@@ -71,10 +72,9 @@ end
                 @test_throws DimensionMismatch read(f[end], :, :, 1)
                 @test_throws BoundsError read(f[end], 1:6, :)
                 @test_throws BoundsError read(f[end], 1, 0)
-
             end
 
-            @test_throws ErrorException f[100]
+            @test_throws BoundsError f[100]
 
             # Test representation
             @test repr(f)[end-17:end] == "9          Image  "

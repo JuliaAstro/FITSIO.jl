@@ -730,7 +730,7 @@ end
             @test getkey(inhdr, "INTKEY", nothing) == "INTKEY"
             @test get(inhdr, "BADKEY", nothing) === nothing
             @test get(inhdr, "INTKEY", nothing) == inhdr["INTKEY"]
-            @test get(() -> nothing, inhdr, "BADKEY") == nothing
+            @test get(() -> nothing, inhdr, "BADKEY") === nothing
             @test get(() -> nothing, inhdr, "INTKEY") == inhdr["INTKEY"]
 
             indata = reshape(Float32[1:100;], 5, 20)

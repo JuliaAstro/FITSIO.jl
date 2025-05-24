@@ -127,6 +127,7 @@ function read(hdu::ImageHDU)
     fits_read_pix(hdu.fitsfile, data)
     data
 end
+read(hdu::ImageHDU{<:Any,0}) = (assert_open(hdu); nothing)
 
 #= Inplace read
 This requires a contiguous array. Lacking a type to dispatch upon,
@@ -359,6 +360,8 @@ function write(f::FITS, data::StridedArray{<:Real};
     if f.mode == "r"
         throw(ArgumentError("FITS file has been opened in read-only mode"))
     end
+
+    ndims(data) == 0 && throw(ArgumentError("data must have at least one dimension"))
 
     fits_create_img(f.fitsfile, data)
 

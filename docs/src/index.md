@@ -231,11 +231,17 @@ DocTestFilters = nothing
 
 ## Writing to a file
 
+```@meta
+DocTestFilters = r"File: [a-zA-Z0-9/\._]+.fits"
+```
+
 Open a new file for writing:
 ```jldoctest example2
 julia> using FITSIO
 
-julia> f = FITS("newfile.fits", "w");
+julia> fname = tempname() * ".fits";
+
+julia> f = FITS(fname, "w");
 ```
 The second argument can be `"r"` (read-only; default), `"r+"`
 (read-write) or `"w"` (write). In "write" mode, any existing file of
@@ -260,11 +266,7 @@ To write some header keywords in the new extension, pass a
 
 Overwrite image data in an existing file:
 ```jldoctest example2
-julia> f = FITS("newfile.fits", "r+")  # Reopen the file in read-write mode
-File: newfile.fits
-Mode: "r+" (append)
-HDUs: Num  Name  Type
-      1          Image
+julia> f = FITS(fname, "r+");  # Reopen the file in read-write mode
 
 julia> image_hdu = f[1];
 
@@ -301,20 +303,21 @@ Dict{String, Vector} with 2 entries:
 
 julia> write(f, data)  # write a new binary table to a new extension
 
-julia> hdutable = f[2]
-File: newfile.fits
-HDU: 2
-Type: Table
-Rows: 3
-Columns: Name  Size  Type     TFORM
-         col2        Int64    1K
-         col1        Float64  1D
+julia> hdutable = f[2];
 
 julia> read(hdutable, "col1")
 3-element Vector{Float64}:
  1.0
  2.0
  3.0
+```
+
+```jldoctest example2
+julia> close(f)
+```
+
+```@meta
+DocTestFilters = nothing
 ```
 
 !!! tip "Compressed storage"

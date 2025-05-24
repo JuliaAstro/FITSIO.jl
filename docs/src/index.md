@@ -24,184 +24,172 @@ pkg> add FITSIO
 
 ## Usage
 
-## Reading a file
-
-We read [a FITS file](https://fits.gsfc.nasa.gov/samples/FOSy19g0309t_c2f.fits) from [NASA's list of sample files](https://fits.gsfc.nasa.gov/fits_samples.html).
-
 ```@meta
-DocTestFilters = r"File: [a-zA-Z0-9/\.]*docs/src/FOSy19g0309t_c2f.fits"
+DocTestFilters = r"File: [a-zA-Z0-9/._]+"
 ```
 
-To open an existing file for reading:
-```jldoctest nasa_sample
+We create a new temporary file using the `FITS` constructor:
+```jldoctest example
+julia> fname, _ = mktemp();
+
 julia> using FITSIO
 
-julia> filepath = joinpath(dirname(pathof(FITSIO)), "../docs/src/FOSy19g0309t_c2f.fits");
+julia> f = FITS(fname, "w")
+File: /tmp/jl_td8sL6
+Mode: "w" (read-write)
+No HDUs.
 
-julia> f = FITS(filepath, "r")
-File: docs/src/FOSy19g0309t_c2f.fits
-Mode: "r" (read-only)
-HDUs: Num  Name               Type
-      1                       Image
-      2    y19g0309t.c2h.tab  ASCIITable
+julia> length(f) # shows the number of HDUs in the file
+0
 ```
-
-At the REPL, information about the file contents is shown.
+In this example, we have used the file mode `"w"`, which will overwrite any existing file with the same name. To append to an existing file instead, we use the mode `"r+"`, and to open a file for reading, we may specify the mode `"r"`.
 
 A FITS file consists of one or more header-data units (HDUs),
 concatenated one after the other. The `FITS` object therefore is
-represented as a collection of these HDUs.
-
-Iterate over HDUs in the file:
-```jldoctest nasa_sample
-julia> for hdu in f
-           println(typeof(hdu))
-       end
-ImageHDU{Float32, 2}
-ASCIITableHDU
-```
+represented as a collection of these HDUs. Since we have just created a new file, there are no HDUs currently in the file.
 
 ### Image
 
-Get information about the first image HDU:
-```jldoctest nasa_sample
-julia> hduimg = f[1]
-File: docs/src/FOSy19g0309t_c2f.fits
+We write an array to the file, which will automatically create an image HDU.
+
+```jldoctest example
+julia> data = Array(reshape(1:20, 4, 5))
+4×5 Matrix{Int64}:
+ 1  5   9  13  17
+ 2  6  10  14  18
+ 3  7  11  15  19
+ 4  8  12  16  20
+
+julia> write(f, data)
+
+julia> length(f) # an HDU should now be added
+1
+
+julia> f # show information about the file
+File: /tmp/jl_MdlNSQ
+Mode: "w" (read-write)
+HDUs: Num  Name  Type
+      1          Image
+
+julia> imghdu = f[1] # get the first image HDU
+File: /tmp/jl_q95Lxk
 HDU: 1
-Mode: read-only
+Mode: read-write
 Type: Image
-Datatype: Float32
-Datasize: (2064, 2)
+Datatype: Int64
+Datasize: (4, 5)
+
+julia> typeof(imghdu)
+ImageHDU{Int64, 2}
 ```
 
-Each HDU can contain image data, or table data (either binary or
-ASCII-formatted). For image extensions, get the size of the image
-without reading it:
-```jldoctest nasa_sample
-julia> ndims(hduimg)
+We may query the properties of an image HDU analogous to an array.
+
+```jldoctest example
+julia> eltype(imghdu)
+Int64
+
+julia> ndims(imghdu)
 2
 
-julia> size(hduimg)
-(2064, 2)
+julia> size(imghdu)
+(4, 5)
 
-julia> size(hduimg, 2)
-2
+julia> size(imghdu, 1)
+4
+
+julia> length(imghdu)
+20
 ```
 
-Read an image from disk:
-```jldoctest nasa_sample
-julia> data = read(hduimg);  # read an image from disk
+We may read the entire data array or a section of it using `read`. This is analogous to indexing into an array.
 
-julia> data[1:4, :]
-4×2 Matrix{Float32}:
- 2.48511f-15  1.36115f-15
- 1.56953f-15  1.10982f-15
- 0.0          0.0
- 1.12148f-15  9.71231f-16
+```jldoctest example
+julia> read(imghdu)
+4×5 Matrix{Int64}:
+ 1  5   9  13  17
+ 2  6  10  14  18
+ 3  7  11  15  19
+ 4  8  12  16  20
 
-julia> read(hduimg, 1:4, :) # read just a subset of image
-4×2 Matrix{Float32}:
- 2.48511f-15  1.36115f-15
- 1.56953f-15  1.10982f-15
- 0.0          0.0
- 1.12148f-15  9.71231f-16
+julia> read(imghdu, 1:3, 2:4)
+3×3 Matrix{Int64}:
+ 5   9  13
+ 6  10  14
+ 7  11  15
+
+julia> read(imghdu, 1:3, 3)
+3-element Vector{Int64}:
+  9
+ 10
+ 11
+
+julia> read(imghdu, :, 2:3)
+4×2 Matrix{Int64}:
+ 5   9
+ 6  10
+ 7  11
+ 8  12
 ```
-
-### Table
-
-Show info about a binary table:
-```jldoctest nasa_sample
-julia> hdutable = f[2]
-File: docs/src/FOSy19g0309t_c2f.fits
-HDU: 2 (name=y19g0309t.c2h.tab)
-Type: ASCIITable
-Rows: 2
-Columns: Name      Type     TFORM
-         CRVAL1    Float64  D25.16
-         CRPIX1    Float64  E15.7
-         CD1_1     Float64  E15.7
-         DATAMIN   Float64  E15.7
-         DATAMAX   Float64  E15.7
-         RA_APER   Float64  D25.16
-         DEC_APER  Float64  D25.16
-         FILLCNT   Int32    I11
-         ERRCNT    Int32    I11
-         FPKTTIME  Float64  D25.16
-         LPKTTIME  Float64  D25.16
-         CTYPE1    String   A8
-         APER_POS  String   A8
-         PASS_DIR  Int32    I11
-         YPOS      Float64  E15.7
-         YTYPE     String   A4
-         EXPOSURE  Float64  E15.7
-         X_OFFSET  Float64  E15.7
-         Y_OFFSET  Float64  E15.7
-```
-
-Read a column from the table:
-```jldoctest nasa_sample
-julia> read(hdutable, "CRVAL1")
-2-element Vector{Float64}:
- 1.0
- 1.0
-
-julia> read(hdutable, "CTYPE1")
-2-element Vector{String}:
- "PIXEL"
- "PIXEL"
-```
-
-Table HDUs implement the [Tables.jl](https://tables.juliadata.org/stable/) interface, so you can load them into other table types, like [DataFrames](https://dataframes.juliadata.org/stable/).
-```jldoctest nasa_sample
-julia> using DataFrames
-
-julia> df = DataFrame(hdutable);
-
-julia> df[:, 1:5]
-2×5 DataFrame
- Row │ CRVAL1   CRPIX1   CD1_1    DATAMIN  DATAMAX
-     │ Float64  Float64  Float64  Float64  Float64
-─────┼─────────────────────────────────────────────────
-   1 │     1.0      1.0      1.0      0.0  2.73876e-15
-   2 │     1.0      1.0      1.0      0.0  1.93483e-15
-```
-
-Variable length columns are not supported by the Tables.jl interface, and `Tables` methods will ignore them.
 
 ### Header
 
-Read the entire header into memory and get values from it:
-```jldoctest nasa_sample
-julia> header = read_header(hduimg); # read the entire header from disk
+We may read the header of the HDU as
+```jldoctest example
+julia> header = read_header(imghdu)
+SIMPLE  =                    T / file does conform to FITS standard
+BITPIX  =                   64 / number of bits per data pixel
+NAXIS   =                    2 / number of data axes
+NAXIS1  =                    4 / length of data axis 1
+NAXIS2  =                    5 / length of data axis 2
+EXTEND  =                    T / FITS dataset may contain extensions
+COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronom
+COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H
 
-julia> length(header)  # total number of records in header
-162
+julia> typeof(header)
+FITSHeader
 
-julia> haskey(header, "NAXIS1")  # check if a key exists
+julia> length(header) # number of keys
+8
+```
+This reads the entire header from the HDU into memory. The header object behaves like a dictionary that may be queried using its keys:
+
+```jldoctest example
+julia> keys(header)
+8-element Vector{String}:
+ "SIMPLE"
+ "BITPIX"
+ "NAXIS"
+ "NAXIS1"
+ "NAXIS2"
+ "EXTEND"
+ "COMMENT"
+ "COMMENT"
+
+julia> haskey(header, "NAXIS")
 true
 
-julia> header["NAXIS1"]  # get value by keyword
-2064
+julia> header["NAXIS"] # using the key name
+2
 
-julia> header[4]  # get value by position
-2064
-
-julia> get_comment(header, "NAXIS")  # get comment for a given keyword
-"Number of axes"
+julia> header[3] # using the key index
+2
 ```
 
+We may read the value and comment for a key as well, either using the key name or its index.
 
-Read just a single header record without reading the entire header:
-```jldoctest nasa_sample
-julia> read_key(hduimg, 4)  # by position
-("NAXIS1", 2064, "")
+```jldoctest example
+julia> read_key(imghdu, "NAXIS") # query by key name
+(2, "number of data axes")
 
-julia> read_key(hduimg, "NAXIS1")  # read by keyword
-(2064, "")
+julia> read_key(imghdu, 3) # query by key index
+("NAXIS", 2, "number of data axes")
+
+julia> get_comment(header, "NAXIS")
+"number of data axes"
 ```
-
-Manipulate a header in memory:
-```jldoctest nasa_sample
+We may modify the header in memory as
+```jldoctest example
 julia> header["NEWKEY"] = 10;  # change or add a keyword
 
 julia> header["NEWKEY"]
@@ -212,113 +200,84 @@ julia> set_comment!(header, "NEWKEY", "this is a comment");
 julia> get_comment(header, "NEWKEY")
 "this is a comment"
 ```
-Note that modifying the header does not update the file, unless this is explicitly written to the file.
-```jldoctest nasa_sample
-julia> haskey(read_header(hduimg), "NEWKEY")
-false
-```
-
-### Close the file
-
-```jldoctest nasa_sample
-julia> close(f)
-```
-(`FITS` objects are also closed automatically when garbage collected.)
-
-```@meta
-DocTestFilters = nothing
-```
-
-## Writing to a file
-
-```@meta
-DocTestFilters = r"File: [a-zA-Z0-9/\._]+.fits"
-```
-
-Open a new file for writing:
-```jldoctest example2
-julia> using FITSIO
-
-julia> fname = tempname() * ".fits";
-
-julia> f = FITS(fname, "w");
-```
-The second argument can be `"r"` (read-only; default), `"r+"`
-(read-write) or `"w"` (write). In "write" mode, any existing file of
-the same name is overwritten.
-
-### Image
-
-Write an image to the file:
-```jldoctest example2
-julia> data = reshape([1:10;], 2, 5)
-2×5 Matrix{Int64}:
- 1  3  5  7   9
- 2  4  6  8  10
-
-julia> write(f, data)  # Write a new image extension with the data
-
-julia> close(f)
-```
-To write some header keywords in the new extension, pass a
-`FITSHeader` instance as a keyword: `write(f, data; header=header)`
-
-
-Overwrite image data in an existing file:
-```jldoctest example2
-julia> f = FITS(fname, "r+");  # Reopen the file in read-write mode
-
-julia> image_hdu = f[1];
-
-julia> read(image_hdu)
-2×5 Matrix{Int64}:
- 1  3  5  7   9
- 2  4  6  8  10
-```
-
-Write new data to the HDU
-
-```jldoctest example2
-julia> data = reshape([101:110;], 2, 5)
-2×5 Matrix{Int64}:
- 101  103  105  107  109
- 102  104  106  108  110
-
-julia> write(image_hdu, data)  # Overwrite the image
-
-julia> read(image_hdu)
-2×5 Matrix{Int64}:
- 101  103  105  107  109
- 102  104  106  108  110
-```
+!!! note
+    Manipulating a header only changes it in memory until it is written to disk. The header object in memory is not connected to the fits file. To write some header keywords in the new extension, pass a [`FITSHeader`](@ref) instance as a keyword: `write(f, data; header=header)`
 
 ### Table
 
-Write a table to the file:
-```jldoctest example2
-julia> data = Dict("col1"=>[1., 2., 3.], "col2"=>[1, 2, 3])
-Dict{String, Vector} with 2 entries:
-  "col2" => [1, 2, 3]
-  "col1" => [1.0, 2.0, 3.0]
+We append a binary table HDU to the file:
+```jldoctest example
+julia> data = Dict("col1"=>[1., 2., 3.], "col2"=>[1, 2, 3]);
 
-julia> write(f, data)  # write a new binary table to a new extension
+julia> write(f, data)
 
-julia> hdutable = f[2];
+julia> length(f) # check that a second HDU is now added
+2
 
-julia> read(hdutable, "col1")
+julia> f
+File: /tmp/jl_q95Lxk
+Mode: "w" (read-write)
+HDUs: Num  Name  Type
+      1          Image
+      2          Table
+
+julia> tablehdu = f[2]
+File: /tmp/jl_q95Lxk
+HDU: 2
+Type: Table
+Rows: 3
+Columns: Name  Size  Type     TFORM
+         col2        Int64    1K
+         col1        Float64  1D
+
+julia> typeof(tablehdu)
+TableHDU
+```
+
+We may read a column from a table HDU as
+```jldoctest example
+julia> read(tablehdu, "col1")
 3-element Vector{Float64}:
  1.0
  2.0
  3.0
 ```
 
-```jldoctest example2
-julia> close(f)
+Table HDUs implement the [Tables.jl](https://tables.juliadata.org/stable/) interface, so you can load them into other table types, like [DataFrames](https://dataframes.juliadata.org/stable/).
+
+```jldoctest example
+julia> using DataFrames
+
+julia> df = DataFrame(tablehdu)
+3×2 DataFrame
+ Row │ col2   col1
+     │ Int64  Float64
+─────┼────────────────
+   1 │     1      1.0
+   2 │     2      2.0
+   3 │     3      3.0
+```
+Variable length columns are not supported by the `Tables.jl` interface, and `Table`s methods will ignore them.
+
+### Iterating over the HDUs
+
+We may iterate over the fits file to access individual HDUs.
+```jldoctest example
+julia> for hdu in f
+           println(typeof(hdu))
+       end
+ImageHDU{Int64, 2}
+TableHDU
 ```
 
-```@meta
-DocTestFilters = nothing
+### Write to disk
+
+Close the file to write the in-memory FITS file to disk.
+
+```jldoctest example
+julia> close(f)
 ```
+FITS objects are also closed automatically when garbage collected.
 
 !!! tip "Compressed storage"
     Setting the file extension to `.gz` will automatically use GZIP compression and save on storage space.

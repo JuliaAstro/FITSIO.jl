@@ -909,3 +909,14 @@ end
         end
     end
 end
+
+@testset "checksum" begin
+    tempnamefits() do fname
+        FITS(fname, "w") do f
+            write(f, ones(2,2))
+            @test_throws ErrorException FITSIO.verify(f[1])
+            FITSIO.write_checksum(f[1])
+            @test FITSIO.verify(f[1])
+        end
+    end
+end

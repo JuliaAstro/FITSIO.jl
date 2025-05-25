@@ -13,7 +13,7 @@ deleteat!
 ## HDU operations
 ```@docs
 FITSIO.write_checksum
-FITSIO.verify
+FITSIO.verify_checksum
 ```
 
 ## Header operations

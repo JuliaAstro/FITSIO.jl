@@ -171,11 +171,12 @@ function close(f::FITS)
 end
 
 """
-    verify(f::HDU)
+    verify_checksum(f::HDU)
 
 Verify the integrity of the HDU, by computing the checksum and comparing it to the stored value.
+This will raise an error if the checksum does not match, or if the keywords are missing in the header.
 """
-function verify(hdu::HDU)
+function verify_checksum(hdu::HDU)
     fits_assert_open(hdu.fitsfile)
     fits_movabs_hdu(hdu.fitsfile, hdu.ext)
     data_status, hdu_status = fits_verify_chksum(hdu.fitsfile)
@@ -188,7 +189,7 @@ end
 """
     write_checksum(hdu::HDU)
 
-Write the checksum for the HDU to the header.
+Write the checksum for the HDU and the data to the header.
 """
 function write_checksum(hdu::HDU)
     fits_assert_open(hdu.fitsfile)

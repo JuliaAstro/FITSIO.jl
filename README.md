@@ -24,7 +24,9 @@ Here, we provide an example where we read a sample fits file [provided by NASA](
 ```julia
 julia> using FITSIO, Downloads
 
-julia> fname = Downloads.download("https://fits.gsfc.nasa.gov/samples/FOSy19g0309t_c2f.fits", "FOSy19g0309t_c2f.fits")
+julia> url = "https://fits.gsfc.nasa.gov/samples/FOSy19g0309t_c2f.fits";
+
+julia> fname = Downloads.download(url, basename(url))
 
 julia> f = FITS(fname, "r")
 File: FOSy19g0309t_c2f.fits

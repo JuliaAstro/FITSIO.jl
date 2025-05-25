@@ -24,17 +24,17 @@ Here, we provide an example where we read a sample fits file [provided by NASA](
 ```julia
 julia> using FITSIO, Downloads
 
-julia> fname = Downloads.download("https://fits.gsfc.nasa.gov/samples/FOSy19g0309t_c2f.fits")
+julia> fname = Downloads.download("https://fits.gsfc.nasa.gov/samples/FOSy19g0309t_c2f.fits", "FOSy19g0309t_c2f.fits")
 
 julia> f = FITS(fname, "r")
-File: docs/src/FOSy19g0309t_c2f.fits
+File: FOSy19g0309t_c2f.fits
 Mode: "r" (read-only)
 HDUs: Num  Name               Type
       1                       Image
       2    y19g0309t.c2h.tab  ASCIITable
 
 julia> f[1]
-File: docs/src/FOSy19g0309t_c2f.fits
+File: FOSy19g0309t_c2f.fits
 HDU: 1
 Mode: read-only
 Type: Image
@@ -54,7 +54,7 @@ julia> read(f[1], 1:4, :)
 
 # Get info about a table
 julia> f[2]
-File: docs/src/FOSy19g0309t_c2f.fits
+File: FOSy19g0309t_c2f.fits
 HDU: 2 (name=y19g0309t.c2h.tab)
 Type: ASCIITable
 Rows: 2

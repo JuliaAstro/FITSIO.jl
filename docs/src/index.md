@@ -16,25 +16,53 @@ The interface is inspired by Erin Sheldon's
 
 ## Installation
 
-`FITSIO.jl` can be installed using the built-in package manager
+`FITSIO.jl` can be installed using the built-in package manager:
 
 ```julia-repl
 pkg> add FITSIO
 ```
 
-## Usage
-
 ```@meta
 DocTestFilters = r"File: [a-zA-Z0-9/._]+"
 ```
 
-We create a new temporary file using the `FITS` constructor:
-```jldoctest example
-julia> fname, _ = mktemp();
+## Quick start
+
+The simplest way to write and read an image from a FITS file is by using the functions [`FITSIO.fitswrite`](@ref) and [`FITSIO.fitsread`](@ref).
+
+```jldoctest
+julia> fname, _ = mktemp(); # create a temporary file for this example
 
 julia> using FITSIO
 
-julia> f = FITS(fname, "w")
+julia> FITSIO.fitswrite(fname, [1 2; 3 4]) # creates a new file with the data
+
+julia> FITSIO.fitsread(fname) # opened in a read-only mode
+2×2 Matrix{Int64}:
+ 1  2
+ 3  4
+
+julia> FITSIO.fitsread(fname, 1, 1:2, 1) # read a section of HDU number 1
+2-element Vector{Int64}:
+ 1
+ 3
+```
+This is not the most performant way, as the file is opened and closed on every invocation. However, this abstracts away the complexity.
+!!! warn
+    Currently, `fitswrite` overwrites an existing file, so this should be used with caution. In the future, this may allow
+    appending to an existing file.
+
+## Usage
+
+In this example, we write to and read from a fits file.
+
+We create a new temporary file using the `FITS` constructor:
+```jldoctest example
+julia> fname, _ = mktemp(); # create a temporary file for this example
+
+julia> using FITSIO
+
+julia> f = FITS(fname, "w") # create a new fits file
 File: /tmp/jl_td8sL6
 Mode: "w" (read-write)
 No HDUs.
@@ -46,7 +74,8 @@ In this example, we have used the file mode `"w"`, which will overwrite any exis
 
 A FITS file consists of one or more header-data units (HDUs),
 concatenated one after the other. The `FITS` object therefore is
-represented as a collection of these HDUs. Since we have just created a new file, there are no HDUs currently in the file.
+represented as a collection of these HDUs. Each HDU can contain image data, or table data (either binary or
+ASCII-formatted). Since we have just created a new file, there are no HDUs currently in the file.
 
 ### Image
 

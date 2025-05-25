@@ -18,12 +18,15 @@ Flexible Image Transport System (FITS) support for Julia
 
 ## Usage
 
-For more in-depth usage and examples, see [the documentation](http://juliaastro.github.io/FITSIO.jl/stable/)
+For more in-depth usage and examples, see [the documentation](http://juliaastro.github.io/FITSIO.jl/stable/).
+Here, we provide an example where we read a sample fits file [provided by NASA](https://fits.gsfc.nasa.gov/fits_samples.html).
 
 ```julia
-julia> using FITSIO
+julia> using FITSIO, Downloads
 
-julia> f = FITS("docs/src/FOSy19g0309t_c2f.fits")
+julia> fname = Downloads.download("https://fits.gsfc.nasa.gov/samples/FOSy19g0309t_c2f.fits")
+
+julia> f = FITS(fname, "r")
 File: docs/src/FOSy19g0309t_c2f.fits
 Mode: "r" (read-only)
 HDUs: Num  Name               Type
@@ -38,24 +41,8 @@ Type: Image
 Datatype: Float32
 Datasize: (2064, 2)
 
-julia> ndims(f[1])
-2
-
-julia> size(f[1])
-(2064, 2)
-
-julia> eltype(f[1])
-Float32
-
 # read an image from disk
 julia> data = read(f[1]);
-
-julia> data[1:4, :]
-4×2 Matrix{Float32}:
- 2.48511f-15  1.36115f-15
- 1.56953f-15  1.10982f-15
- 0.0          0.0
- 1.12148f-15  9.71231f-16
 
 # read just a subset of image
 julia> read(f[1], 1:4, :)
@@ -102,9 +89,6 @@ julia> data = read(f[2], "CD1_1")
 julia> header = read_header(f[1]);
 
 julia> header["NAXIS1"]  # get value by keyword
-2064
-
-julia> header[4]  # get value by position
 2064
 
 # Read single keys into memory

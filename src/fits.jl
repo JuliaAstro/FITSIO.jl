@@ -165,3 +165,14 @@ function close(f::FITS)
     empty!(f.hdus)
     nothing
 end
+
+"""
+    flush(f::FITS)
+
+Flush the FITS file to disk.
+This is equivalent to closing and reopening the file.
+"""
+function flush(f::FITS)
+    fits_flush_file(f.fitsfile)
+    return f
+end

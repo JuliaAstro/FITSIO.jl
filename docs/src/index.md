@@ -14,7 +14,7 @@ The interface is inspired by Erin Sheldon's
 !!! warning
     The `Libcfitsio` submodule has been moved to [CFITSIO.jl](https://github.com/JuliaAstro/CFITSIO.jl) and will be deprecated in a future release.
 
-## Installation
+# Installation
 
 `FITSIO.jl` can be installed using the built-in package manager:
 
@@ -26,7 +26,7 @@ pkg> add FITSIO
 DocTestFilters = r"File: [a-zA-Z0-9/._]+"
 ```
 
-## Quick start
+# Quick start
 
 The simplest way to write and read an image from a FITS file is by using the functions [`FITSIO.fitswrite`](@ref) and [`FITSIO.fitsread`](@ref).
 
@@ -52,7 +52,7 @@ This is not the most performant way, as the file is opened and closed on every i
     Currently, `fitswrite` overwrites an existing file, so this should be used with caution. In the future, this may allow
     appending to an existing file.
 
-## Usage
+# Usage
 
 In this example, we write to and read from a fits file.
 
@@ -77,7 +77,7 @@ concatenated one after the other. The `FITS` object therefore is
 represented as a collection of these HDUs. Each HDU can contain image data, or table data (either binary or
 ASCII-formatted). Since we have just created a new file, there are no HDUs currently in the file.
 
-### Image
+## Image
 
 We write an array to the file, which will automatically create an image HDU.
 
@@ -161,9 +161,68 @@ julia> read(imghdu, :, 2:3)
  8  12
 ```
 
-### Header
+## Table
 
-We may read the header of the HDU as
+In this section, we re-use the file that we had created in the earlier sections that contains an image HDU.
+We append a binary table HDU to the file:
+```jldoctest example
+julia> data = Dict("col1"=>[1., 2., 3.], "col2"=>[1, 2, 3]);
+
+julia> write(f, data)
+
+julia> length(f) # check that a second HDU is now added
+2
+
+julia> f # the FITS object now contains two HDUs
+File: /tmp/jl_q95Lxk
+Mode: "w" (read-write)
+HDUs: Num  Name  Type
+      1          Image
+      2          Table
+
+julia> tablehdu = f[2]
+File: /tmp/jl_q95Lxk
+HDU: 2
+Type: Table
+Rows: 3
+Columns: Name  Size  Type     TFORM
+         col2        Int64    1K
+         col1        Float64  1D
+
+julia> typeof(tablehdu)
+TableHDU
+```
+
+We may read a column from a table HDU as
+```jldoctest example
+julia> read(tablehdu, "col1")
+3-element Vector{Float64}:
+ 1.0
+ 2.0
+ 3.0
+```
+
+Table HDUs implement the [Tables.jl](https://tables.juliadata.org/stable/) interface, so you can load them into other table types, like [DataFrames](https://dataframes.juliadata.org/stable/).
+
+```jldoctest example
+julia> using DataFrames
+
+julia> df = DataFrame(tablehdu)
+3×2 DataFrame
+ Row │ col2   col1
+     │ Int64  Float64
+─────┼────────────────
+   1 │     1      1.0
+   2 │     2      2.0
+   3 │     3      3.0
+```
+Variable length columns are not supported by the `Tables.jl` interface, and `Table`s methods will ignore them.
+
+## Header
+
+In this section, we re-use the file that we had created in the eariler section, which contains an image HDU and a table HDU.
+
+We may read the header of an HDU as
 ```jldoctest example
 julia> header = read_header(imghdu)
 SIMPLE  =                    T / file does conform to FITS standard
@@ -232,63 +291,8 @@ julia> get_comment(header, "NEWKEY")
 !!! note
     Manipulating a header only changes it in memory until it is written to disk. The header object in memory is not connected to the fits file. To write some header keywords in the new extension, pass a [`FITSHeader`](@ref) instance as a keyword: `write(f, data; header=header)`
 
-### Table
 
-We append a binary table HDU to the file:
-```jldoctest example
-julia> data = Dict("col1"=>[1., 2., 3.], "col2"=>[1, 2, 3]);
-
-julia> write(f, data)
-
-julia> length(f) # check that a second HDU is now added
-2
-
-julia> f
-File: /tmp/jl_q95Lxk
-Mode: "w" (read-write)
-HDUs: Num  Name  Type
-      1          Image
-      2          Table
-
-julia> tablehdu = f[2]
-File: /tmp/jl_q95Lxk
-HDU: 2
-Type: Table
-Rows: 3
-Columns: Name  Size  Type     TFORM
-         col2        Int64    1K
-         col1        Float64  1D
-
-julia> typeof(tablehdu)
-TableHDU
-```
-
-We may read a column from a table HDU as
-```jldoctest example
-julia> read(tablehdu, "col1")
-3-element Vector{Float64}:
- 1.0
- 2.0
- 3.0
-```
-
-Table HDUs implement the [Tables.jl](https://tables.juliadata.org/stable/) interface, so you can load them into other table types, like [DataFrames](https://dataframes.juliadata.org/stable/).
-
-```jldoctest example
-julia> using DataFrames
-
-julia> df = DataFrame(tablehdu)
-3×2 DataFrame
- Row │ col2   col1
-     │ Int64  Float64
-─────┼────────────────
-   1 │     1      1.0
-   2 │     2      2.0
-   3 │     3      3.0
-```
-Variable length columns are not supported by the `Tables.jl` interface, and `Table`s methods will ignore them.
-
-### Iterating over the HDUs
+## Iterating over the HDUs
 
 We may iterate over the fits file to access individual HDUs.
 ```jldoctest example
@@ -299,7 +303,7 @@ ImageHDU{Int64, 2}
 TableHDU
 ```
 
-### Write to disk
+## Write to disk
 
 Close the file to write the in-memory FITS file to disk.
 

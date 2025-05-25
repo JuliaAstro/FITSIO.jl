@@ -185,7 +185,6 @@ function verify(hdu::HDU)
     return true
 end
 
-
 """
     write_checksum(hdu::HDU)
 

@@ -9,6 +9,12 @@ close
 deleteat!
 ```
 
+## HDU operations
+```@docs
+FITSIO.write_checksum
+FITSIO.verify
+```
+
 ## Header operations
 
 ```@docs

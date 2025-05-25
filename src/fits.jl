@@ -171,6 +171,34 @@ function close(f::FITS)
 end
 
 """
+    verify(f::HDU)
+
+Verify the integrity of the HDU, by computing the checksum and comparing it to the stored value.
+"""
+function verify(hdu::HDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    data_status, hdu_status = fits_verify_chksum(hdu.fitsfile)
+    if !(data_status == CFITSIO.VERIFIED && hdu_status == CFITSIO.VERIFIED)
+        error("HDU verification failed: data checksum: $data_status, HDU checksum: $hdu_status")
+    end
+    return true
+end
+
+
+"""
+    write_checksum(hdu::HDU)
+
+Write the checksum for the HDU to the header.
+"""
+function write_checksum(hdu::HDU)
+    fits_assert_open(hdu.fitsfile)
+    fits_movabs_hdu(hdu.fitsfile, hdu.ext)
+    fits_write_chksum(hdu.fitsfile)
+    return nothing
+end
+
+"""
     flush(f::FITS)
 
 Flush the FITS file to disk.

@@ -1,6 +1,7 @@
 module FITSIOTablesExt
 
 import Tables
+import FITSIO
 using FITSIO: ASCIITableHDU, TableHDU, fits_get_col_info
 
 #Tables.jl integration
@@ -17,7 +18,7 @@ function Tables.columnnames(t::EitherTableHDU)
     Symbol.(cns[.! isvar])
 end
 function Tables.getcolumn(t::EitherTableHDU, s::Symbol)
-    col = FITSIO.read(t, String(s))
+    col = read(t, String(s))
     if fits_get_col_info(t.fitsfile, findfirst(FITSIO.colnames(t) .== String(s)))[3]
         error("variable-length columns not supported in Tables.jl interface")
     end

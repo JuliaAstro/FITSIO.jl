@@ -322,31 +322,9 @@ following array element types are supported: `UInt8`, `Int8`,
 `UInt16`, `Int16`, `UInt32`, `Int32`, `Int64`, `Float32`,
 `Float64`. If a `FITSHeader` object is passed as the `header` keyword
 argument, the header will also be added to the new HDU.
-The data to be written out must be stored contiguously in memory.
 
-!!! tip "Unsupported element types"
-    It might be possible to write out an array with an element type other than those mentioned above
-    by `reinterpret`ing it as one that is supported. For example, to write out a `Complex`
-    array and read it back in, we may use
-
-    ```julia-repl
-    julia> a = rand(ComplexF64, 2)
-    2-element Array{Complex{Float64},1}:
-     0.4943325325752195 + 0.2034650017475852im
-     0.2495752009567498 + 0.819163869249041im
-
-    # We may write this out as Float64
-    julia> FITSIO.fitswrite("temp.fits", reinterpret(Float64, a))
-
-    # reinterpret it back as a complex one while reading it in
-    julia> reinterpret(ComplexF64, FITSIO.fitsread("temp.fits"))
-    2-element reinterpret(Complex{Float64}, ::Array{Float64,1}):
-     0.4943325325752195 + 0.2034650017475852im
-     0.2495752009567498 + 0.819163869249041im
-    ```
-
-    While this often works in practice, such a workaround is not officially supported by FITSIO,
-    and care must be taken to ensure the correctness of data.
+!!! note
+    The `data` array must be stored contiguously in memory.
 """
 function write(f::FITS, data::StridedArray{<:Real};
                header::Union{Nothing, FITSHeader}=nothing,
@@ -382,7 +360,9 @@ end
     write(hdu::ImageHDU, data::StridedArray{<:Real})
 
 Write data to an existing image HDU.
-The data to be written out must be stored contiguously in memory.
+
+!!! note
+    The `data` array must be stored contiguously in memory.
 """
 function write(hdu::ImageHDU, data::StridedArray{<:Real})
 

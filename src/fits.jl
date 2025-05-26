@@ -104,6 +104,7 @@ function _getindex(f::FITS, i::Integer)
         throw(BoundsError(f, i))
     end
     get!(f.hdus, i) do
+        fits_movabs_hdu(f.fitsfile, i)
         hdutype = fits_get_hdu_type(f.fitsfile)
         (hdutype == :image_hdu ? ImageHDU(f.fitsfile, i) :
          hdutype == :binary_table ? TableHDU(f.fitsfile, i) :

@@ -97,10 +97,6 @@ import CFITSIO: libcfitsio,
 import CFITSIO
 @deprecate libcfitsio_version CFITSIO.libcfitsio_version
 
-if !isdefined(Base, :get_extension)
-    include("../ext/FITSIOTablesExt.jl")
-end
-
 ## DEPRECATED
 module Libcfitsio
     using Reexport
@@ -257,5 +253,9 @@ include("fits.jl")  # FITS methods
 include("header.jl")  # FITSHeader methods
 include("image.jl")  # ImageHDU methods
 include("table.jl")  # TableHDU & ASCIITableHDU methods
+
+if !isdefined(Base, :get_extension)
+    include("../ext/FITSIOTablesExt.jl")
+end
 
 end # module

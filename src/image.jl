@@ -315,14 +315,23 @@ function fitswrite(filename::AbstractString, data; extendedparser = true, kwargs
 end
 
 """
-    write(f::FITS, data::StridedArray{<:Real}; header=nothing, name=nothing, ver=nothing)
+    write(f::FITS, data::StridedArray{<:Real};
+        header=nothing, name=nothing, ver=nothing, checksum::Bool=false)
 
 Add a new image HDU to FITS file `f` with contents `data`. The
 following array element types are supported: `UInt8`, `Int8`,
 `UInt16`, `Int16`, `UInt32`, `Int32`, `Int64`, `Float32`,
 `Float64`. If a `FITSHeader` object is passed as the `header` keyword
 argument, the header will also be added to the new HDU.
-The data to be written out must be stored contiguously in memory.
+
+The keyword argument `checksum` may be set to `true` to enable
+writing a checksum for the HDU. This is not enabled by default, as it
+can significantly slow down writing large HDUs.
+
+!!! note "Contiguous data"
+    The data to be written out must be stored contiguously in memory.
+    This is a requirement of the underlying cfitsio library, and FITSIO
+    will throw an error if this is not the case.
 
 !!! tip "Unsupported element types"
     It might be possible to write out an array with an element type other than those mentioned above
@@ -351,7 +360,8 @@ The data to be written out must be stored contiguously in memory.
 function write(f::FITS, data::StridedArray{<:Real};
                header::Union{Nothing, FITSHeader}=nothing,
                name::Union{Nothing, String}=nothing,
-               ver::Union{Nothing, Integer}=nothing)
+               ver::Union{Nothing, Integer}=nothing,
+               checksum::Bool=false)
 
     if !iscontiguous(data)
         throw(ArgumentError("data to be written out needs to be contiguous"))
@@ -375,16 +385,21 @@ function write(f::FITS, data::StridedArray{<:Real};
         fits_update_key(f.fitsfile, "EXTVER", ver)
     end
     fits_write_pix(f.fitsfile, data)
+    checksum && fits_write_chksum(f.fitsfile)
     nothing
 end
 
 """
-    write(hdu::ImageHDU, data::StridedArray{<:Real})
+    write(hdu::ImageHDU, data::StridedArray{<:Real}; checksum::Bool=false)
 
 Write data to an existing image HDU.
 The data to be written out must be stored contiguously in memory.
+
+The keyword argument `checksum` may be set to `true` to enable
+writing a checksum for the HDU. This is not enabled by default, as it
+can significantly slow down writing large HDUs.
 """
-function write(hdu::ImageHDU, data::StridedArray{<:Real})
+function write(hdu::ImageHDU, data::StridedArray{<:Real}; checksum::Bool=false)
 
     if !iscontiguous(data)
         throw(ArgumentError("data to be written out needs to be contiguous"))
@@ -406,6 +421,7 @@ function write(hdu::ImageHDU, data::StridedArray{<:Real})
     end
 
     fits_write_pix(hdu.fitsfile, data)
+    checksum && fits_write_chksum(hdu.fitsfile)
     nothing
 end
 

@@ -921,3 +921,15 @@ end
         end
     end
 end
+
+@testset "flush" begin
+    tempnamefits() do fname
+        FITS(fname, "w") do f
+            write(f, ones(2,2))
+            flush(f)
+            f2 = FITS(fname, "r")
+            @test length(f2) == 1
+            @test read(f2[1]) == ones(2,2)
+        end
+    end
+end

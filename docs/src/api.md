@@ -5,6 +5,7 @@
 ```@docs
 FITS
 length
+flush
 close
 deleteat!
 ```

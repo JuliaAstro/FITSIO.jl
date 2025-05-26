@@ -97,7 +97,9 @@ import CFITSIO: libcfitsio,
 import CFITSIO
 @deprecate libcfitsio_version CFITSIO.libcfitsio_version
 
-import Tables
+if !isdefined(Base, :get_extension)
+    include("../ext/FITSIOTablesExt.jl")
+end
 
 ## DEPRECATED
 module Libcfitsio

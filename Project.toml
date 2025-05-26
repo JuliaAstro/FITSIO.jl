@@ -8,6 +8,12 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 
+[weakdeps]
+Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
+
+[extensions]
+FITSIOTablesExt = "Tables"
+
 [compat]
 Aqua = "0.8"
 CFITSIO = "1.6.1"
@@ -23,7 +29,8 @@ julia = "1.3"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Tables = "bd369af6-aec1-5ad0-b16a-f7cc5008161c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "OrderedCollections", "Random", "Test"]
+test = ["Aqua", "OrderedCollections", "Random", "Tables", "Test"]

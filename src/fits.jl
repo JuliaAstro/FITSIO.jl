@@ -89,9 +89,12 @@ function show(io::IO, f::FITS)
 end
 
 function Base.summary(io::IO, f::FITS)
-    fits_assert_open(f.fitsfile)
-    nhdu = length(f)
-    print(io, "FITS with $(nhdu) HDU", nhdu == 1 ? "" : "s")
+    if f.fitsfile.ptr != C_NULL # may use `isopen(f)` once that is implemented
+        nhdu = length(f)
+        print(io, "FITS with ", nhdu, " HDU", nhdu == 1 ? "" : "s")
+    else
+        print(io, "Closed FITS file")
+    end
 end
 
 # Returns HDU object based on extension number

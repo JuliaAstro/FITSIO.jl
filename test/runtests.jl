@@ -32,6 +32,8 @@ end
         @test_throws Exception write(f, ones(2))
         d = f[1]
         @test_throws Exception write(d, ones(2))
+        close(f)
+        @test summary(f) == "Closed FITS file"
 
         fname2 = fname*"[12].fits"
         FITS(fname2, "w", extendedparser = false) do f

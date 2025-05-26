@@ -677,6 +677,16 @@ end
         end
         rm(fname, force=true)
     end
+
+    @testset "ensure correct HDU pointer in indexing" begin
+        tempnamefits() do fname
+            FITS(fname, "w") do f
+                write(f, Dict("col1" => [1, 2, 3], "col2" => [4, 5, 6]))
+                @test f[1] isa FITSIO.ImageHDU{<:Any,0}
+                @test f[2] isa FITSIO.TableHDU
+            end
+        end
+    end
 end
 
 @testset "FITSHeader" begin

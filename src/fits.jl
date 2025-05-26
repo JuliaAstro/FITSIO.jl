@@ -99,12 +99,12 @@ function getindex(f::FITS, i::Integer)
     fits_assert_open(f.fitsfile)
     _getindex(f, i)
 end
-function _getindex(f::FITS, i::Integer)
+function _getindex(f::FITS, i::Integer; move::Bool=true)
     if i > length(f) || i < 1
         throw(BoundsError(f, i))
     end
     get!(f.hdus, i) do
-        fits_movabs_hdu(f.fitsfile, i)
+        move && fits_movabs_hdu(f.fitsfile, i)
         hdutype = fits_get_hdu_type(f.fitsfile)
         (hdutype == :image_hdu ? ImageHDU(f.fitsfile, i) :
          hdutype == :binary_table ? TableHDU(f.fitsfile, i) :
@@ -118,7 +118,7 @@ function getindex(f::FITS, name::AbstractString, ver::Int=0)
     fits_assert_open(f.fitsfile)
     fits_movnam_hdu(f.fitsfile, name, ver)
     i = fits_get_hdu_num(f.fitsfile)
-    _getindex(f, i)
+    _getindex(f, i, move=false)
 end
 
 Base.haskey(f::FITS, i::Integer) = i ∈ 1:length(f)

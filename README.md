@@ -3,14 +3,12 @@ FITSIO.jl
 
 Flexible Image Transport System (FITS) support for Julia
 
-
-[![Build Status](https://github.com/juliaastro/FITSIO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/juliaastro/FITSIO.jl/actions)
-[![PkgEval](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/F/FITSIO.svg)](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html)
-[![codecov](https://codecov.io/gh/juliaastro/fitsio.jl/branch/master/graph/badge.svg?token=SA9EG0z8pt)](https://codecov.io/gh/juliaastro/fitsio.jl)
-
-
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](http://juliaastro.github.io/FITSIO.jl/stable/)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](http://juliaastro.github.io/FITSIO/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](http://juliaastro.github.io/FITSIO.jl/dev/)
+
+[![CI](https://github.com/JuliaAstro/FITSIO.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaAstro/FITSIO.jl/actions/workflows/CI.yml)
+[![PkgEval](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/F/FITSIO.svg)](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html)
+[![codecov](https://codecov.io/gh/juliaastro/fitsio.jl/graph/badge.svg?token=SA9EG0z8pt)](https://codecov.io/gh/juliaastro/fitsio.jl)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Note:** The `Libcfitsio` submodule has been moved to [CFITSIO.jl](https://github.com/JuliaAstro/CFITSIO.jl) and will be deprecated in a future release.

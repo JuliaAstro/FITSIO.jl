@@ -1,8 +1,8 @@
 # FITSIO.jl
 
 [![GitHub](https://img.shields.io/badge/Code-GitHub-black.svg)](https://github.com/JuliaAstro/FITSIO.jl)
-[![Build Status](https://github.com/juliaastro/FITSIO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/juliaastro/FITSIO.jl/actions)
-[![Coverage Status](http://img.shields.io/coveralls/JuliaAstro/FITSIO.jl.svg?style=flat-square)](https://coveralls.io/r/JuliaAstro/FITSIO.jl?branch=master)
+[![CI](https://github.com/JuliaAstro/FITSIO.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaAstro/FITSIO.jl/actions/workflows/CI.yml)
+[![codecov](https://codecov.io/gh/juliaastro/fitsio.jl/graph/badge.svg?token=SA9EG0z8pt)](https://codecov.io/gh/juliaastro/fitsio.jl)
 
 A [Julia](http://julialang.org) package for reading and writing
 Flexible Image Transport System (FITS) files, based on the

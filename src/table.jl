@@ -260,7 +260,7 @@ end
 # Add a new TableHDU to a FITS object
 function write_internal(f::FITS, colnames::Vector{String},
                         coldata::Vector, hdutype, name, ver, header, units,
-                        varcols)
+                        varcols, checksum::Bool)
     fits_assert_open(f.fitsfile)
     for el in colnames; fits_assert_isascii(el); end
 
@@ -315,6 +315,7 @@ function write_internal(f::FITS, colnames::Vector{String},
             fits_write_col(f.fitsfile, i, 1, 1, a)
         end
     end
+    checksum && fits_write_chksum(f.fitsfile)
     nothing
 end
 
@@ -322,7 +323,8 @@ end
 """
     write(f::FITS, colnames, coldata;
           hdutype=TableHDU, name=nothing, ver=nothing,
-          header=nothing, units=nothing, varcols=nothing)
+          header=nothing, units=nothing, varcols=nothing,
+          checksum::Bool=false)
 
 Same as `write(f::FITS, data::Dict; ...)` but providing column names
 and column data as a separate arrays. This is useful for specifying
@@ -331,19 +333,21 @@ and column data must be a vector of arrays.
 """
 function write(f::FITS, colnames::Vector{String}, coldata::Vector;
                units=nothing, header=nothing, hdutype=TableHDU,
-               name=nothing, ver=nothing, varcols=nothing)
+               name=nothing, ver=nothing, varcols=nothing,
+               checksum::Bool=false)
     if length(colnames) != length(coldata)
         error("length of colnames and length of coldata must match")
     end
     write_internal(f, colnames, coldata, hdutype, name, ver, header,
-                   units, varcols)
+                   units, varcols, checksum)
 end
 
 
 """
     write(f::FITS, data::Dict;
           hdutype=TableHDU, name=nothing, ver=nothing,
-          header=nothing, units=nothing, varcols=nothing)
+          header=nothing, units=nothing, varcols=nothing,
+          checksum::Bool=false)
 
 Create a new table extension and write data to it. If the FITS file is
 currently empty then a dummy primary array will be created before
@@ -364,6 +368,8 @@ Optional inputs:
 - `units`: Dictionary mapping column name to units (as a string).
 - `varcols`: An array giving the column names or column indicies to
   write as "variable-length columns".
+- `checksum`: A boolean flag to specify whether to write a
+  checksum for the new extension. Defaults to `false`.
 
 !!! note "Variable length columns"
 
@@ -381,11 +387,11 @@ Optional inputs:
 """
 function write(f::FITS, data::AbstractDict{<:AbstractString};
                units=nothing, header=nothing, hdutype=TableHDU,
-               name=nothing, ver=nothing, varcols=nothing)
+               name=nothing, ver=nothing, varcols=nothing, checksum::Bool=false)
     colnames = collect(keys(data))
     coldata = collect(values(data))
     write_internal(f, colnames, coldata, hdutype, name, ver, header,
-                   units, varcols)
+                   units, varcols, checksum)
 end
 
 # Read a variable length array column of numbers

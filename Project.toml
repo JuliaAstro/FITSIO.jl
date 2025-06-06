@@ -16,7 +16,7 @@ FITSIOTablesExt = "Tables"
 
 [compat]
 Aqua = "0.8"
-CFITSIO = "1.6.1"
+CFITSIO = "1.7.0"
 OrderedCollections = "1"
 Printf = "<0.0.1, 1"
 Random = "<0.0.1, 1"

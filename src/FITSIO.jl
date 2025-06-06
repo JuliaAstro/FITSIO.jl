@@ -87,7 +87,9 @@ import CFITSIO: FITSFile,
                 fits_read_btblhdr,
                 fits_read_atblhdr,
                 fits_create_tbl,
-                fits_flush_file
+                fits_flush_file,
+                fits_verify_chksum,
+                fits_write_chksum
 
 # There are a few direct `ccall`s to libcfitsio in this module. For this, we
 # need a few non-exported things from Libcfitsio: the shared library handle,

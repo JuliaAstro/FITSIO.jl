@@ -922,6 +922,23 @@ end
     end
 end
 
+@testset "checksum" begin
+    tempnamefits() do fname
+        FITS(fname, "w") do f
+            write(f, ones(2,2))
+            @test_throws ErrorException FITSIO.verify_checksum(f[1])
+            FITSIO.write_checksum(f[1])
+            @test FITSIO.verify_checksum(f[1])
+            write(f, ones(2,2), checksum=true)
+            @test FITSIO.verify_checksum(f[2])
+            write(f, Dict("col1" => [1, 2, 3], "col2" => [4, 5, 6]), checksum=true)
+            @test FITSIO.verify_checksum(f[3])
+            write(f, ["col1", "col2"], [[1,2,3], [4, 5, 6]], checksum=true)
+            @test FITSIO.verify_checksum(f[4])
+        end
+    end
+end
+
 @testset "flush" begin
     tempnamefits() do fname
         FITS(fname, "w") do f

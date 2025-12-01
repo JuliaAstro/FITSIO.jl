@@ -950,3 +950,5 @@ end
         end
     end
 end
+
+include("test_wcs.jl")

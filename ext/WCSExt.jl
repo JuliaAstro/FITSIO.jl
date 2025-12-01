@@ -15,6 +15,7 @@ function FITSHeader(wcs::WCSTransform)
 
 	# Split each of those card images into their (key, value, comment) parts
 	card_image_parts = map(card_images) do card_image
+        card_image = replace(card_image, "'" => "") # Remove single quotes
 		map(strip, split(card_image, ['=', '/' ]))
 	end
 

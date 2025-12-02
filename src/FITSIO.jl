@@ -232,6 +232,19 @@ reading from a file. (This is similar to how an `Array` returned by
 if it was created by `read_header(::HDU)`.  You can, however, write a
 `FITSHeader` to a file using the `write(::FITS, ...)` methods that
 append a new HDU to a file.
+
+# Examples
+
+
+```jldoctest
+julia> using FITSIO
+
+julia> FITSHeader(["Key1", "Key2"], [1.0, "one"], ["Comment1", "Comment2"])
+Key1    =                  1.0 / Comment1
+Key2    = 'one     '           / Comment2
+```
+
+If [WCS.jl](@extref) is loaded, then a `FITSHeader` can also be constructed from a [`WCS.WCSTransform`](@extref).
 """
 mutable struct FITSHeader
     keys::Vector{String}

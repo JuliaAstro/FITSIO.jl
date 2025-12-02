@@ -1,7 +1,9 @@
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterInterLinks = "d12716ef-a0f6-4df4-a9f1-a5a34e75c656"
 FITSIO = "525bcba6-941b-5504-bd06-fd0dc1a4d2eb"
+WCS = "15f3aee2-9e10-537f-b834-a6fb8bdb944d"
 
 [compat]
 Documenter = "1"

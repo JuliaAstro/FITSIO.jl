@@ -1,12 +1,3 @@
-@test_deprecated FITSIO.libcfitsio_version()
-
-# test we can still access Libcfitsio
-
-@test begin
-    using FITSIO.Libcfitsio
-    Libcfitsio.libcfitsio_version() isa VersionNumber
-end
-
 @testset "0-dim arrays" begin
     tempnamefits() do fname
         FITS(fname, "w") do f

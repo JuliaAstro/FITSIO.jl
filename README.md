@@ -11,9 +11,6 @@ Flexible Image Transport System (FITS) support for Julia
 [![codecov](https://codecov.io/gh/juliaastro/fitsio.jl/graph/badge.svg?token=SA9EG0z8pt)](https://codecov.io/gh/juliaastro/fitsio.jl)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Note:** The `Libcfitsio` submodule has been moved to [CFITSIO.jl](https://github.com/JuliaAstro/CFITSIO.jl) and will be deprecated in a future release.
-
-
 ## Usage
 
 For more in-depth usage and examples, see [the documentation](http://juliaastro.github.io/FITSIO.jl/stable/).

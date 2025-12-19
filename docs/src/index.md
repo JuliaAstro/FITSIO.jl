@@ -1,20 +1,10 @@
 # FITSIO.jl
 
-[![GitHub](https://img.shields.io/badge/Code-GitHub-black.svg)](https://github.com/JuliaAstro/FITSIO.jl)
-[![CI](https://github.com/JuliaAstro/FITSIO.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaAstro/FITSIO.jl/actions/workflows/CI.yml)
-[![codecov](https://codecov.io/gh/juliaastro/fitsio.jl/graph/badge.svg?token=SA9EG0z8pt)](https://codecov.io/gh/juliaastro/fitsio.jl)
+A [Julia](http://julialang.org) package for reading and writing Flexible Image Transport System (FITS) files, based on the [cfitsio](http://heasarc.gsfc.nasa.gov/fitsio/) library.
 
-A [Julia](http://julialang.org) package for reading and writing
-Flexible Image Transport System (FITS) files, based on the
-[cfitsio](http://heasarc.gsfc.nasa.gov/fitsio/) library.
+The interface is inspired by Erin Sheldon's [fitsio](https://github.com/esheldon/fitsio) Python package.
 
-The interface is inspired by Erin Sheldon's
-[fitsio](https://github.com/esheldon/fitsio) Python package.
-
-!!! warning
-    The `Libcfitsio` submodule has been moved to [CFITSIO.jl](https://github.com/JuliaAstro/CFITSIO.jl) and will be deprecated in a future release.
-
-# Installation
+## Installation
 
 `FITSIO.jl` can be installed using the built-in package manager:
 
@@ -26,7 +16,7 @@ pkg> add FITSIO
 DocTestFilters = r"File: [a-zA-Z0-9/._]+"
 ```
 
-# Quick start
+## Quick start
 
 The simplest way to write and read an image from a FITS file is by using the functions [`FITSIO.fitswrite`](@ref) and [`FITSIO.fitsread`](@ref).
 
@@ -47,16 +37,19 @@ julia> FITSIO.fitsread(fname, 1, 1:2, 1) # read a section of HDU number 1
  1
  3
 ```
+
 This is not the most performant way, as the file is opened and closed on every invocation. However, this abstracts away the complexity.
+
 !!! warn
     Currently, `fitswrite` overwrites an existing file, so this should be used with caution. In the future, this may allow
     appending to an existing file.
 
-# Usage
+## Usage
 
 In this example, we write to and read from a fits file.
 
 We create a new temporary file using the `FITS` constructor:
+
 ```jldoctest example
 julia> fname, _ = mktemp(); # create a temporary file for this example
 
@@ -70,12 +63,10 @@ No HDUs.
 julia> length(f) # shows the number of HDUs in the file
 0
 ```
+
 In this example, we have used the file mode `"w"`, which will overwrite any existing file with the same name. To append to an existing file instead, we use the mode `"r+"`, and to open a file for reading, we may specify the mode `"r"`.
 
-A FITS file consists of one or more header-data units (HDUs),
-concatenated one after the other. The `FITS` object therefore is
-represented as a collection of these HDUs. Each HDU can contain image data, or table data (either binary or
-ASCII-formatted). Since we have just created a new file, there are no HDUs currently in the file.
+A FITS file consists of one or more header-data units (HDUs), concatenated one after the other. The `FITS` object therefore is represented as a collection of these HDUs. Each HDU can contain image data, or table data (either binary or ASCII-formatted). Since we have just created a new file, there are no HDUs currently in the file.
 
 ## Image
 
@@ -223,6 +214,7 @@ Variable length columns are not supported by the `Tables.jl` interface, and `Tab
 In this section, we re-use the file that we had created in the eariler section, which contains an image HDU and a table HDU.
 
 We may read the header of an HDU as
+
 ```jldoctest example
 julia> header = read_header(imghdu)
 SIMPLE  =                    T / file does conform to FITS standard
@@ -240,6 +232,7 @@ FITSHeader
 julia> length(header) # number of keys
 8
 ```
+
 This reads the entire header from the HDU into memory. The header object behaves like a dictionary that may be queried using its keys:
 
 ```jldoctest example
@@ -276,7 +269,9 @@ julia> read_key(imghdu, 3) # query by key index
 julia> get_comment(header, "NAXIS")
 "number of data axes"
 ```
+
 We may modify the header in memory as
+
 ```jldoctest example
 julia> header["NEWKEY"] = 10;  # change or add a keyword
 
@@ -290,7 +285,6 @@ julia> get_comment(header, "NEWKEY")
 ```
 !!! note
     Manipulating a header only changes it in memory until it is written to disk. The header object in memory is not connected to the fits file. To write some header keywords in the new extension, pass a [`FITSHeader`](@ref) instance as a keyword: `write(f, data; header=header)`
-
 
 ## Iterating over the HDUs
 
@@ -310,6 +304,7 @@ Close the file to write the in-memory FITS file to disk.
 ```jldoctest example
 julia> close(f)
 ```
+
 FITS objects are also closed automatically when garbage collected.
 
 !!! tip "Compressed storage"

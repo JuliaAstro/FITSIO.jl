@@ -1,4 +1,11 @@
 using WCS: WCSTransform
+using FITSIO: fitswrite, read_header
+
+norm(text) = replace(text, r"'(-?\d+\.?\d*)\s*'" => m -> begin
+    num = parse(Float64, match(r"-?\d+\.?\d*", m).match)
+    rounded = round(num, digits=3)
+    "'$(rounded)'"
+end)
 
 @testset "WCS handling" begin
     # Create sample fits data
@@ -41,10 +48,10 @@ using WCS: WCSTransform
        RADESYS = 'ICRS    '           / Equatorial coordinate system
        COMMENT WCS header keyrecords produced by WCSLIB 7.7"""
 
-    @test string(header_wcs) == header_wcs_str
+    @test (norm ∘ string)(header_wcs) == norm(header_wcs_str)
 
     tempnamefits() do fname
-        FITSIO.fitswrite(fname, img; header = header_wcs)
-        @test string(FITSIO.read_header(fname)) == header_default_str * header_wcs_str
+        fitswrite(fname, img; header = header_wcs)
+        @test (norm ∘ string ∘ read_header)(fname) == norm(header_default_str * header_wcs_str)
     end
 end

@@ -1,8 +1,13 @@
-using Documenter, FITSIO
+using Documenter, DocumenterInterLinks, FITSIO
+using DataFrames, WCS # Precompile package extensions
+
+links = InterLinks(
+    "WCS" => "https://juliaastro.org/WCS/stable/",
+)
 
 include("pages.jl")
 makedocs(;
-    modules = [FITSIO],
+    modules = [FITSIO, Base.get_extension(FITSIO, :WCSExt)],
     sitename = "FITSIO.jl",
     format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true",
@@ -10,6 +15,7 @@ makedocs(;
     ),
     pages = pages,
     checkdocs = :exports,
+    plugins = [links],
 )
 
 deploydocs(;

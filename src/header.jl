@@ -6,6 +6,24 @@
 # Used here and in other files. Functions that operate on FITSFile
 # start with `fits_`.
 
+"""
+    FITSHeader(cards::AbstractVector{<:NamedTuple})
+
+Construct a [`FITSHeader`](@ref) from a vector of `NamedTuples` with the following fields: `key`, `value`, and `comment`.
+
+# Examples
+
+```jldoctest
+julia> using FITSIO
+
+julia> FITSHeader([
+           (key = "Key1", value = 1.0, comment = "Comment1"),
+           (key = "Key2", value = "one", comment = "Comment2"),
+       ])
+Key1    =                  1.0 / Comment1
+Key2    = 'one     '           / Comment2
+```
+"""
 FITSIO.FITSHeader(cards::AbstractVector{<:NamedTuple}) = FITSHeader(
     map(x -> x.key, cards),
     map(x -> x.value, cards),

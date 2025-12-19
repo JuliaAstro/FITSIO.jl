@@ -23,6 +23,8 @@ read_key
 write_key
 read_header
 FITSHeader
+FITSHeader(::AbstractVector{<:NamedTuple})
+FITSHeader(::WCS.WCSTransform)
 length(::FITSHeader)
 haskey(::FITSHeader, ::String)
 keys(::FITSHeader)

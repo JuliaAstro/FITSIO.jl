@@ -1,10 +1,10 @@
 using WCS: WCSTransform
 using FITSIO: fitswrite, read_header
+using Printf: @sprintf
 
 norm(text) = replace(text, r"'(-?\d+\.?\d*)\s*'" => m -> begin
     num = parse(Float64, match(r"-?\d+\.?\d*", m).match)
-    rounded = round(num, digits=3)
-    "'$(rounded)'"
+    @sprintf "%.3f" num
 end)
 
 @testset "WCS handling" begin

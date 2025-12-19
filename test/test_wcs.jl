@@ -1,10 +1,11 @@
 using WCS: WCSTransform
 using FITSIO: fitswrite, read_header
-using Printf: @printf
+using Printf: @sprintf
 
-norm(text) = replace(text, r"'(-?\d+\.?\d*)\s*'" => m -> begin
-    num = parse(Float64, match(r"-?\d+\.?\d*", m).match)
-    @printf "%.3f" num
+norm(text) = replace(text, r"'(-?\d+\.?\d*(?:[eE][+-]?\d+)?)\s*'" => m -> begin
+    num_str = match(r"-?\d+\.?\d*(?:[eE][+-]?\d+)?", m).match
+    num = parse(Float64, num_str)
+    return "'" * (@sprintf "%.3f" num) * "'"
 end)
 
 @testset "WCS handling" begin

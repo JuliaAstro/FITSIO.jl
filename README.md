@@ -3,12 +3,12 @@ FITSIO.jl
 
 Flexible Image Transport System (FITS) support for Julia
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](http://juliaastro.github.io/FITSIO/stable/)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](http://juliaastro.github.io/FITSIO.jl/dev/)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](http://juliaastro.org/FITSIO/stable/)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](http://juliaastro.org/FITSIO.jl/dev/)
 
 [![CI](https://github.com/JuliaAstro/FITSIO.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/JuliaAstro/FITSIO.jl/actions/workflows/CI.yml)
 [![PkgEval](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/F/FITSIO.svg)](https://juliaci.github.io/NanosoldierReports/pkgeval_badges/report.html)
-[![codecov](https://codecov.io/gh/juliaastro/fitsio.jl/graph/badge.svg?token=SA9EG0z8pt)](https://codecov.io/gh/juliaastro/fitsio.jl)
+[![codecov](https://codecov.io/gh/JuliaAstro/FITSIO.jl/graph/badge.svg?token=SA9EG0z8pt)](https://codecov.io/gh/JuliaAstro/FITSIO.jl)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Usage

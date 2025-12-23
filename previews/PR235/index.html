@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Introduction · FITSIO.jl</title><meta name="title" content="Introduction · FITSIO.jl"/><meta property="og:title" content="Introduction · FITSIO.jl"/><meta property="twitter:title" content="Introduction · FITSIO.jl"/><meta name="description" content="Documentation for FITSIO.jl."/><meta property="og:description" content="Documentation for FITSIO.jl."/><meta property="twitter:description" content="Documentation for FITSIO.jl."/><meta property="og:url" content="https://juliaastro.org/FITSIO/stable/"/><meta property="twitter:url" content="https://juliaastro.org/FITSIO/stable/"/><link rel="canonical" href="https://juliaastro.org/FITSIO/stable/"/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href>FITSIO.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Introduction</a><ul class="internal"><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#Quick-start"><span>Quick start</span></a></li><li><a class="tocitem" href="#Usage"><span>Usage</span></a></li><li><a class="tocitem" href="#Image"><span>Image</span></a></li><li><a class="tocitem" href="#Table"><span>Table</span></a></li><li><a class="tocitem" href="#Header"><span>Header</span></a></li><li><a class="tocitem" href="#Iterating-over-the-HDUs"><span>Iterating over the HDUs</span></a></li><li><a class="tocitem" href="#Write-to-disk"><span>Write to disk</span></a></li></ul></li><li><a class="tocitem" href="api/">API Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Introduction</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Introduction</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaAstro/FITSIO.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaAstro/FITSIO.jl/blob/main/docs/src/index.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="FITSIO.jl"><a class="docs-heading-anchor" href="#FITSIO.jl">FITSIO.jl</a><a id="FITSIO.jl-1"></a><a class="docs-heading-anchor-permalink" href="#FITSIO.jl" title="Permalink"></a></h1><p>A <a href="http://julialang.org">Julia</a> package for reading and writing Flexible Image Transport System (FITS) files, based on the <a href="http://heasarc.gsfc.nasa.gov/fitsio/">cfitsio</a> library.</p><p>The interface is inspired by Erin Sheldon&#39;s <a href="https://github.com/esheldon/fitsio">fitsio</a> Python package.</p><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><p><code>FITSIO.jl</code> can be installed using the built-in package manager:</p><pre><code class="language-julia-repl hljs">pkg&gt; add FITSIO</code></pre><h2 id="Quick-start"><a class="docs-heading-anchor" href="#Quick-start">Quick start</a><a id="Quick-start-1"></a><a class="docs-heading-anchor-permalink" href="#Quick-start" title="Permalink"></a></h2><p>The simplest way to write and read an image from a FITS file is by using the functions <a href="api/#FITSIO.fitswrite"><code>FITSIO.fitswrite</code></a> and <a href="api/#FITSIO.fitsread"><code>FITSIO.fitsread</code></a>.</p><pre><code class="language-julia-repl hljs">julia&gt; fname, _ = mktemp(); # create a temporary file for this example
+
+julia&gt; using FITSIO
+
+julia&gt; FITSIO.fitswrite(fname, [1 2; 3 4]) # creates a new file with the data
+
+julia&gt; FITSIO.fitsread(fname) # opened in a read-only mode
+2×2 Matrix{Int64}:
+ 1  2
+ 3  4
+
+julia&gt; FITSIO.fitsread(fname, 1, 1:2, 1) # read a section of HDU number 1
+2-element Vector{Int64}:
+ 1
+ 3</code></pre><p>This is not the most performant way, as the file is opened and closed on every invocation. However, this abstracts away the complexity.</p><div class="admonition is-category-warn" id="Warn-737bac116851f3f"><header class="admonition-header">Warn<a class="admonition-anchor" href="#Warn-737bac116851f3f" title="Permalink"></a></header><div class="admonition-body"><p>Currently, <code>fitswrite</code> overwrites an existing file, so this should be used with caution. In the future, this may allow appending to an existing file.</p></div></div><h2 id="Usage"><a class="docs-heading-anchor" href="#Usage">Usage</a><a id="Usage-1"></a><a class="docs-heading-anchor-permalink" href="#Usage" title="Permalink"></a></h2><p>In this example, we write to and read from a fits file.</p><p>We create a new temporary file using the <code>FITS</code> constructor:</p><pre><code class="language-julia-repl hljs">julia&gt; fname, _ = mktemp(); # create a temporary file for this example
+
+julia&gt; using FITSIO
+
+julia&gt; f = FITS(fname, &quot;w&quot;) # create a new fits file
+File: /tmp/jl_td8sL6
+Mode: &quot;w&quot; (read-write)
+No HDUs.
+
+julia&gt; length(f) # shows the number of HDUs in the file
+0</code></pre><p>In this example, we have used the file mode <code>&quot;w&quot;</code>, which will overwrite any existing file with the same name. To append to an existing file instead, we use the mode <code>&quot;r+&quot;</code>, and to open a file for reading, we may specify the mode <code>&quot;r&quot;</code>.</p><p>A FITS file consists of one or more header-data units (HDUs), concatenated one after the other. The <code>FITS</code> object therefore is represented as a collection of these HDUs. Each HDU can contain image data, or table data (either binary or ASCII-formatted). Since we have just created a new file, there are no HDUs currently in the file.</p><h2 id="Image"><a class="docs-heading-anchor" href="#Image">Image</a><a id="Image-1"></a><a class="docs-heading-anchor-permalink" href="#Image" title="Permalink"></a></h2><p>We write an array to the file, which will automatically create an image HDU.</p><pre><code class="language-julia-repl hljs">julia&gt; data = Array(reshape(1:20, 4, 5))
+4×5 Matrix{Int64}:
+ 1  5   9  13  17
+ 2  6  10  14  18
+ 3  7  11  15  19
+ 4  8  12  16  20
+
+julia&gt; write(f, data)
+
+julia&gt; length(f) # an HDU should now be added
+1
+
+julia&gt; f # show information about the file
+File: /tmp/jl_MdlNSQ
+Mode: &quot;w&quot; (read-write)
+HDUs: Num  Name  Type
+      1          Image
+
+julia&gt; imghdu = f[1] # get the first image HDU
+File: /tmp/jl_q95Lxk
+HDU: 1
+Mode: read-write
+Type: Image
+Datatype: Int64
+Datasize: (4, 5)
+
+julia&gt; typeof(imghdu)
+ImageHDU{Int64, 2}</code></pre><p>We may query the properties of an image HDU analogous to an array.</p><pre><code class="language-julia-repl hljs">julia&gt; eltype(imghdu)
+Int64
+
+julia&gt; ndims(imghdu)
+2
+
+julia&gt; size(imghdu)
+(4, 5)
+
+julia&gt; size(imghdu, 1)
+4
+
+julia&gt; length(imghdu)
+20</code></pre><p>We may read the entire data array or a section of it using <code>read</code>. This is analogous to indexing into an array.</p><pre><code class="language-julia-repl hljs">julia&gt; read(imghdu)
+4×5 Matrix{Int64}:
+ 1  5   9  13  17
+ 2  6  10  14  18
+ 3  7  11  15  19
+ 4  8  12  16  20
+
+julia&gt; read(imghdu, 1:3, 2:4)
+3×3 Matrix{Int64}:
+ 5   9  13
+ 6  10  14
+ 7  11  15
+
+julia&gt; read(imghdu, 1:3, 3)
+3-element Vector{Int64}:
+  9
+ 10
+ 11
+
+julia&gt; read(imghdu, :, 2:3)
+4×2 Matrix{Int64}:
+ 5   9
+ 6  10
+ 7  11
+ 8  12</code></pre><h2 id="Table"><a class="docs-heading-anchor" href="#Table">Table</a><a id="Table-1"></a><a class="docs-heading-anchor-permalink" href="#Table" title="Permalink"></a></h2><p>In this section, we re-use the file that we had created in the earlier sections that contains an image HDU. We append a binary table HDU to the file:</p><pre><code class="language-julia-repl hljs">julia&gt; data = Dict(&quot;col1&quot;=&gt;[1., 2., 3.], &quot;col2&quot;=&gt;[1, 2, 3]);
+
+julia&gt; write(f, data)
+
+julia&gt; length(f) # check that a second HDU is now added
+2
+
+julia&gt; f # the FITS object now contains two HDUs
+File: /tmp/jl_q95Lxk
+Mode: &quot;w&quot; (read-write)
+HDUs: Num  Name  Type
+      1          Image
+      2          Table
+
+julia&gt; tablehdu = f[2]
+File: /tmp/jl_q95Lxk
+HDU: 2
+Type: Table
+Rows: 3
+Columns: Name  Size  Type     TFORM
+         col2        Int64    1K
+         col1        Float64  1D
+
+julia&gt; typeof(tablehdu)
+TableHDU</code></pre><p>We may read a column from a table HDU as</p><pre><code class="language-julia-repl hljs">julia&gt; read(tablehdu, &quot;col1&quot;)
+3-element Vector{Float64}:
+ 1.0
+ 2.0
+ 3.0</code></pre><p>Table HDUs implement the <a href="https://tables.juliadata.org/stable/">Tables.jl</a> interface, so you can load them into other table types, like <a href="https://dataframes.juliadata.org/stable/">DataFrames</a>.</p><pre><code class="language-julia-repl hljs">julia&gt; using DataFrames
+
+julia&gt; df = DataFrame(tablehdu)
+3×2 DataFrame
+ Row │ col2   col1
+     │ Int64  Float64
+─────┼────────────────
+   1 │     1      1.0
+   2 │     2      2.0
+   3 │     3      3.0</code></pre><p>Variable length columns are not supported by the <code>Tables.jl</code> interface, and <code>Table</code>s methods will ignore them.</p><h2 id="Header"><a class="docs-heading-anchor" href="#Header">Header</a><a id="Header-1"></a><a class="docs-heading-anchor-permalink" href="#Header" title="Permalink"></a></h2><p>In this section, we re-use the file that we had created in the eariler section, which contains an image HDU and a table HDU.</p><p>We may read the header of an HDU as</p><pre><code class="language-julia-repl hljs">julia&gt; header = read_header(imghdu)
+SIMPLE  =                    T / file does conform to FITS standard
+BITPIX  =                   64 / number of bits per data pixel
+NAXIS   =                    2 / number of data axes
+NAXIS1  =                    4 / length of data axis 1
+NAXIS2  =                    5 / length of data axis 2
+EXTEND  =                    T / FITS dataset may contain extensions
+COMMENT   FITS (Flexible Image Transport System) format is defined in &#39;Astronom
+COMMENT   and Astrophysics&#39;, volume 376, page 359; bibcode: 2001A&amp;A...376..359H
+
+julia&gt; typeof(header)
+FITSHeader
+
+julia&gt; length(header) # number of keys
+8</code></pre><p>This reads the entire header from the HDU into memory. The header object behaves like a dictionary that may be queried using its keys:</p><pre><code class="language-julia-repl hljs">julia&gt; keys(header)
+8-element Vector{String}:
+ &quot;SIMPLE&quot;
+ &quot;BITPIX&quot;
+ &quot;NAXIS&quot;
+ &quot;NAXIS1&quot;
+ &quot;NAXIS2&quot;
+ &quot;EXTEND&quot;
+ &quot;COMMENT&quot;
+ &quot;COMMENT&quot;
+
+julia&gt; haskey(header, &quot;NAXIS&quot;)
+true
+
+julia&gt; header[&quot;NAXIS&quot;] # using the key name
+2
+
+julia&gt; header[3] # using the key index
+2</code></pre><p>We may read the value and comment for a key as well, either using the key name or its index.</p><pre><code class="language-julia-repl hljs">julia&gt; read_key(imghdu, &quot;NAXIS&quot;) # query by key name
+(2, &quot;number of data axes&quot;)
+
+julia&gt; read_key(imghdu, 3) # query by key index
+(&quot;NAXIS&quot;, 2, &quot;number of data axes&quot;)
+
+julia&gt; get_comment(header, &quot;NAXIS&quot;)
+&quot;number of data axes&quot;</code></pre><p>We may modify the header in memory as</p><pre><code class="language-julia-repl hljs">julia&gt; header[&quot;NEWKEY&quot;] = 10;  # change or add a keyword
+
+julia&gt; header[&quot;NEWKEY&quot;]
+10
+
+julia&gt; set_comment!(header, &quot;NEWKEY&quot;, &quot;this is a comment&quot;);
+
+julia&gt; get_comment(header, &quot;NEWKEY&quot;)
+&quot;this is a comment&quot;</code></pre><div class="admonition is-info" id="Note-f2b687f53f898fe1"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-f2b687f53f898fe1" title="Permalink"></a></header><div class="admonition-body"><p>Manipulating a header only changes it in memory until it is written to disk. The header object in memory is not connected to the fits file. To write some header keywords in the new extension, pass a <a href="api/#FITSIO.FITSHeader"><code>FITSHeader</code></a> instance as a keyword: <code>write(f, data; header=header)</code></p></div></div><h2 id="Iterating-over-the-HDUs"><a class="docs-heading-anchor" href="#Iterating-over-the-HDUs">Iterating over the HDUs</a><a id="Iterating-over-the-HDUs-1"></a><a class="docs-heading-anchor-permalink" href="#Iterating-over-the-HDUs" title="Permalink"></a></h2><p>We may iterate over the fits file to access individual HDUs.</p><pre><code class="language-julia-repl hljs">julia&gt; for hdu in f
+           println(typeof(hdu))
+       end
+ImageHDU{Int64, 2}
+TableHDU</code></pre><h2 id="Write-to-disk"><a class="docs-heading-anchor" href="#Write-to-disk">Write to disk</a><a id="Write-to-disk-1"></a><a class="docs-heading-anchor-permalink" href="#Write-to-disk" title="Permalink"></a></h2><p>Close the file to write the in-memory FITS file to disk.</p><pre><code class="language-julia-repl hljs">julia&gt; close(f)</code></pre><p>FITS objects are also closed automatically when garbage collected.</p><div class="admonition is-success" id="Compressed-storage-589ddc3ad858827b"><header class="admonition-header">Compressed storage<a class="admonition-anchor" href="#Compressed-storage-589ddc3ad858827b" title="Permalink"></a></header><div class="admonition-body"><p>Setting the file extension to <code>.gz</code> will automatically use GZIP compression and save on storage space.</p><pre><code class="language-julia-repl hljs">julia&gt; FITS(&quot;abc.fits&quot;, &quot;w&quot;) do f # save the image uncompressed
+           write(f, ones(200,200))
+       end
+
+julia&gt; filesize(&quot;abc.fits&quot;)
+325440
+
+julia&gt; FITS(&quot;abc.fits.gz&quot;, &quot;w&quot;) do f # save the image compressed
+            write(f, ones(200,200))
+       end
+
+julia&gt; filesize(&quot;abc.fits.gz&quot;)
+2117</code></pre><p>Alternately the compression algorithm might be specified in square brackets after the filename. Check the <a href="https://heasarc.gsfc.nasa.gov/docs/software/fitsio/compression.html">CFITSIO website</a> for the details of this usage.</p><pre><code class="language-julia-repl hljs">julia&gt; FITS(&quot;abc.fits[compress R 100,100]&quot;, &quot;w&quot;) do f # Rice algorithm with a 100 x 100 pixel tile size
+           write(f, ones(200,200))
+       end
+
+julia&gt; filesize(&quot;abc.fits&quot;)
+8640</code></pre><div class="admonition is-category-warn" id="Warn-673338776e17a21"><header class="admonition-header">Warn<a class="admonition-anchor" href="#Warn-673338776e17a21" title="Permalink"></a></header><div class="admonition-body"><p>Compression is &quot;loss-less&quot; for images with integer pixel values, and might be lossy for floating-point images.</p></div></div></div></div></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="api/">API Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Tuesday 23 December 2025 07:50">Tuesday 23 December 2025</span>. Using Julia version 1.12.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

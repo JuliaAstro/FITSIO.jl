@@ -26,12 +26,12 @@ julia> FITSHeader(wcs)
 WCSAXES =                    2 / Number of coordinate axes
 CRPIX1  =              -234.75 / Pixel coordinate of reference point
 CRPIX2  =               8.3393 / Pixel coordinate of reference point
-CDELT1  =           -0.066667  / [deg] Coordinate increment at reference point
-CDELT2  =            0.066667  / [deg] Coordinate increment at reference point
+CDELT1  =            -0.066667 / [deg] Coordinate increment at reference point
+CDELT2  =             0.066667 / [deg] Coordinate increment at reference point
 CUNIT1  = 'deg     '           / Units of coordinate increment and value
 CUNIT2  = 'deg     '           / Units of coordinate increment and value
-CTYPE1  = 'RA---AIR'           / Right ascension, Airys zenithal projection
-CTYPE2  = 'DEC--AIR'           / Declination, Airys zenithal projection
+CTYPE1  = 'RA---AIR'           / Right ascension, Airy's zenithal projection
+CTYPE2  = 'DEC--AIR'           / Declination, Airy's zenithal projection
 CRVAL1  =                  0.0 / [deg] Coordinate value at reference point
 CRVAL2  =                -90.0 / [deg] Coordinate value at reference point
 PV2_1   =                 45.0 / AIR projection parameter

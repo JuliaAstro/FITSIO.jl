@@ -16,39 +16,45 @@ using FITSIO: fitswrite, read_header
 
     @test header_wcs isa FITSHeader
 
-    # TODO: Too brittle between *nix and Windows. Tracking in https://github.com/JuliaAstro/FITSIO.jl/issues/234
-    #header_default_str = """SIMPLE  =                    T / file does conform to FITS standard
-    #   BITPIX  =                   64 / number of bits per data pixel
-    #   NAXIS   =                    2 / number of data axes
-    #   NAXIS1  =                    2 / length of data axis 1
-    #   NAXIS2  =                    2 / length of data axis 2
-    #   EXTEND  =                    T / FITS dataset may contain extensions
-    #   COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronom
-    #   COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H
-    #   """
+    # Verify that numeric WCS keywords are stored with the correct types,
+    # not as strings (per FITS standard compliance).
+    @test header_wcs["WCSAXES"] isa Int
+    @test header_wcs["WCSAXES"] == 2
 
-    #header_wcs_str = """WCSAXES = '2       '           / Number of coordinate axes
-    #   CRPIX1  = '-234.7500'          / Pixel coordinate of reference point
-    #   CRPIX2  = '8.3393  '           / Pixel coordinate of reference point
-    #   CDELT1  = '-0.066667'          / [deg] Coordinate increment at reference point
-    #   CDELT2  = '0.066667'           / [deg] Coordinate increment at reference point
-    #   CUNIT1  = 'deg     '           / Units of coordinate increment and value
-    #   CUNIT2  = 'deg     '           / Units of coordinate increment and value
-    #   CTYPE1  = 'RA---AIR'           / Right ascension, Airys zenithal projection
-    #   CTYPE2  = 'DEC--AIR'           / Declination, Airys zenithal projection
-    #   CRVAL1  = '0.0     '           / [deg] Coordinate value at reference point
-    #   CRVAL2  = '-90.0   '           / [deg] Coordinate value at reference point
-    #   PV2_1   = '45.0    '           / AIR projection parameter
-    #   LONPOLE = '180.0   '           / [deg] Native longitude of celestial pole
-    #   LATPOLE = '-90.0   '           / [deg] Native latitude of celestial pole
-    #   MJDREF  = '0.0     '           / [d] MJD of fiducial time
-    #   RADESYS = 'ICRS    '           / Equatorial coordinate system
-    #   COMMENT WCS header keyrecords produced by WCSLIB 7.7"""
+    @test header_wcs["CRVAL1"] isa Float64
+    @test header_wcs["CRVAL1"] == 0.0
+    @test header_wcs["CRVAL2"] isa Float64
+    @test header_wcs["CRVAL2"] == -90.0
 
-    #@test string(header_wcs) == header_wcs_str
+    @test header_wcs["CRPIX1"] isa Float64
+    @test header_wcs["CRPIX1"] == -234.75
+    @test header_wcs["CRPIX2"] isa Float64
+    @test header_wcs["CRPIX2"] == 8.3393
 
-    #tempnamefits() do fname
-    #    fitswrite(fname, img; header = header_wcs)
-    #    @test (string ∘ read_header)(fname) == header_default_str * header_wcs_str
-    #end
+    @test header_wcs["CDELT1"] isa Float64
+    @test header_wcs["CDELT1"] == -0.066667
+    @test header_wcs["CDELT2"] isa Float64
+    @test header_wcs["CDELT2"] == 0.066667
+
+    # String-valued WCS keywords should remain as strings
+    @test header_wcs["CTYPE1"] isa String
+    @test header_wcs["CTYPE1"] == "RA---AIR"
+    @test header_wcs["CTYPE2"] isa String
+    @test header_wcs["CTYPE2"] == "DEC--AIR"
+    @test header_wcs["RADESYS"] isa String
+    @test header_wcs["RADESYS"] == "ICRS"
+
+    # Round-trip test: write to file and read back, verify types are preserved
+    tempnamefits() do fname
+        fitswrite(fname, img; header = header_wcs)
+        hdr_roundtrip = read_header(fname)
+        @test hdr_roundtrip["WCSAXES"] isa Int
+        @test hdr_roundtrip["WCSAXES"] == 2
+        @test hdr_roundtrip["CRVAL1"] isa Float64
+        @test hdr_roundtrip["CRVAL1"] == 0.0
+        @test hdr_roundtrip["CRVAL2"] isa Float64
+        @test hdr_roundtrip["CRVAL2"] == -90.0
+        @test hdr_roundtrip["CTYPE1"] isa String
+        @test hdr_roundtrip["CTYPE1"] == "RA---AIR"
+    end
 end

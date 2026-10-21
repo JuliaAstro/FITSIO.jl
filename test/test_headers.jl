@@ -144,4 +144,29 @@
         hdr = FITSHeader(["COMMENT", "HISTORY"], [nothing, nothing], [text, text])
         @test repr(hdr) == "COMMENT $text\nHISTORY $text"
     end
+    # https://github.com/JuliaAstro/FITSIO.jl/issues/205
+    @testset "CONTINUE cards survive a header round trip" begin
+        cards = [rpad("LONGSTR = 'first part of a long string &'", 80),
+                 rpad("CONTINUE  'second part &'", 80),
+                 rpad("CONTINUE  'third part' / comment on the last card", 80)]
+        tempnamefits() do fname1
+            tempnamefits() do fname2
+                FITS(fname1, "w") do f
+                    write(f, rand(2, 2))
+                    foreach(c -> FITSIO.fits_write_record(f.fitsfile, c), cards)
+                end
+                hdr = FITS(fname1) do f
+                    read_header(f[1])
+                end
+                FITS(fname2, "w") do f
+                    write(f, rand(2, 2); header=hdr)
+                end
+                raw = FITS(fname2) do f
+                    read_header(f[1], String)
+                end
+                @test occursin(join(cards), raw)
+                @test !occursin("CONTINUE=", raw)
+            end
+        end
+    end
 end

@@ -226,6 +226,11 @@ function fits_write_header(f::FITSFile, hdr::FITSHeader, clean::Bool=true)
             fits_write_comment(f, hdr.comments[i])
         elseif hdr.keys[i] == "HISTORY"
             fits_write_history(f, hdr.comments[i])
+        elseif hdr.keys[i] == "CONTINUE"
+            # Continuation of a long string value. It has no value indicator and
+            # repeats within a header, so write the card as is; fits_update_key
+            # would overwrite the previous CONTINUE card and add a "=".
+            fits_write_record(f, rpad("CONTINUE" * hdr.comments[i], 80)[1:80])
         elseif hdr.comments[i] == ""
             fits_update_key(f, hdr.keys[i], hdr.values[i])
         else

@@ -214,6 +214,21 @@ function reserved_key_indices(hdr::FITSHeader)
 end
 
 
+# CFITSIO writes these two COMMENT cards itself when it creates a primary HDU,
+# so a header read back from a FITS file already contains them.
+const STANDARD_COMMENTS = ("FITS (Flexible Image Transport System) format is defined in 'Astronomy",
+                           "and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H")
+
+# Does the CHDU already have a COMMENT card with this text?
+function has_comment(f::FITSFile, text::AbstractString)
+    nkeys, _ = fits_get_hdrspace(f)
+    for i = 1:nkeys
+        key, _, comment = fits_read_keyn(f, i)
+        key == "COMMENT" && strip(comment) == strip(text) && return true
+    end
+    return false
+end
+
 # Write header to CHDU.
 # If `clean` is true, skip writing reserved header keywords.
 function fits_write_header(f::FITSFile, hdr::FITSHeader, clean::Bool=true)
@@ -223,6 +238,10 @@ function fits_write_header(f::FITSFile, hdr::FITSHeader, clean::Bool=true)
             continue
         end
         if hdr.keys[i] == "COMMENT"
+            # Don't duplicate the standard comment CFITSIO already put in the CHDU.
+            if strip(hdr.comments[i]) in STANDARD_COMMENTS && has_comment(f, hdr.comments[i])
+                continue
+            end
             fits_write_comment(f, hdr.comments[i])
         elseif hdr.keys[i] == "HISTORY"
             fits_write_history(f, hdr.comments[i])

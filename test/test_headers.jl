@@ -138,4 +138,41 @@
         @test hdr["NAXIS3"] == 5
         @test hdr["EXTEND"] == true
     end
+    # https://github.com/JuliaAstro/FITSIO.jl/issues/126
+    @testset "standard comment is not duplicated on re-save" begin
+        ncomments(hdr) = count(==("COMMENT"), hdr.keys)
+        data = rand(10, 10)
+        tempnamefits() do fname1
+            tempnamefits() do fname2
+                FITS(fname1, "w") do f
+                    write(f, data; header=FITSHeader(["HELLO"], ["World"], [""]))
+                end
+                hdr = FITS(fname1) do f
+                    read_header(f[1])
+                end
+                n = ncomments(hdr)
+                @test n == 2  # CFITSIO's standard two-card comment
+
+                FITS(fname2, "w") do f
+                    write(f, data; header=hdr)
+                end
+                hdr2 = FITS(fname2) do f
+                    read_header(f[1])
+                end
+                @test ncomments(hdr2) == n
+                @test hdr2["HELLO"] == "World"
+            end
+        end
+
+        # Into an extension, CFITSIO adds no standard comment, so it is kept.
+        tempnamefits() do fname
+            hdr = FITSHeader(["COMMENT", "COMMENT"], [nothing, nothing],
+                             [" " * c for c in FITSIO.STANDARD_COMMENTS])
+            FITS(fname, "w") do f
+                write(f, data)
+                write(f, data; header=hdr)
+            end
+            @test ncomments(FITS(read_header ∘ (f -> f[2]), fname)) == 2
+        end
+    end
 end

@@ -223,7 +223,7 @@ NAXIS   =                    2 / number of data axes
 NAXIS1  =                    4 / length of data axis 1
 NAXIS2  =                    5 / length of data axis 2
 EXTEND  =                    T / FITS dataset may contain extensions
-COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronom
+COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy
 COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H
 
 julia> typeof(header)

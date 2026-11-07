@@ -1,6 +1,20 @@
 import Tables
 
 @testset "Tables" begin
+    @testset "Scalar and single-element array columns" begin
+        tempnamefits() do fname
+            values = Int64[1, 2, 3, 4, 5]
+            FITS(fname, "w") do f
+                write(f, ["scalar", "array"], [values, reshape(values, 1, :)])
+            end
+            FITS(fname, "r") do f
+                header = read_header(f[2])
+                @test !haskey(header, "TDIM1")
+                @test header["TDIM2"] == "(1)"
+                @test read(f[2], "scalar") == values
+            end
+        end
+    end
     tempnamefits() do fname
         FITS(fname, "w") do f
             ## Binary table

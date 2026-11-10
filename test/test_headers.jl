@@ -138,6 +138,12 @@
         @test hdr["NAXIS3"] == 5
         @test hdr["EXTEND"] == true
     end
+    @testset "show keeps a full-width COMMENT/HISTORY card" begin
+        # A card holds 72 characters after the 8-character keyword field.
+        text = "x"^72
+        hdr = FITSHeader(["COMMENT", "HISTORY"], [nothing, nothing], [text, text])
+        @test repr(hdr) == "COMMENT $text\nHISTORY $text"
+    end
     # https://github.com/JuliaAstro/FITSIO.jl/issues/126
     @testset "standard comment is not duplicated on re-save" begin
         ncomments(hdr) = count(==("COMMENT"), hdr.keys)

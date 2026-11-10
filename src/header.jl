@@ -469,7 +469,7 @@ function show(io::IO, hdr::FITSHeader)
     n = length(hdr)
     for i=1:n
         if hdr.keys[i] == "COMMENT" || hdr.keys[i] == "HISTORY"
-            @printf io "%s %s" hdr.keys[i] hdr.comments[i][1:min(71, end)]
+            @printf io "%s %s" hdr.keys[i] hdr.comments[i][1:min(72, end)]
         else
             @printf io "%-8s" hdr.keys[i]
             if hdr.values[i] === nothing

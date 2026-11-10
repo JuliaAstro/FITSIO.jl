@@ -164,15 +164,18 @@
             end
         end
 
-        # Into an extension, CFITSIO adds no standard comment, so it is kept.
+        # Like CFITSIO's fits_copy_hdu, the standard comment is not carried into an
+        # extension; other comments are kept.
         tempnamefits() do fname
-            hdr = FITSHeader(["COMMENT", "COMMENT"], [nothing, nothing],
-                             [" " * c for c in FITSIO.STANDARD_COMMENTS])
+            hdr = FITSHeader(["COMMENT", "COMMENT", "COMMENT"], [nothing, nothing, nothing],
+                             [[" " * c for c in FITSIO.STANDARD_COMMENTS]; "keep me"])
             FITS(fname, "w") do f
                 write(f, data)
                 write(f, data; header=hdr)
             end
-            @test ncomments(FITS(read_header ∘ (f -> f[2]), fname)) == 2
+            hdr2 = FITS(read_header ∘ (f -> f[2]), fname)
+            @test ncomments(hdr2) == 1
+            @test hdr2.comments[findfirst(==("COMMENT"), hdr2.keys)] == "keep me"
         end
     end
 end

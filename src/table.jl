@@ -297,7 +297,10 @@ function write_internal(f::FITS, colnames::Vector{String},
     # For binary tables, write tdim info
     if hdutype === TableHDU
         for (i, a) in enumerate(coldata)
-            isvarcol[i] || fits_write_tdim(f.fitsfile, i, fits_tdim(a))
+            # TDIM='(1)' describes a one-element array in each row.
+            if !isvarcol[i] && !(a isa Vector{<:Number})
+                fits_write_tdim(f.fitsfile, i, fits_tdim(a))
+            end
         end
     end
 

@@ -168,5 +168,11 @@
                 @test !occursin("CONTINUE=", raw)
             end
         end
+        # A value would be silently dropped, since only the comment is written.
+        tempnamefits() do fname
+            FITS(fname, "w") do f
+                @test_throws "the value of a CONTINUE card must be `nothing`" write(f, rand(2, 2); header=FITSHeader(["CONTINUE"], ["abc"], [""]))
+            end
+        end
     end
 end

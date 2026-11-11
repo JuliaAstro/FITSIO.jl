@@ -230,6 +230,7 @@ function fits_write_header(f::FITSFile, hdr::FITSHeader, clean::Bool=true)
             # Continuation of a long string value. It has no value indicator and
             # repeats within a header, so write the card as is; fits_update_key
             # would overwrite the previous CONTINUE card and add a "=".
+            hdr.values[i] === nothing || throw(ArgumentError("the value of a CONTINUE card must be `nothing`; give the rest of the card as its comment, e.g. \"  'more text&'\""))
             fits_write_record(f, rpad("CONTINUE" * hdr.comments[i], 80)[1:80])
         elseif hdr.comments[i] == ""
             fits_update_key(f, hdr.keys[i], hdr.values[i])
